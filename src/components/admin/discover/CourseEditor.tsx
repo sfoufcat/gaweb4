@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronRight, Trash2, Play, Plus, Settings2, GripVertical, Folder, LayoutGrid, BarChart3, Lock, Unlock, Pencil } from 'lucide-react';
+import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronRight, Trash2, Play, Plus, Settings, GripVertical, Folder, LayoutGrid, BarChart3, Lock, Unlock, Pencil } from 'lucide-react';
 import { CourseOverview } from './CourseOverview';
 
 // Generate unique ID for new modules/lessons
@@ -85,6 +85,7 @@ export function CourseEditor({
 }: CourseEditorProps) {
   const isEditing = !!course;
   const [saving, setSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(!isEditing); // New courses start with "changes" so Save is enabled
   const [basicInfoOpen, setBasicInfoOpen] = useState(false);
   const [selectedModuleIndex, setSelectedModuleIndex] = useState<number | null>(null);
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
@@ -143,7 +144,7 @@ export function CourseEditor({
     // Clear all pending videos when a save happens (simpler approach)
   };
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormDataInternal] = useState({
     title: '',
     coverImageUrl: '',
     shortDescription: '',
@@ -156,9 +157,15 @@ export function CourseEditor({
     pricing: getDefaultPricingData() as ContentPricingData,
   });
 
+  // Wrapper that marks form as having changes
+  const setFormData: typeof setFormDataInternal = (value) => {
+    setFormDataInternal(value);
+    setHasChanges(true);
+  };
+
   useEffect(() => {
     if (course) {
-      setFormData({
+      setFormDataInternal({
         title: course.title || '',
         coverImageUrl: course.coverImageUrl || '',
         shortDescription: course.shortDescription || '',
@@ -180,7 +187,7 @@ export function CourseEditor({
         setExpandedModules(new Set([0]));
       }
     } else {
-      setFormData({
+      setFormDataInternal({
         title: '',
         coverImageUrl: '',
         shortDescription: '',
@@ -195,6 +202,8 @@ export function CourseEditor({
       // Open basic info for new courses
       setBasicInfoOpen(true);
     }
+    // Reset hasChanges when course data is loaded (not a user change)
+    setHasChanges(!course); // New courses need Save enabled, existing courses start clean
   }, [course]);
 
   const handleSubmit = async () => {
@@ -241,8 +250,8 @@ export function CourseEditor({
 
       // Clear pending video IDs - they're now saved
       setPendingBunnyVideoIds([]);
+      setHasChanges(false);
       onSave();
-      onClose();
     } catch (err) {
       console.error('Error saving course:', err);
       alert(err instanceof Error ? err.message : 'Failed to save course');
@@ -376,25 +385,54 @@ export function CourseEditor({
             {/* Tab Navigation */}
             {isEditing && (
               <>
-                {/* Mobile: dropdown style */}
-                <button
-                  type="button"
-                  onClick={() => setActiveTab(activeTab === 'overview' ? 'content' : 'overview')}
-                  className="sm:hidden flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                >
-                  {activeTab === 'overview' ? (
-                    <>
-                      <BarChart3 className="w-3.5 h-3.5" />
-                      <span>Overview</span>
-                    </>
-                  ) : (
-                    <>
-                      <LayoutGrid className="w-3.5 h-3.5" />
-                      <span>Content</span>
-                    </>
-                  )}
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </button>
+                {/* Mobile: dropdown style + settings */}
+                <div className="sm:hidden flex items-center gap-1 mr-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(activeTab === 'overview' ? 'content' : 'overview')}
+                    className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                  >
+                    {activeTab === 'overview' ? (
+                      <>
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        <span>Overview</span>
+                      </>
+                    ) : (
+                      <>
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        <span>Content</span>
+                      </>
+                    )}
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBasicInfoOpen(true)}
+                    className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                    title="Course Settings"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                </div>
+                {/* Stats - hidden on mobile, shown on desktop */}
+                <div className="hidden lg:flex items-center gap-5 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-4 h-4" />
+                    {formData.modules.length}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <BookOpen className="w-4 h-4" />
+                    {totalLessons}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4" />
+                    {totalDuration} min
+                  </span>
+                </div>
+
+                {/* Spacer between stats and menu */}
+                <div className="hidden lg:block w-6" />
+
                 {/* Desktop: tab buttons */}
                 <div className="hidden sm:flex items-center gap-1">
                   <button
@@ -421,48 +459,31 @@ export function CourseEditor({
                     <LayoutGrid className="w-4 h-4" />
                     Content
                   </button>
+                  {/* Settings Button - next to Content */}
+                  <button
+                    type="button"
+                    onClick={() => setBasicInfoOpen(true)}
+                    className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                    title="Course Settings"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
                 </div>
               </>
             )}
-
-            {/* Settings Button */}
-            <button
-              type="button"
-              onClick={() => setBasicInfoOpen(true)}
-              className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-              title="Course Settings"
-            >
-              <Settings2 className="w-4 h-4" />
-            </button>
-
-            {/* Stats - hidden on mobile */}
-            <div className="hidden lg:flex items-center gap-4 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              <span className="flex items-center gap-1.5">
-                <Layers className="w-4 h-4" />
-                {formData.modules.length}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <BookOpen className="w-4 h-4" />
-                {totalLessons}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4" />
-                {totalDuration} min
-              </span>
-            </div>
 
             <Button
               variant="outline"
               onClick={handleClose}
               disabled={saving}
-              className="hidden sm:inline-flex border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#262b35] font-albert"
+              className="hidden sm:inline-flex px-4 border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#262b35] font-albert"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={saving || !formData.title.trim()}
-              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm sm:text-base px-3 sm:px-4"
+              disabled={saving || !formData.title.trim() || !hasChanges}
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm sm:text-base px-6 sm:px-8"
             >
               {saving ? 'Saving...' : isEditing ? 'Save' : 'Create'}
             </Button>

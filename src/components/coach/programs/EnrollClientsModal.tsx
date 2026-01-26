@@ -58,6 +58,7 @@ interface EnrollClientsModalProps {
   onEnrollComplete: () => void;
   program: ProgramInfo | null;
   existingEnrollmentUserIds: string[];
+  initialCohortId?: string | null;
 }
 
 export function EnrollClientsModal({
@@ -66,6 +67,7 @@ export function EnrollClientsModal({
   onEnrollComplete,
   program,
   existingEnrollmentUserIds,
+  initialCohortId,
 }: EnrollClientsModalProps) {
   // Client-side only rendering to avoid hydration issues with portals
   const [isMounted, setIsMounted] = useState(false);
@@ -95,6 +97,13 @@ export function EnrollClientsModal({
       setError(null);
     }
   }, [isOpen]);
+
+  // Set initial cohort when provided
+  useEffect(() => {
+    if (isOpen && initialCohortId) {
+      setSelectedCohortId(initialCohortId);
+    }
+  }, [isOpen, initialCohortId]);
 
   // Fetch clients when modal opens
   useEffect(() => {

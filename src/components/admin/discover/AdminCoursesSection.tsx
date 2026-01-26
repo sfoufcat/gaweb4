@@ -26,6 +26,11 @@ import {
 import { CourseEditor } from './CourseEditor';
 import { CreateCourseModal } from './CreateCourseModal';
 
+// Strip HTML tags for plain text display
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').trim();
+}
+
 interface AdminCoursesSectionProps {
   apiEndpoint?: string;
   /** Initial course ID for URL persistence */
@@ -51,7 +56,6 @@ export function AdminCoursesSection({
   const filtersRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [levelFilter, setLevelFilter] = useState('');
   const [courseToDelete, setCourseToDelete] = useState<DiscoverCourse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -191,15 +195,10 @@ export function AdminCoursesSection({
     handleCloseEditor();
   };
 
-  // Get unique categories and levels
+  // Get unique categories
   const categories = useMemo(() => {
     const cats = new Set(courses.map(c => c.category).filter(Boolean));
     return Array.from(cats).sort();
-  }, [courses]);
-
-  const levels = useMemo(() => {
-    const lvls = new Set(courses.map(c => c.level).filter(Boolean));
-    return Array.from(lvls).sort();
   }, [courses]);
 
   // Measure filters width for animated search expansion
@@ -207,7 +206,7 @@ export function AdminCoursesSection({
     if (filtersRef.current && !isSearchExpanded) {
       setFiltersWidth(filtersRef.current.offsetWidth);
     }
-  }, [categories, levels, isSearchExpanded]);
+  }, [categories, isSearchExpanded]);
 
   const handleSearchExpand = useCallback(() => {
     setIsSearchExpanded(true);
@@ -234,17 +233,13 @@ export function AdminCoursesSection({
       filtered = filtered.filter(course => course.category === categoryFilter);
     }
 
-    if (levelFilter) {
-      filtered = filtered.filter(course => course.level === levelFilter);
-    }
-
     return filtered;
-  }, [courses, searchQuery, categoryFilter, levelFilter]);
+  }, [courses, searchQuery, categoryFilter]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, categoryFilter, levelFilter]);
+  }, [searchQuery, categoryFilter]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE);
@@ -393,22 +388,6 @@ export function AdminCoursesSection({
                   </Select>
                 )}
 
-                {levels.length > 0 && (
-                  <Select
-                    value={levelFilter || 'all'}
-                    onValueChange={(value) => setLevelFilter(value === 'all' ? '' : value)}
-                  >
-                    <SelectTrigger className="h-auto px-3 py-1.5 w-auto bg-transparent border-0 shadow-none text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] focus:ring-0 ring-offset-0 font-albert text-sm gap-1.5 !justify-start">
-                      <SelectValue placeholder="All Levels" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Levels</SelectItem>
-                      {levels.map(level => (
-                        <SelectItem key={level} value={level}>{level}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
               </div>
 
               {/* Search toggle button */}
@@ -483,7 +462,7 @@ export function AdminCoursesSection({
                     </h3>
                     {course.shortDescription && (
                       <p className="mt-1 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert line-clamp-2">
-                        {course.shortDescription}
+                        {stripHtml(course.shortDescription)}
                       </p>
                     )}
 

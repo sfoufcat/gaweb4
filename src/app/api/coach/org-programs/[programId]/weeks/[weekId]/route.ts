@@ -245,16 +245,64 @@ export async function DELETE(
       return NextResponse.json({ error: 'Week not found' }, { status: 404 });
     }
 
-    // Remove the week from the array
-    const updatedWeeks = weeks.filter((_, index) => index !== weekIndex);
+    // Prevent deletion of Onboarding (first) and Closing (last) weeks
+    const weekToDelete = weeks[weekIndex];
+    const isOnboarding = weekIndex === 0 || weekToDelete.weekNumber === 0;
+    const isClosing = weekIndex === weeks.length - 1 || weekToDelete.weekNumber === -1;
 
-    // Update the program document
+    if (isOnboarding) {
+      return NextResponse.json({ error: 'Cannot delete Onboarding week' }, { status: 400 });
+    }
+    if (isClosing) {
+      return NextResponse.json({ error: 'Cannot delete Closing week' }, { status: 400 });
+    }
+
+    // Remove the week from the array
+    const remainingWeeks = weeks.filter((_, index) => index !== weekIndex);
+
+    // Recalculate all weeks' day indices and week numbers
+    const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
+    const numWeeks = remainingWeeks.length;
+    const now = new Date().toISOString();
+
+    const updatedWeeks = remainingWeeks.map((week, idx) => {
+      const isFirst = idx === 0;
+      const isLast = idx === numWeeks - 1;
+
+      // Calculate new weekNumber: 0 for first (Onboarding), -1 for last (Closing), else sequential
+      let newWeekNumber: number;
+      if (isFirst) {
+        newWeekNumber = 0;
+      } else if (isLast && numWeeks > 2) {
+        newWeekNumber = -1;
+      } else {
+        newWeekNumber = idx;
+      }
+
+      // Calculate new day indices
+      const newStartDayIndex = idx * daysPerWeek + 1;
+      const newEndDayIndex = newStartDayIndex + daysPerWeek - 1;
+
+      return {
+        ...week,
+        weekNumber: newWeekNumber,
+        startDayIndex: newStartDayIndex,
+        endDayIndex: newEndDayIndex,
+        updatedAt: now,
+      };
+    });
+
+    // Calculate new program lengthDays
+    const newLengthDays = numWeeks * daysPerWeek;
+
+    // Update the program document with recalculated weeks and lengthDays
     await adminDb.collection('programs').doc(programId).update({
       weeks: updatedWeeks,
+      lengthDays: newLengthDays,
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    console.log(`[COACH_ORG_PROGRAM_WEEK_DELETE] Deleted week ${weekId} from program ${programId}`);
+    console.log(`[COACH_ORG_PROGRAM_WEEK_DELETE] Deleted week ${weekId}, recalculated ${numWeeks} weeks, lengthDays=${newLengthDays}`);
 
     return NextResponse.json({
       success: true,

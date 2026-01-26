@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Plus, Video, BookOpen, ChevronRight, CalendarDays, Edit2 } from 'lucide-react';
+import { format } from 'date-fns';
 import type { Program, ProgramDay, ProgramModule, ProgramWeek } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
 import { calculateCalendarWeeks, dayIndexToDate, type CalendarWeek } from '@/lib/calendar-weeks';
@@ -257,60 +258,75 @@ export function ProgramScheduleEditor({
         cells.push(
           <div
             key={day.dayIndex}
-            className={`min-h-[100px] ${bgClass} rounded-lg border ${borderClass} p-2 space-y-1 transition-colors`}
+            className={`min-h-[80px] sm:min-h-[100px] ${bgClass} rounded-lg border ${borderClass} p-1.5 sm:p-2 space-y-0.5 sm:space-y-1 transition-colors cursor-pointer hover:ring-2 hover:ring-brand-accent/30`}
+            onClick={() => onDayClick(day.dayIndex)}
           >
             {/* Day Number Header */}
-            <div className="flex items-center justify-between mb-1">
-              <span className={`text-xs font-medium font-albert ${
-                status === 'active'
-                  ? 'text-emerald-700 dark:text-emerald-300'
-                  : status === 'past'
-                    ? 'text-yellow-700 dark:text-yellow-300'
-                    : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-              }`}>
-                Day {day.dayIndex}
-              </span>
+            <div className="flex items-start justify-between">
+              <div className="flex flex-col min-w-0">
+                <span className={`text-[10px] sm:text-xs font-medium font-albert whitespace-nowrap ${
+                  status === 'active'
+                    ? 'text-emerald-700 dark:text-emerald-300'
+                    : status === 'past'
+                      ? 'text-yellow-700 dark:text-yellow-300'
+                      : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                }`}>
+                  Day {day.dayIndex}
+                </span>
+                {/* Show date for client/cohort view */}
+                {viewMode === 'client' && (
+                  <span className={`text-[9px] sm:text-[10px] font-albert leading-tight ${
+                    status === 'active'
+                      ? 'text-emerald-600/70 dark:text-emerald-400/70'
+                      : status === 'past'
+                        ? 'text-yellow-600/70 dark:text-yellow-400/70'
+                        : 'text-[#a7a39e] dark:text-[#7d8190]'
+                  }`}>
+                    {format(dayIndexToDate(effectiveStartDate, day.dayIndex, includeWeekends), 'MMM d')}
+                  </span>
+                )}
+              </div>
               <button
-                onClick={() => onDayClick(day.dayIndex)}
-                className="p-0.5 rounded hover:bg-white/50 dark:hover:bg-black/20 text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors"
+                onClick={(e) => { e.stopPropagation(); onDayClick(day.dayIndex); }}
+                className="p-0.5 rounded hover:bg-white/50 dark:hover:bg-black/20 text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors hidden sm:block"
               >
                 <Edit2 className="w-3 h-3" />
               </button>
             </div>
 
-            {/* Day Content */}
+            {/* Day Content - Hidden on mobile for cleaner look */}
             {day.data?.title && (
-              <p className="text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] truncate font-albert">
+              <p className="text-[9px] sm:text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] truncate font-albert hidden sm:block">
                 {day.data.title}
               </p>
             )}
 
-            {/* Tasks Count */}
-            {day.data?.tasks && day.data.tasks.length > 0 && (
-              <div className="flex items-center gap-1 text-[10px] text-[#a7a39e] dark:text-[#7d8190]">
-                <CalendarDays className="w-2.5 h-2.5" />
-                <span>{day.data.tasks.length}</span>
-              </div>
-            )}
+            {/* Content Indicators */}
+            <div className="flex items-center gap-1 flex-wrap">
+              {/* Tasks Count */}
+              {day.data?.tasks && day.data.tasks.length > 0 && (
+                <div className="flex items-center gap-0.5 text-[9px] sm:text-[10px] text-[#a7a39e] dark:text-[#7d8190]">
+                  <CalendarDays className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
+                  <span>{day.data.tasks.length}</span>
+                </div>
+              )}
 
-            {/* Course Assignments */}
-            {day.data?.courseAssignments && day.data.courseAssignments.length > 0 && (
-              <div className="flex items-center gap-1 text-[10px]">
-                <BookOpen className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
-                <span className="text-blue-700 dark:text-blue-300">
-                  {day.data.courseAssignments.length}
-                </span>
-              </div>
-            )}
+              {/* Course Assignments */}
+              {day.data?.courseAssignments && day.data.courseAssignments.length > 0 && (
+                <div className="flex items-center gap-0.5 text-[9px] sm:text-[10px]">
+                  <BookOpen className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-blue-600 dark:text-blue-400" />
+                  <span className="text-blue-700 dark:text-blue-300">
+                    {day.data.courseAssignments.length}
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Empty State - Add Button */}
             {!day.hasContent && !day.data?.title && (
-              <button
-                onClick={() => onDayClick(day.dayIndex)}
-                className="w-full h-full flex items-center justify-center"
-              >
-                <Plus className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent transition-colors" />
-              </button>
+              <div className="flex-1 flex items-center justify-center">
+                <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+              </div>
             )}
           </div>
         );
@@ -326,6 +342,76 @@ export function ProgramScheduleEditor({
     }
 
     return cells;
+  };
+
+  // Mobile-optimized day cells - horizontal scroll with larger touch targets
+  const renderMobileDayCells = (cw: CalendarWeek, moduleColor: typeof moduleColors[0]) => {
+    const weekDays = getWeekDays(cw);
+
+    return weekDays.map(day => {
+      const status = getDayStatus(day.dayIndex);
+      const bgClass = statusColors[status].bg;
+      const borderClass = statusColors[status].border;
+      const dayDate = dayIndexToDate(effectiveStartDate, day.dayIndex, includeWeekends);
+      const dayName = format(dayDate, 'EEE'); // Mon, Tue, etc.
+      const hasContent = day.hasContent || day.data?.title;
+
+      return (
+        <div
+          key={day.dayIndex}
+          onClick={() => onDayClick(day.dayIndex)}
+          className={`flex-shrink-0 w-[72px] snap-start ${bgClass} rounded-xl border-2 ${borderClass} p-2 transition-all cursor-pointer active:scale-95 ${
+            status === 'active' ? 'ring-2 ring-emerald-400/50' : ''
+          }`}
+        >
+          {/* Day name (Mon, Tue, etc.) */}
+          <div className={`text-[10px] font-medium text-center mb-0.5 ${
+            status === 'active'
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : status === 'past'
+                ? 'text-yellow-600 dark:text-yellow-400'
+                : 'text-[#8a8580] dark:text-[#6b7280]'
+          }`}>
+            {dayName}
+          </div>
+
+          {/* Day number - large and centered (always show program day number) */}
+          <div className={`text-2xl font-bold text-center leading-none ${
+            status === 'active'
+              ? 'text-emerald-700 dark:text-emerald-300'
+              : status === 'past'
+                ? 'text-yellow-700 dark:text-yellow-300'
+                : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+          }`}>
+            {day.dayIndex}
+          </div>
+
+          {/* Date below (Feb 2, Mar 15, etc.) - only in client/cohort view */}
+          <div className={`text-[10px] text-center mt-0.5 ${
+            status === 'active'
+              ? 'text-emerald-600/70 dark:text-emerald-400/70'
+              : status === 'past'
+                ? 'text-yellow-600/70 dark:text-yellow-400/70'
+                : 'text-[#a7a39e] dark:text-[#7d8190]'
+          }`}>
+            {viewMode === 'client' ? format(dayDate, 'MMM d') : ''}
+          </div>
+
+          {/* Content indicators */}
+          <div className="flex items-center justify-center gap-1 mt-2">
+            {day.data?.tasks && day.data.tasks.length > 0 && (
+              <div className="w-1.5 h-1.5 rounded-full bg-brand-accent" title={`${day.data.tasks.length} tasks`} />
+            )}
+            {day.data?.courseAssignments && day.data.courseAssignments.length > 0 && (
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" title={`${day.data.courseAssignments.length} courses`} />
+            )}
+            {!hasContent && (
+              <Plus className="w-3 h-3 text-[#c4c0bb] dark:text-[#4a4f5a]" />
+            )}
+          </div>
+        </div>
+      );
+    });
   };
 
   return (
@@ -373,22 +459,24 @@ export function ProgramScheduleEditor({
                     moduleCalendarWeeks.map((cw) => (
                       <div key={`${cw.type}-${cw.weekNumber}`} className="space-y-2">
                         {/* Week Header */}
-                        <div className="flex items-center gap-2 pb-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-                          <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                            {cw.label}
-                          </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 pb-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                              {cw.label}
+                            </span>
+                            <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                              Days {cw.startDayIndex}–{cw.endDayIndex}
+                            </span>
+                          </div>
                           {getWeekTheme(cw) && (
-                            <span className="text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                            <span className="text-xs sm:text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert truncate">
                               {getWeekTheme(cw)}
                             </span>
                           )}
-                          <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
-                            Days {cw.startDayIndex}–{cw.endDayIndex}
-                          </span>
                         </div>
 
-                        {/* Week Grid */}
-                        <div className={`grid gap-2 ${gridCols === 5 ? 'grid-cols-5' : 'grid-cols-7'}`}>
+                        {/* Week Grid - Desktop */}
+                        <div className={`hidden sm:grid gap-2 ${gridCols === 5 ? 'grid-cols-5' : 'grid-cols-7'}`}>
                           {/* Day Headers */}
                           {dayHeaders.map((name, i) => (
                             <div
@@ -401,6 +489,13 @@ export function ProgramScheduleEditor({
 
                           {/* Day Cells */}
                           {renderDayCells(cw, moduleColor)}
+                        </div>
+
+                        {/* Week Grid - Mobile: Horizontal scroll */}
+                        <div className="sm:hidden -mx-3 px-3">
+                          <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
+                            {renderMobileDayCells(cw, moduleColor)}
+                          </div>
                         </div>
                       </div>
                     ))

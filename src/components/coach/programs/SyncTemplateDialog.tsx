@@ -74,7 +74,7 @@ const DEFAULT_SYNC_FIELDS: SyncFieldOptions = {
 const FIELD_OPTIONS: { key: keyof SyncFieldOptions; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'syncName', label: 'Week name & description', icon: FileText },
   { key: 'syncTheme', label: 'Week theme', icon: Palette },
-  { key: 'syncPrompt', label: 'Weekly prompt', icon: MessageSquare },
+  // { key: 'syncPrompt', label: 'Weekly prompt', icon: MessageSquare }, // DEPRECATED
   { key: 'syncTasks', label: 'Tasks', icon: ListChecks },
   { key: 'syncFocus', label: 'Focus items', icon: Target },
   { key: 'syncNotes', label: 'Notes', icon: StickyNote },
@@ -236,7 +236,7 @@ function SyncContent({
                   {label}
                 </span>
                 {isSelected && (
-                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center">
+                  <div className="absolute top-1/2 -translate-y-1/2 right-3.5 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </div>
                 )}

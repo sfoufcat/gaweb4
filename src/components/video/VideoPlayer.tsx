@@ -167,8 +167,17 @@ export function VideoPlayer({
         onBufferEnd={() => setIsBuffering(false)}
         onStart={() => setHasStarted(true)}
         onError={() => setHasError(true)}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        config={{ file: { attributes: { poster, preload: 'metadata' } } } as any}
+        config={{
+          file: {
+            attributes: {
+              poster,
+              preload: 'metadata',
+              playsInline: true,
+              crossOrigin: 'anonymous',
+            },
+            forceHLS: src?.includes('.m3u8'),
+          },
+        }}
       />
 
       {/* Poster Overlay (before playing) */}
@@ -267,7 +276,7 @@ export function VideoPlayer({
             </button>
 
             {/* Volume */}
-            <div className="flex items-center gap-2 group/volume">
+            <div className="flex items-center gap-1">
               <button
                 onClick={toggleMute}
                 className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 rounded-lg transition-colors"
@@ -286,7 +295,7 @@ export function VideoPlayer({
                 step={0.1}
                 value={muted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-0 group-hover/volume:w-20 transition-all duration-200 h-1 appearance-none bg-white/30 rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0"
+                className="w-16 h-1 appearance-none bg-white/30 rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0"
               />
             </div>
 

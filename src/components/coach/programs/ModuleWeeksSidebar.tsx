@@ -51,6 +51,7 @@ interface ModuleWeeksSidebarProps {
   onWeekMoveToModule: (weekId: string, targetModuleId: string, targetIndex: number) => Promise<void>;
   onAddModule: () => void;
   onAddWeek?: (moduleId: string) => Promise<void>;
+  onDeleteWeek?: (weekId: string, weekNumber: number) => Promise<void>;
   onDeleteModule?: (moduleId: string, action: 'move' | 'delete') => Promise<void>;
   onFillWithAI?: () => void;
   onFillWeek?: (weekNumber: number) => void;
@@ -363,6 +364,7 @@ export function ModuleWeeksSidebar({
   onWeeksReorder,
   onAddModule,
   onAddWeek,
+  onDeleteWeek,
   onDeleteModule,
   onFillWeek,
   onAutoDistributeWeeks,
@@ -405,6 +407,8 @@ export function ModuleWeeksSidebar({
   const [cycleDropdownOpen, setCycleDropdownOpen] = useState(false);
   const [cyclePage, setCyclePage] = useState(0);
   const CYCLES_PER_PAGE = 5;
+  const [isAutoDistributing, setIsAutoDistributing] = useState(false);
+  const [autoDistributeSuccess, setAutoDistributeSuccess] = useState(false);
   
   // Local state to track week order during drag operations
   // Stores storedWeekIds in the desired order (stable IDs that don't change after backend recalculation)
@@ -465,7 +469,27 @@ export function ModuleWeeksSidebar({
         days.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title))
       );
 
-      const storedWeek = weeks.find(w => w.weekNumber === weekNum);
+      // Match stored week - try multiple strategies
+      // 1. Exact day range match
+      // 2. Overlapping day range
+      // 3. weekNumber match
+      // 4. Name match (e.g., stored "Week 6" matches calculated slot at weekIdx 6)
+      const storedWeek = weeks.find(w =>
+        w.startDayIndex === startDay && w.endDayIndex === endDay
+      ) || weeks.find(w =>
+        w.startDayIndex !== undefined && w.endDayIndex !== undefined &&
+        w.startDayIndex <= endDay && w.endDayIndex >= startDay
+      ) || weeks.find(w => w.weekNumber === weekNum)
+        || weeks.find(w => {
+        // Match by name: "Week 6" should match weekIdx 6
+        if (w.name && weekIdx > 0 && weekIdx < numWeeks - 1) {
+          const nameMatch = w.name.match(/Week\s*(\d+)/i);
+          if (nameMatch) {
+            return parseInt(nameMatch[1], 10) === weekIdx;
+          }
+        }
+        return false;
+      });
 
       result.push({
         weekNum,
@@ -622,43 +646,40 @@ export function ModuleWeeksSidebar({
     return result;
   }, [isClientView, isCohortView, calendarWeeksAsCalculated, calculatedWeeks]);
 
-  // Group weeks by module
+  // Group weeks by module - always use even distribution in template mode
+  // In template mode, weeks are calculated slots based on lengthDays, not stored data
   const weeksByModule = useMemo(() => {
     const map = new Map<string, CalculatedWeek[]>();
 
-    // Initialize with empty arrays for each module
-    modules.forEach(m => map.set(m.id, []));
+    // Initialize with empty arrays for each module (sorted by order)
+    const sortedModules = [...modules].sort((a, b) => (a.order || 0) - (b.order || 0));
+    sortedModules.forEach(m => map.set(m.id, []));
 
-    if (modules.length === 0) return map;
+    if (sortedModules.length === 0) return map;
 
-    const weeksToAssign = displayWeeks;
-
-    // ALWAYS use even distribution for consistent display
-    // This ensures 3-3-3-3 distribution regardless of stored moduleIds
-    // Sort weeks by weekNum first (Onboarding=0 first, then 1,2,3..., Closing=-1 last)
-    const sortedWeeks = [...weeksToAssign].sort((a, b) => {
-      // Closing (-1) should come last
+    // Sort weeks: Onboarding (0) first, then regular (1, 2, 3...), Closing (-1) last
+    const sortedWeeks = [...displayWeeks].sort((a, b) => {
       if (a.weekNum === -1) return 1;
       if (b.weekNum === -1) return -1;
+      if (a.weekNum === 0) return -1;
+      if (b.weekNum === 0) return 1;
       return a.weekNum - b.weekNum;
     });
 
-    const weeksPerModule = Math.ceil(sortedWeeks.length / modules.length);
+    // Even distribution: divide weeks across modules
+    const numModules = sortedModules.length;
+    const numWeeks = sortedWeeks.length;
+    const baseWeeksPerModule = Math.floor(numWeeks / numModules);
+    const extraWeeks = numWeeks % numModules;
 
-    sortedWeeks.forEach((week, idx) => {
-      const moduleIdx = Math.min(Math.floor(idx / weeksPerModule), modules.length - 1);
-      const targetModuleId = modules[moduleIdx].id;
-      map.get(targetModuleId)!.push(week);
-    });
-
-    // Sort weeks within each module by weekNum
-    // Closing (-1) should come last within a module
-    map.forEach((moduleWeeks) => {
-      moduleWeeks.sort((a, b) => {
-        if (a.weekNum === -1) return 1;
-        if (b.weekNum === -1) return -1;
-        return a.weekNum - b.weekNum;
-      });
+    let weekIndex = 0;
+    sortedModules.forEach((module, moduleIdx) => {
+      // First `extraWeeks` modules get one extra week
+      const weeksForThisModule = baseWeeksPerModule + (moduleIdx < extraWeeks ? 1 : 0);
+      for (let i = 0; i < weeksForThisModule && weekIndex < numWeeks; i++) {
+        map.get(module.id)!.push(sortedWeeks[weekIndex]);
+        weekIndex++;
+      }
     });
 
     return map;
@@ -1356,6 +1377,22 @@ export function ModuleWeeksSidebar({
               </button>
             )}
 
+            {/* Delete week button - only in template mode, not for Onboarding/Closing */}
+            {canReorderModules && onDeleteWeek && week.storedWeekId && week.weekNum !== 0 && week.weekNum !== -1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Delete "${week.label}"? This cannot be undone.`)) {
+                    onDeleteWeek(week.storedWeekId!, week.weekNum);
+                  }
+                }}
+                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover/week:opacity-100 transition-all flex-shrink-0"
+                title="Delete week"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </button>
+            )}
+
             {/* DEPRECATED: Week expand/collapse - no longer needed since day navigation removed
             <button
               onClick={(e) => {
@@ -1736,11 +1773,49 @@ export function ModuleWeeksSidebar({
         {/* Auto-distribute weeks button - only show when there are multiple modules and weeks */}
         {canReorderModules && sortedModules.length > 1 && onAutoDistributeWeeks && (
           <button
-            onClick={onAutoDistributeWeeks}
-            className="w-full flex items-center justify-center gap-2 py-3 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors text-sm font-albert"
+            onClick={async () => {
+              if (isAutoDistributing) return;
+              setIsAutoDistributing(true);
+              setAutoDistributeSuccess(false);
+              try {
+                await onAutoDistributeWeeks();
+                setAutoDistributeSuccess(true);
+                setTimeout(() => setAutoDistributeSuccess(false), 2000);
+              } finally {
+                setIsAutoDistributing(false);
+              }
+            }}
+            disabled={isAutoDistributing}
+            className={`w-full flex items-center justify-center gap-2 py-3 transition-all text-sm font-albert ${
+              autoDistributeSuccess
+                ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg'
+                : isAutoDistributing
+                ? 'text-[#a7a39e] dark:text-[#7d8190] cursor-wait'
+                : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent'
+            }`}
           >
-            <Shuffle className="w-4 h-4" />
-            Auto-Distribute Weeks
+            {autoDistributeSuccess ? (
+              <>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                >
+                  <Check className="w-4 h-4" />
+                </motion.div>
+                <span>Distributed!</span>
+              </>
+            ) : isAutoDistributing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Distributing...</span>
+              </>
+            ) : (
+              <>
+                <Shuffle className="w-4 h-4" />
+                <span>Auto-Distribute Weeks</span>
+              </>
+            )}
           </button>
         )}
 

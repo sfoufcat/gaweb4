@@ -383,15 +383,13 @@ export function ProgramCommunityTab({
             {/* Actions */}
             <div className="flex items-center gap-2">
               {squad.chatChannelId && (
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   onClick={() => handleOpenChat(squad)}
-                  className="flex items-center gap-2"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  Open Chat
-                </Button>
+                  Go to chat
+                </button>
               )}
             </div>
           </div>

@@ -32,21 +32,22 @@ export async function POST(
 
     const programData = programDoc.data() as Program;
 
-    // Get all modules for this program, ordered by their order field
+    // Get all modules for this program (sort in memory to avoid index requirement)
     const modulesSnapshot = await adminDb
       .collection('program_modules')
       .where('programId', '==', programId)
-      .orderBy('order', 'asc')
       .get();
 
     if (modulesSnapshot.empty) {
       return NextResponse.json({ error: 'No modules found in this program' }, { status: 400 });
     }
 
-    const modules = modulesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      order: doc.data().order as number,
-    }));
+    const modules = modulesSnapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        order: doc.data().order as number,
+      }))
+      .sort((a, b) => a.order - b.order);
 
     // Get all weeks from embedded array, sorted by weekNumber
     let weeks: ProgramWeek[] = (programData.weeks || []).map((week, index) => ({
@@ -85,56 +86,72 @@ export async function POST(
       }
     }
 
-    // Sort by weekNumber: 0 (onboarding), 1+ (regular), -1 (closing) last
-    weeks.sort((a, b) => {
-      if (a.weekNumber === -1) return 1;
-      if (b.weekNumber === -1) return -1;
-      return a.weekNumber - b.weekNumber;
-    });
-
     // Calculate even distribution
     const numModules = modules.length;
     const numWeeks = weeks.length;
-    const weeksPerModule = Math.ceil(numWeeks / numModules);
+    const daysPerWeek = programData.includeWeekends !== false ? 7 : 5;
     const now = new Date().toISOString();
 
-    // Update weeks with their new module assignments
-    const updatedWeeks = weeks.map((week, index) => {
-      const moduleIndex = Math.floor(index / weeksPerModule);
-      // Handle edge case where last module might get fewer weeks
-      const targetModule = modules[Math.min(moduleIndex, numModules - 1)];
-      const orderWithinModule = (index % weeksPerModule) + 1;
+    // Recalculate all weeks with proper indices and module assignments
+    const updatedWeeks = weeks.map((week, idx) => {
+      const isFirst = idx === 0;
+      const isLast = idx === numWeeks - 1;
+
+      // Calculate weekNumber: 0 for first (Onboarding), -1 for last (Closing), else sequential
+      let newWeekNumber: number;
+      if (isFirst) {
+        newWeekNumber = 0;
+      } else if (isLast && numWeeks > 2) {
+        newWeekNumber = -1;
+      } else {
+        newWeekNumber = idx;
+      }
+
+      // Calculate day indices
+      const newStartDayIndex = idx * daysPerWeek + 1;
+      const newEndDayIndex = newStartDayIndex + daysPerWeek - 1;
+
+      // Calculate module assignment (even distribution)
+      const baseWeeksPerModule = Math.floor(numWeeks / numModules);
+      const extraWeeks = numWeeks % numModules;
+      let moduleIdx = 0;
+      let weekCount = 0;
+      for (let m = 0; m < numModules; m++) {
+        const weeksForModule = baseWeeksPerModule + (m < extraWeeks ? 1 : 0);
+        if (idx < weekCount + weeksForModule) {
+          moduleIdx = m;
+          break;
+        }
+        weekCount += weeksForModule;
+      }
+      const targetModule = modules[moduleIdx];
 
       return {
         ...week,
+        weekNumber: newWeekNumber,
+        startDayIndex: newStartDayIndex,
+        endDayIndex: newEndDayIndex,
         moduleId: targetModule.id,
-        order: orderWithinModule,
+        order: idx - weekCount + 1,
         updatedAt: now,
       };
     });
 
-    // Update the program document with new weeks array
+    // Calculate new lengthDays
+    const newLengthDays = numWeeks * daysPerWeek;
+
+    // Update the program document with recalculated weeks and lengthDays
     await adminDb.collection('programs').doc(programId).update({
       weeks: updatedWeeks,
+      lengthDays: newLengthDays,
       updatedAt: FieldValue.serverTimestamp(),
     });
 
     console.log(`[COACH_ORG_PROGRAM_WEEKS_AUTO_DISTRIBUTE] Distributed ${numWeeks} weeks across ${numModules} modules`);
 
-    // Return the new distribution for the frontend to update state
-    const distribution = modules.map((module, moduleIndex) => {
-      const startIdx = moduleIndex * weeksPerModule;
-      const endIdx = Math.min(startIdx + weeksPerModule, numWeeks);
-      return {
-        moduleId: module.id,
-        weekIds: updatedWeeks.slice(startIdx, endIdx).map(w => w.id),
-      };
-    });
-
     return NextResponse.json({
       success: true,
       message: `Distributed ${numWeeks} weeks across ${numModules} modules`,
-      distribution,
     });
   } catch (error) {
     console.error('[COACH_ORG_PROGRAM_WEEKS_AUTO_DISTRIBUTE] Error:', error);

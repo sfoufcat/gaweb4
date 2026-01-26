@@ -93,6 +93,7 @@ export async function PATCH(
       'customThumbnailUrl',
       'durationSeconds',
       'videoStatus',
+      'pendingBunnyVideoId',
       'previewBunnyVideoId',
       'previewPlaybackUrl',
       'programIds',
@@ -170,6 +171,18 @@ export async function DELETE(
         await deleteBunnyVideo(videoData.bunnyVideoId);
       } catch (err) {
         console.warn(`[COACH_ORG_VIDEO_DELETE] Failed to delete Bunny video ${videoData.bunnyVideoId}:`, err);
+      }
+    }
+
+    // Delete pending replacement video from Bunny Stream if exists
+    if (videoData?.pendingBunnyVideoId) {
+      try {
+        await deleteBunnyVideo(videoData.pendingBunnyVideoId);
+      } catch (err) {
+        console.warn(
+          `[COACH_ORG_VIDEO_DELETE] Failed to delete Bunny pending video ${videoData.pendingBunnyVideoId}:`,
+          err
+        );
       }
     }
 

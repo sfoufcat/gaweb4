@@ -241,7 +241,7 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
             return (
               <div key={assignment.courseId} className="space-y-2">
                 <div
-                  className="flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#1d222b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]"
+                  className="flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#1d222b] rounded-2xl shadow-sm border border-[#e1ddd8] dark:border-[#262b35]"
                 >
                   {display.course.coverImageUrl && (
                     <img
@@ -278,7 +278,7 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
 
                 {/* Edit panel for this assignment */}
                 {isEditing && (
-                  <div className="ml-4 p-4 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] space-y-4">
+                  <div className="ml-4 p-4 bg-white dark:bg-[#11141b] rounded-2xl shadow-sm border border-[#e1ddd8] dark:border-[#262b35] space-y-4">
                     <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                       Select specific content (leave empty for full course)
                     </p>
@@ -384,9 +384,9 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
 
       {/* Course preview with module/lesson selection - shows when course selected */}
       {selectedCourse && (
-        <div className="p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] space-y-4">
+        <div className="p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-2xl shadow-sm border border-[#e1ddd8] dark:border-[#262b35] space-y-4">
           {/* Course card preview */}
-          <div className="flex items-start gap-3 p-3 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
+          <div className="flex items-start gap-3 p-3 bg-white dark:bg-[#11141b] rounded-2xl shadow-sm border border-[#e1ddd8] dark:border-[#262b35]">
             {selectedCourse.coverImageUrl && (
               <img
                 src={selectedCourse.coverImageUrl}

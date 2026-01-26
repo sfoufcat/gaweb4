@@ -641,56 +641,55 @@ export async function PATCH(
         }
       }
 
-      // Step 5: Spread tasks with dayTag: 'spread' evenly across the week
-      if (spreadTasks.length > 0 && numDays > 0) {
-        for (let taskIdx = 0; taskIdx < spreadTasks.length; taskIdx++) {
+      // Step 5: Combine spread tasks with auto tasks when distribution is 'spread'
+      // This ensures they're distributed together as one pool for even spacing
+      const tasksToSpread: typeof weeklyTasks = [...spreadTasks];
+      const tasksToRepeat: typeof weeklyTasks = [];
+
+      if (distribution.type === 'spread') {
+        // Auto tasks join the spread pool
+        tasksToSpread.push(...autoTasks);
+      } else if (distribution.type === 'all_days') {
+        // Auto tasks go to repeat pool, spread tasks stay in spread pool
+        tasksToRepeat.push(...autoTasks);
+      } else if (distribution.type === 'first_day') {
+        // Auto tasks go to first day only (handled separately below)
+        // Spread tasks still get spread
+      }
+
+      // Spread tasks evenly across the week
+      if (tasksToSpread.length > 0 && numDays > 0) {
+        for (let taskIdx = 0; taskIdx < tasksToSpread.length; taskIdx++) {
           let targetDayIdx: number;
-          if (spreadTasks.length === 1) {
+          if (tasksToSpread.length === 1) {
             targetDayIdx = 0;
           } else {
-            targetDayIdx = Math.round(taskIdx * (numDays - 1) / (spreadTasks.length - 1));
+            targetDayIdx = Math.round(taskIdx * (numDays - 1) / (tasksToSpread.length - 1));
           }
           daysToUpdate[targetDayIdx].tasks = [
             ...daysToUpdate[targetDayIdx].tasks,
-            { ...spreadTasks[taskIdx], source: 'week' as const },
+            { ...tasksToSpread[taskIdx], source: 'week' as const },
           ];
         }
       }
 
-      // Step 6: Apply program distribution to 'auto' tasks
-      if (autoTasks.length > 0 && numDays > 0) {
-        if (distribution.type === 'spread') {
-          // Spread auto tasks evenly
-          for (let taskIdx = 0; taskIdx < autoTasks.length; taskIdx++) {
-            let targetDayIdx: number;
-            if (autoTasks.length === 1) {
-              targetDayIdx = 0;
-            } else {
-              targetDayIdx = Math.round(taskIdx * (numDays - 1) / (autoTasks.length - 1));
-            }
-            daysToUpdate[targetDayIdx].tasks = [
-              ...daysToUpdate[targetDayIdx].tasks,
-              { ...autoTasks[taskIdx], source: 'week' as const },
-            ];
-          }
-        } else if (distribution.type === 'all_days') {
-          // Add all auto tasks to all days
-          for (const task of autoTasks) {
-            for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
-              daysToUpdate[dayIdx].tasks = [
-                ...daysToUpdate[dayIdx].tasks,
-                { ...task, source: 'week' as const },
-              ];
-            }
-          }
-        } else if (distribution.type === 'first_day') {
-          // Add all auto tasks to first day only
-          for (const task of autoTasks) {
-            daysToUpdate[0].tasks = [
-              ...daysToUpdate[0].tasks,
-              { ...task, source: 'week' as const },
-            ];
-          }
+      // Add repeat tasks to all days
+      for (const task of tasksToRepeat) {
+        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+          daysToUpdate[dayIdx].tasks = [
+            ...daysToUpdate[dayIdx].tasks,
+            { ...task, source: 'week' as const },
+          ];
+        }
+      }
+
+      // Handle first_day distribution for auto tasks
+      if (distribution.type === 'first_day' && autoTasks.length > 0) {
+        for (const task of autoTasks) {
+          daysToUpdate[0].tasks = [
+            ...daysToUpdate[0].tasks,
+            { ...task, source: 'week' as const },
+          ];
         }
       }
 

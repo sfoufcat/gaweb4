@@ -23,7 +23,7 @@ import {
   type ContentPricingData,
 } from '@/components/admin/ContentPricingFields';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { Search, X, Plus, Play, Clock, Loader2, AlertCircle, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
+import { Search, X, Plus, Play, Clock, Loader2, AlertCircle, CheckCircle2, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import type { DiscoverVideo, VideoStatus } from '@/types/discover';
 import { CreateVideoModal } from './CreateVideoModal';
 import { MediaUpload } from '@/components/admin/MediaUpload';
@@ -316,6 +316,10 @@ function VideoPlayerDialog({
   const [hasChanges, setHasChanges] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
+  // Video replacement state
+  const [isReplacing, setIsReplacing] = useState(false);
+  const [replacementVideoId, setReplacementVideoId] = useState<string | null>(null);
+
   useEffect(() => {
     if (video && isOpen) {
       setFormData({
@@ -332,6 +336,9 @@ function VideoPlayerDialog({
       });
       setError(null);
       setHasChanges(false);
+      // Reset replacement state
+      setIsReplacing(false);
+      setReplacementVideoId(null);
     }
   }, [video, isOpen]);
 
@@ -341,8 +348,8 @@ function VideoPlayerDialog({
   };
 
   const handleSave = async () => {
-    if (!hasChanges) return;
-    
+    if (!hasChanges && !replacementVideoId) return;
+
     setSaving(true);
     setError(null);
 
@@ -351,7 +358,8 @@ function VideoPlayerDialog({
         throw new Error('Title is required');
       }
 
-      const payload = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload: Record<string, any> = {
         title: formData.title,
         description: formData.description,
         customThumbnailUrl: formData.customThumbnailUrl || null,
@@ -361,6 +369,11 @@ function VideoPlayerDialog({
         purchaseType: formData.pricing.purchaseType,
         isPublic: formData.pricing.isPublic,
       };
+
+      // If a replacement video was uploaded, set it as pending
+      if (replacementVideoId) {
+        payload.pendingBunnyVideoId = replacementVideoId;
+      }
 
       const response = await fetch(`${apiEndpoint}/${video.id}`, {
         method: 'PATCH',
@@ -374,6 +387,8 @@ function VideoPlayerDialog({
       }
 
       setHasChanges(false);
+      setReplacementVideoId(null);
+      setIsReplacing(false);
       onSave();
     } catch (err) {
       console.error('Error saving video:', err);
@@ -383,12 +398,24 @@ function VideoPlayerDialog({
     }
   };
 
-  const handleClose = () => {
-    if (hasChanges) {
-      handleSave().then(() => onClose());
-    } else {
-      onClose();
+  const handleClose = async () => {
+    if (hasChanges || replacementVideoId) {
+      await handleSave();
     }
+    onClose();
+  };
+
+  // Cleanup orphaned video if user discards replacement without saving
+  const handleCancelReplacement = async () => {
+    if (replacementVideoId) {
+      try {
+        await fetch(`/api/coach/bunny-video/${replacementVideoId}`, { method: 'DELETE' });
+      } catch (err) {
+        console.warn('Failed to cleanup replacement video:', err);
+      }
+      setReplacementVideoId(null);
+    }
+    setIsReplacing(false);
   };
 
   const content = (
@@ -509,6 +536,69 @@ function VideoPlayerDialog({
             Leave empty to use auto-generated thumbnail
           </p>
         </div>
+
+        {/* Replace Video Section */}
+        {video.videoStatus === 'ready' && !video.pendingBunnyVideoId && (
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+              Replace Video
+            </label>
+            {!isReplacing ? (
+              <button
+                onClick={() => setIsReplacing(true)}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] transition-colors font-albert"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Replace with new video
+              </button>
+            ) : replacementVideoId ? (
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <p className="text-sm text-green-700 dark:text-green-400 font-albert">
+                    New video uploaded. Click &quot;Save Changes&quot; to start processing.
+                  </p>
+                </div>
+                <p className="text-xs text-green-600 dark:text-green-500 mt-1 font-albert">
+                  Current video will remain playable until the new one is ready.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <MediaUpload
+                  value=""
+                  onChange={() => {}}
+                  folder="courses"
+                  type="video"
+                  uploadEndpoint="/api/coach/org-upload-url"
+                  hideLabel
+                  onBunnyVideoCreated={(videoId) => {
+                    setReplacementVideoId(videoId);
+                    setHasChanges(true);
+                  }}
+                />
+                <button
+                  onClick={handleCancelReplacement}
+                  className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white font-albert"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Show pending replacement status */}
+        {video.pendingBunnyVideoId && (
+          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-spin" />
+              <p className="text-sm text-amber-700 dark:text-amber-400 font-albert">
+                New video is processing. Current video remains playable.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Programs */}
         <div>

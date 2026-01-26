@@ -1,5 +1,5 @@
 import { clerkClient } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { getStreamServerClient } from '@/lib/stream-server';
@@ -21,24 +21,32 @@ interface SquadWithDetails extends Squad {
  * 
  * For multi-tenancy: Only returns squads with matching organizationId
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Demo mode: return demo data
     const demoData = await withDemoMode('org-squads');
     if (demoData) return demoData;
-    
+
     // Check authorization and get organizationId
     const { organizationId } = await requireCoachWithOrg();
 
-    console.log(`[COACH_ORG_SQUADS] Fetching squads for organization: ${organizationId}`);
+    // Extract programId query parameter if provided
+    const { searchParams } = new URL(request.url);
+    const programId = searchParams.get('programId');
+
+    console.log(`[COACH_ORG_SQUADS] Fetching squads for organization: ${organizationId}${programId ? `, program: ${programId}` : ''}`);
 
     // Fetch squads that belong to this organization
-    // Note: For backwards compatibility, also include squads where coachId matches
-    // a user in this organization (migration path for existing data)
-    const squadsSnapshot = await adminDb
+    // Optionally filter by programId if provided
+    let query = adminDb
       .collection('squads')
-      .where('organizationId', '==', organizationId)
-      .get();
+      .where('organizationId', '==', organizationId);
+
+    if (programId) {
+      query = query.where('programId', '==', programId);
+    }
+
+    const squadsSnapshot = await query.get();
 
     const squads: SquadWithDetails[] = [];
     const squadIds = squadsSnapshot.docs.map(doc => doc.id);

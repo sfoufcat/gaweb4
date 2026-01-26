@@ -77,6 +77,47 @@ npm run doppler:sync     # Download secrets to .env.local
 - `src/components/layout/ConditionalMain.tsx` - Wrapper that uses `main-content-safe`
 - `src/app/layout.tsx` - Has `viewportFit: 'cover'` in viewport config
 
+## Responsive Modal/Popup Pattern
+
+**IMPORTANT**: When building modals, popups, or selection interfaces:
+- **Desktop**: Use `Dialog` or `Popover` (centered modal or dropdown)
+- **Mobile**: Use `Drawer` (slides up from bottom)
+
+### Pattern: useMediaQuery + conditional component
+```tsx
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+
+function MyModal({ open, onOpenChange, children }) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>{children}</DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>{children}</DrawerContent>
+    </Drawer>
+  );
+}
+```
+
+### DO NOT:
+- Use Drawer (slideup) on desktop - feels like mobile app
+- Use Dialog (centered popup) on mobile - hard to reach, not thumb-friendly
+- Use Popover for complex selection UIs - too small on mobile
+
+### Key Components:
+- `src/components/ui/dialog.tsx` - Radix Dialog for desktop modals
+- `src/components/ui/drawer.tsx` - Vaul Drawer for mobile slideups
+- `src/hooks/useMediaQuery.ts` - Hook for responsive breakpoints
+
 ## Architecture
 
 ### Multi-Tenancy Model

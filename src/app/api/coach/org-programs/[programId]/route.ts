@@ -802,6 +802,14 @@ export async function PATCH(
     if (body.isPublished !== undefined) updateData.isPublished = body.isPublished;
     if (body.name !== undefined) updateData.name = body.name.trim();
 
+    // Handle lengthDays update
+    if (body.lengthDays !== undefined) {
+      if (typeof body.lengthDays !== 'number' || body.lengthDays < 1 || body.lengthDays > 365) {
+        return NextResponse.json({ error: 'lengthDays must be 1-365' }, { status: 400 });
+      }
+      updateData.lengthDays = body.lengthDays;
+    }
+
     // Only update if there's something to update beyond timestamp
     if (Object.keys(updateData).length <= 1) {
       return NextResponse.json({ error: 'No valid fields provided' }, { status: 400 });

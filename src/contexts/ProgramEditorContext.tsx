@@ -65,6 +65,12 @@ interface ProgramEditorContextType {
   bypassBeforeUnload: boolean;
   setBypassBeforeUnload: (bypass: boolean) => void;
 
+  // Navigation blocking state (for in-app unsaved changes dialog)
+  showUnsavedDialog: boolean;
+  requestNavigation: (navFn: () => void) => void;
+  confirmNavigation: () => void;
+  cancelNavigation: () => void;
+
   // Actions
   registerChange: (change: PendingChange) => void;
   updateChange: (key: string, data: Record<string, unknown>, editedFields?: string[]) => void;
@@ -112,6 +118,10 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
   const [saveError, setSaveError] = useState<string | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
   const [bypassBeforeUnload, setBypassBeforeUnload] = useState(false);
+
+  // Navigation blocking state (for in-app unsaved changes dialog)
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const pendingNavigationRef = useRef<(() => void) | null>(null);
 
   // Update programId when prop changes
   useEffect(() => {
@@ -236,6 +246,43 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     // Increment reset version to signal editors to reset their local state
     setResetVersion(v => v + 1);
   }, []);
+
+  // Navigation blocking methods for in-app unsaved changes dialog
+  const requestNavigation = useCallback((navFn: () => void) => {
+    if (pendingChanges.size > 0) {
+      pendingNavigationRef.current = navFn;
+      setShowUnsavedDialog(true);
+    } else {
+      navFn();
+    }
+  }, [pendingChanges.size]);
+
+  const confirmNavigation = useCallback(() => {
+    setShowUnsavedDialog(false);
+    setPendingChanges(new Map());
+    setResetVersion(v => v + 1);
+    pendingNavigationRef.current?.();
+    pendingNavigationRef.current = null;
+  }, []);
+
+  const cancelNavigation = useCallback(() => {
+    setShowUnsavedDialog(false);
+    pendingNavigationRef.current = null;
+  }, []);
+
+  // Browser back/forward interception
+  useEffect(() => {
+    const handlePopState = () => {
+      if (pendingChanges.size > 0) {
+        // Push current state back to prevent navigation
+        window.history.pushState(null, '', window.location.href);
+        setShowUnsavedDialog(true);
+        pendingNavigationRef.current = () => window.history.back();
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [pendingChanges.size]);
 
   const saveAllChanges = useCallback(async (): Promise<SaveResult> => {
     if (pendingChanges.size === 0) {
@@ -571,6 +618,10 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     resetVersion,
     bypassBeforeUnload,
     setBypassBeforeUnload,
+    showUnsavedDialog,
+    requestNavigation,
+    confirmNavigation,
+    cancelNavigation,
     registerChange,
     updateChange,
     discardChange,
@@ -590,6 +641,10 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     saveError,
     resetVersion,
     bypassBeforeUnload,
+    showUnsavedDialog,
+    requestNavigation,
+    confirmNavigation,
+    cancelNavigation,
     registerChange,
     updateChange,
     discardChange,

@@ -392,6 +392,9 @@ export type DiscoverVideo = {
   durationSeconds?: number;
   videoStatus: VideoStatus;
 
+  // Pending replacement video (keeps old playable until new is ready)
+  pendingBunnyVideoId?: string;
+
   // Optional preview/trailer for payment popup
   previewBunnyVideoId?: string;
   previewPlaybackUrl?: string;

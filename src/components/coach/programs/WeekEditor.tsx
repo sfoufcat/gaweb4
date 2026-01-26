@@ -3,13 +3,17 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire, DayCourseAssignment, WeekResourceAssignment } from '@/types';
 import type { DiscoverCourse, DiscoverVideo } from '@/types/discover';
-import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, CalendarPlus, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle, Save } from 'lucide-react';
+import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, CalendarPlus, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle, Save, MoreVertical } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { SyncTemplateDialog } from './SyncTemplateDialog';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -175,11 +179,14 @@ function SortableWeeklyTask({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: transition || 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
     opacity: isDragging ? 0.5 : 1,
   };
 
   const isCompleted = task.completed || false;
+  const [cadenceModalOpen, setCadenceModalOpen] = useState(false);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   // Derive completion data from members array if cohortCompletion not provided
   // This ensures we show accurate counts even when lazy-loading member data
@@ -215,7 +222,12 @@ function SortableWeeklyTask({
             : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d4d0cb] dark:hover:border-[#313746]'
         } ${isExpanded ? 'rounded-b-none border-b-0' : ''}`}
       >
-        {/* Cohort Mode: Expand Chevron */}
+        {/* Drag Handle - always visible */}
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+          <GripVertical className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+        </div>
+
+        {/* Cohort Mode: Expand Chevron with Completion indicator */}
         {isCohortMode ? (
           <button
             type="button"
@@ -246,30 +258,23 @@ function SortableWeeklyTask({
             </div>
           </button>
         ) : (
-          <>
-            {/* Drag Handle */}
-            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
-              <GripVertical className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
-            </div>
-
-            {/* Completion Checkbox - matches client Daily Focus style */}
-            <div
-              className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-white dark:bg-[#181d26] ${
-                (hasCohortData && isCohortCompleted) || (showCompletionStatus && isCompleted)
-                  ? 'border-brand-accent'
-                  : hasCohortData && completionRate > 0
-                  ? 'border-brand-accent/50'
-                  : 'border-[#d4d0cb] dark:border-[#3d4351]'
-              }`}
-              title={hasCohortData ? (isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions') : ''}
-            >
-              {(hasCohortData && isCohortCompleted) || (showCompletionStatus && isCompleted) ? (
-                <div className="w-4 h-4 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
-              ) : hasCohortData && completionRate > 0 ? (
-                <span className="text-[9px] font-bold text-brand-accent">{completionRate}</span>
-              ) : null}
-            </div>
-          </>
+          /* Non-Cohort Mode: Completion Checkbox - matches client Daily Focus style */
+          <div
+            className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-white dark:bg-[#181d26] ${
+              (hasCohortData && isCohortCompleted) || (showCompletionStatus && isCompleted)
+                ? 'border-brand-accent'
+                : hasCohortData && completionRate > 0
+                ? 'border-brand-accent/50'
+                : 'border-[#d4d0cb] dark:border-[#3d4351]'
+            }`}
+            title={hasCohortData ? (isCohortCompleted ? `${completionRate}% completed (threshold met)` : completionRate > 0 ? `${completionRate}% completed` : 'No completions') : ''}
+          >
+            {(hasCohortData && isCohortCompleted) || (showCompletionStatus && isCompleted) ? (
+              <div className="w-4 h-4 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
+            ) : hasCohortData && completionRate > 0 ? (
+              <span className="text-[9px] font-bold text-brand-accent">{completionRate}</span>
+            ) : null}
+          </div>
         )}
 
         {/* Task Label */}
@@ -299,7 +304,7 @@ function SortableWeeklyTask({
         )}
 
         {/* Task Actions Group - badges and Focus toggle */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {/* Deleted by Client Indicator */}
           {task.deletedByClient && (
             <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 dark:border-red-800">
@@ -316,75 +321,376 @@ function SortableWeeklyTask({
             </span>
           )}
 
-          {/* Focus/Backlog Toggle */}
-          <button
-            type="button"
-            onClick={() => onTogglePrimary(index)}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 group"
-          >
-            <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
-            <span className="relative w-[52px] h-4 overflow-hidden">
-              <span
-                className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
-                  task.isPrimary
-                    ? 'opacity-100 translate-y-0'
-                    : 'opacity-0 -translate-y-full'
-                }`}
+          {/* Desktop: Show all action buttons */}
+          {isDesktop ? (
+            <>
+              {/* Focus/Backlog Toggle */}
+              <button
+                type="button"
+                onClick={() => onTogglePrimary(index)}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] hover:text-[#3d3a37] dark:hover:text-[#b2b6c2] transition-all duration-200 rounded-lg hover:bg-[#faf8f6] dark:hover:bg-[#1e222a]"
               >
-                Focus
-              </span>
-              <span
-                className={`absolute inset-0 flex items-center transition-all duration-300 ease-out ${
-                  !task.isPrimary
-                    ? 'opacity-100 translate-y-0'
-                    : 'opacity-0 translate-y-full'
-                }`}
-              >
-                Backlog
-              </span>
-            </span>
-          </button>
+                <ArrowLeftRight className={`w-3.5 h-3.5 transition-transform duration-300 ease-out ${task.isPrimary ? 'rotate-0' : 'rotate-180'}`} />
+                <span>{task.isPrimary ? 'Focus' : 'Backlog'}</span>
+              </button>
 
-          {/* Day Tag Dropdown */}
-          <select
-            value={dayTag}
-            onChange={(e) => {
-              const val = e.target.value;
-              const newTag: DayTagValue = val === 'auto' ? 'auto' : val === 'spread' ? 'spread' : val === 'daily' ? 'daily' : parseInt(val, 10);
-              onDayTagChange(index, newTag);
-            }}
-            className="px-2 py-1 text-xs font-medium text-[#5f5a55] dark:text-[#7d8190] bg-white dark:bg-[#1a1e28] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:border-[#d4d0cb] dark:hover:border-[#313746] focus:outline-none focus:ring-1 focus:ring-brand-accent cursor-pointer shadow-sm"
-          >
-            <option value="auto">Auto</option>
-            <option value="spread">Spread</option>
-            <option value="daily">Daily</option>
-            {Array.from({ length: daysInWeek }, (_, i) => {
-              const dayNum = i + 1;
-              // Get weekday name if calendar date available
-              let dayLabel = `Day ${dayNum}`;
-              if (calendarStartDate) {
-                const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
-                const dayDate = new Date(year, month - 1, dayOfMonth + i);
-                dayLabel = WEEKDAYS[dayDate.getDay()];
-              }
-              return (
-                <option key={dayNum} value={dayNum}>
-                  {dayLabel}
-                </option>
-              );
-            })}
-          </select>
+              {/* Cadence Icon Button with Label */}
+              <button
+                type="button"
+                onClick={() => setCadenceModalOpen(true)}
+                className={cn(
+                  "flex items-center gap-1 rounded-lg transition-all px-2 py-1",
+                  dayTag === 'auto'
+                    ? "text-[#a7a39e] dark:text-[#7d8190] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-[#1e222a]"
+                    : "text-brand-accent bg-brand-accent/10 hover:bg-brand-accent/20"
+                )}
+                title="Task cadence"
+              >
+                <Calendar className="w-4 h-4" />
+                {dayTag !== 'auto' && (
+                  <span className="text-xs font-medium">
+                    {dayTag === 'spread' ? 'Spread' : dayTag === 'daily' ? 'Daily' : (() => {
+                      if (typeof dayTag === 'number' && calendarStartDate) {
+                        const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
+                        const dayDate = new Date(year, month - 1, dayOfMonth + dayTag - 1);
+                        return WEEKDAYS[dayDate.getDay()];
+                      }
+                      return `Day ${dayTag}`;
+                    })()}
+                  </span>
+                )}
+              </button>
+
+              {/* Delete Button - Desktop */}
+              <button
+                type="button"
+                onClick={() => onRemove(index)}
+                className="p-1.5 rounded-lg text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            /* Mobile: 3-dot menu */
+            <DropdownMenu open={mobileActionsOpen} onOpenChange={setMobileActionsOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="p-1.5 rounded-lg text-[#5f5a55] dark:text-[#7d8190] hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-all"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => {
+                    onTogglePrimary(index);
+                    setMobileActionsOpen(false);
+                  }}
+                  className="gap-2"
+                >
+                  <ArrowLeftRight className="w-4 h-4" />
+                  <span>Switch to {task.isPrimary ? 'Backlog' : 'Focus'}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setMobileActionsOpen(false);
+                    setCadenceModalOpen(true);
+                  }}
+                  className="gap-2"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>
+                    Cadence
+                    {dayTag !== 'auto' && (
+                      <span className="ml-1 text-brand-accent">
+                        ({dayTag === 'spread' ? 'Spread' : dayTag === 'daily' ? 'Daily' : (() => {
+                          if (typeof dayTag === 'number' && calendarStartDate) {
+                            const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                            const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
+                            const dayDate = new Date(year, month - 1, dayOfMonth + dayTag - 1);
+                            return WEEKDAYS[dayDate.getDay()];
+                          }
+                          return `Day ${dayTag}`;
+                        })()})
+                      </span>
+                    )}
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    onRemove(index);
+                    setMobileActionsOpen(false);
+                  }}
+                  className="gap-2 text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete task</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Cadence Modal - Dialog on desktop, Drawer on mobile */}
+          {isDesktop ? (
+            <Dialog open={cadenceModalOpen} onOpenChange={setCadenceModalOpen}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Task Cadence</DialogTitle>
+                  <DialogDescription>Choose when this task should appear</DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3 pt-2">
+                  {/* Default option */}
+                  <button
+                    type="button"
+                    onClick={() => { onDayTagChange(index, 'auto'); setCadenceModalOpen(false); }}
+                    className={cn(
+                      "w-full p-4 text-left rounded-xl transition-all flex items-center gap-4 border",
+                      dayTag === 'auto'
+                        ? "bg-brand-accent/10 border-brand-accent"
+                        : "bg-white dark:bg-[#1e222a] border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d1ccc6] dark:hover:border-[#3a4150]"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                      dayTag === 'auto' ? "bg-brand-accent/15" : "bg-[#f5f3f0] dark:bg-[#262b35]"
+                    )}>
+                      <ArrowLeftRight className={cn("w-5 h-5", dayTag === 'auto' ? "text-brand-accent" : "text-[#5f5a55] dark:text-[#9ca3af]")} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={cn("text-sm font-semibold block", dayTag === 'auto' ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]")}>
+                        Default
+                      </span>
+                      <p className="text-xs text-[#6b6560] dark:text-[#9ca3af] mt-0.5">Uses the week&apos;s distribution setting</p>
+                    </div>
+                    {dayTag === 'auto' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
+                  </button>
+
+                  {/* Spread option */}
+                  <button
+                    type="button"
+                    onClick={() => { onDayTagChange(index, 'spread'); setCadenceModalOpen(false); }}
+                    className={cn(
+                      "w-full p-4 text-left rounded-xl transition-all flex items-center gap-4 border",
+                      dayTag === 'spread'
+                        ? "bg-brand-accent/10 border-brand-accent"
+                        : "bg-white dark:bg-[#1e222a] border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d1ccc6] dark:hover:border-[#3a4150]"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                      dayTag === 'spread' ? "bg-brand-accent/15" : "bg-[#f5f3f0] dark:bg-[#262b35]"
+                    )}>
+                      <Target className={cn("w-5 h-5", dayTag === 'spread' ? "text-brand-accent" : "text-[#5f5a55] dark:text-[#9ca3af]")} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={cn("text-sm font-semibold block", dayTag === 'spread' ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]")}>
+                        Spread across week
+                      </span>
+                      <p className="text-xs text-[#6b6560] dark:text-[#9ca3af] mt-0.5">Distribute evenly across all days</p>
+                    </div>
+                    {dayTag === 'spread' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
+                  </button>
+
+                  {/* Daily option */}
+                  <button
+                    type="button"
+                    onClick={() => { onDayTagChange(index, 'daily'); setCadenceModalOpen(false); }}
+                    className={cn(
+                      "w-full p-4 text-left rounded-xl transition-all flex items-center gap-4 border",
+                      dayTag === 'daily'
+                        ? "bg-brand-accent/10 border-brand-accent"
+                        : "bg-white dark:bg-[#1e222a] border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d1ccc6] dark:hover:border-[#3a4150]"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                      dayTag === 'daily' ? "bg-brand-accent/15" : "bg-[#f5f3f0] dark:bg-[#262b35]"
+                    )}>
+                      <CalendarPlus className={cn("w-5 h-5", dayTag === 'daily' ? "text-brand-accent" : "text-[#5f5a55] dark:text-[#9ca3af]")} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={cn("text-sm font-semibold block", dayTag === 'daily' ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]")}>
+                        Every day
+                      </span>
+                      <p className="text-xs text-[#6b6560] dark:text-[#9ca3af] mt-0.5">Repeats on all days of the week</p>
+                    </div>
+                    {dayTag === 'daily' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
+                  </button>
+
+                  {/* Specific day section */}
+                  <div className="pt-3 mt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                    <p className="text-xs font-semibold text-[#3d3a36] dark:text-[#d1d5db] mb-3">Or pick a specific day</p>
+                    <div className="grid grid-cols-7 gap-2">
+                      {Array.from({ length: daysInWeek }, (_, i) => {
+                        const dayNum = i + 1;
+                        let dayLabel = `${dayNum}`;
+                        let fullDayLabel = `Day ${dayNum}`;
+                        if (calendarStartDate) {
+                          const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+                          const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                          const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
+                          const dayDate = new Date(year, month - 1, dayOfMonth + i);
+                          dayLabel = WEEKDAYS_SHORT[dayDate.getDay()];
+                          fullDayLabel = WEEKDAYS_FULL[dayDate.getDay()];
+                        }
+                        const isSelected = dayTag === dayNum;
+                        return (
+                          <button
+                            key={dayNum}
+                            type="button"
+                            onClick={() => { onDayTagChange(index, dayNum); setCadenceModalOpen(false); }}
+                            className={cn(
+                              "aspect-square rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center border",
+                              isSelected
+                                ? "bg-brand-accent text-white shadow-md border-brand-accent"
+                                : "bg-white dark:bg-[#1e222a] text-[#3d3a36] dark:text-[#d1d5db] border-[#e1ddd8] dark:border-[#262b35] hover:bg-brand-accent/10 hover:text-brand-accent hover:border-brand-accent/30"
+                            )}
+                            title={fullDayLabel}
+                          >
+                            <span className="text-lg font-semibold">{dayLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <Drawer open={cadenceModalOpen} onOpenChange={setCadenceModalOpen}>
+              <DrawerContent className="max-h-[85vh]">
+                <DrawerHeader className="border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 pb-4">
+                  <DrawerTitle>Task Cadence</DrawerTitle>
+                  <DrawerDescription>Choose when this task should appear</DrawerDescription>
+                </DrawerHeader>
+
+                <div className="p-4 space-y-3">
+                  {/* Default option */}
+                  <button
+                    type="button"
+                    onClick={() => { onDayTagChange(index, 'auto'); setCadenceModalOpen(false); }}
+                    className={cn(
+                      "w-full p-4 text-left rounded-xl transition-all flex items-center gap-4 border",
+                      dayTag === 'auto'
+                        ? "bg-brand-accent/10 border-brand-accent"
+                        : "bg-white dark:bg-[#1e222a] border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d1ccc6] dark:hover:border-[#3a4150]"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                      dayTag === 'auto' ? "bg-brand-accent/15" : "bg-[#f5f3f0] dark:bg-[#262b35]"
+                    )}>
+                      <ArrowLeftRight className={cn("w-5 h-5", dayTag === 'auto' ? "text-brand-accent" : "text-[#5f5a55] dark:text-[#9ca3af]")} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={cn("text-sm font-semibold block", dayTag === 'auto' ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]")}>
+                        Default
+                      </span>
+                      <p className="text-xs text-[#6b6560] dark:text-[#9ca3af] mt-0.5">Uses the week&apos;s distribution setting</p>
+                    </div>
+                    {dayTag === 'auto' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
+                  </button>
+
+                  {/* Spread option */}
+                  <button
+                    type="button"
+                    onClick={() => { onDayTagChange(index, 'spread'); setCadenceModalOpen(false); }}
+                    className={cn(
+                      "w-full p-4 text-left rounded-xl transition-all flex items-center gap-4 border",
+                      dayTag === 'spread'
+                        ? "bg-brand-accent/10 border-brand-accent"
+                        : "bg-white dark:bg-[#1e222a] border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d1ccc6] dark:hover:border-[#3a4150]"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                      dayTag === 'spread' ? "bg-brand-accent/15" : "bg-[#f5f3f0] dark:bg-[#262b35]"
+                    )}>
+                      <Target className={cn("w-5 h-5", dayTag === 'spread' ? "text-brand-accent" : "text-[#5f5a55] dark:text-[#9ca3af]")} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={cn("text-sm font-semibold block", dayTag === 'spread' ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]")}>
+                        Spread across week
+                      </span>
+                      <p className="text-xs text-[#6b6560] dark:text-[#9ca3af] mt-0.5">Distribute evenly across all days</p>
+                    </div>
+                    {dayTag === 'spread' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
+                  </button>
+
+                  {/* Daily option */}
+                  <button
+                    type="button"
+                    onClick={() => { onDayTagChange(index, 'daily'); setCadenceModalOpen(false); }}
+                    className={cn(
+                      "w-full p-4 text-left rounded-xl transition-all flex items-center gap-4 border",
+                      dayTag === 'daily'
+                        ? "bg-brand-accent/10 border-brand-accent"
+                        : "bg-white dark:bg-[#1e222a] border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d1ccc6] dark:hover:border-[#3a4150]"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                      dayTag === 'daily' ? "bg-brand-accent/15" : "bg-[#f5f3f0] dark:bg-[#262b35]"
+                    )}>
+                      <CalendarPlus className={cn("w-5 h-5", dayTag === 'daily' ? "text-brand-accent" : "text-[#5f5a55] dark:text-[#9ca3af]")} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={cn("text-sm font-semibold block", dayTag === 'daily' ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]")}>
+                        Every day
+                      </span>
+                      <p className="text-xs text-[#6b6560] dark:text-[#9ca3af] mt-0.5">Repeats on all days of the week</p>
+                    </div>
+                    {dayTag === 'daily' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
+                  </button>
+
+                  {/* Specific day section */}
+                  <div className="pt-3 mt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                    <p className="text-xs font-semibold text-[#3d3a36] dark:text-[#d1d5db] mb-3">Or pick a specific day</p>
+                    <div className="grid grid-cols-7 gap-2">
+                      {Array.from({ length: daysInWeek }, (_, i) => {
+                        const dayNum = i + 1;
+                        let dayLabel = `${dayNum}`;
+                        let fullDayLabel = `Day ${dayNum}`;
+                        if (calendarStartDate) {
+                          const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+                          const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                          const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
+                          const dayDate = new Date(year, month - 1, dayOfMonth + i);
+                          dayLabel = WEEKDAYS_SHORT[dayDate.getDay()];
+                          fullDayLabel = WEEKDAYS_FULL[dayDate.getDay()];
+                        }
+                        const isSelected = dayTag === dayNum;
+                        return (
+                          <button
+                            key={dayNum}
+                            type="button"
+                            onClick={() => { onDayTagChange(index, dayNum); setCadenceModalOpen(false); }}
+                            className={cn(
+                              "aspect-square rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center border",
+                              isSelected
+                                ? "bg-brand-accent text-white shadow-md border-brand-accent"
+                                : "bg-white dark:bg-[#1e222a] text-[#3d3a36] dark:text-[#d1d5db] border-[#e1ddd8] dark:border-[#262b35] hover:bg-brand-accent/10 hover:text-brand-accent hover:border-brand-accent/30"
+                            )}
+                            title={fullDayLabel}
+                          >
+                            <span className="text-lg font-semibold">{dayLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Safe area padding for mobile */}
+                <div className="h-safe-area-inset-bottom" />
+              </DrawerContent>
+            </Drawer>
+          )}
         </div>
-
-        {/* Delete Button */}
-        <button
-          type="button"
-          onClick={() => onRemove(index)}
-          className="p-1.5 rounded-lg text-[#a7a39e] dark:text-[#7d8190] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Expanded member breakdown (cohort mode only) */}
@@ -561,18 +867,26 @@ export function WeekEditor({
   const initializedFromPending = useRef(false);
   // Track last reset version to detect discard/save
   const lastResetVersion = useRef(editorContext?.resetVersion ?? 0);
-  // Track skip cycles remaining after reset (to skip re-registration during save->refresh cycle)
-  // Using a counter instead of boolean to allow multiple cycles for instance to refresh
-  const skipCyclesRemaining = useRef(0);
+  // Track if we were saving when resetVersion last changed (to distinguish save from discard)
+  const wasSavingWhenResetVersionChanged = useRef(false);
+  // STABLE FIX: Store the saved formData snapshot. When this is set, we don't reset
+  // formData until week prop matches this snapshot (meaning SWR refreshed)
+  const savedFormDataSnapshot = useRef<{
+    weeklyTasks: { id: string | undefined; label: string; isPrimary?: boolean; dayTag?: string | number }[];
+  } | null>(null);
   // Track last registered data fingerprint to prevent infinite re-registration loops
   const lastRegisteredFingerprint = useRef<string | null>(null);
-  // Track what formData looked like when we last saved (to detect "clean" state)
-  const lastSavedFormDataRef = useRef<string | null>(null);
   // Track last processed fingerprint to prevent infinite reset loops
   const lastProcessedFingerprint = useRef<string | null>(null);
   // Ref for editorContext to avoid dependency changes when pendingChanges updates
   const editorContextRef = useRef(editorContext);
   editorContextRef.current = editorContext;
+
+  // Track isSaving changes to know if we WERE saving when resetVersion changes
+  // This runs synchronously before the main effect
+  if (editorContext?.isSaving && !wasSavingWhenResetVersionChanged.current) {
+    wasSavingWhenResetVersionChanged.current = true;
+  }
 
   // Form data type
   type WeekFormData = {
@@ -935,6 +1249,8 @@ export function WeekEditor({
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [taskMemberData, setTaskMemberData] = useState<Map<string, TaskMemberInfo[]>>(new Map());
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
+  
+  
 
   // Refs for stable access in effects (prevents infinite loops)
   const taskMemberDataRef = useRef(taskMemberData);
@@ -985,17 +1301,30 @@ export function WeekEditor({
 
   // DnD sensors for weekly tasks
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 3,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
   // Handle drag end for reordering weekly tasks
-  // Note: Drag reordering is disabled for the unified task list
-  // since tasks come from multiple sources (weeklyTasks + day.tasks)
-  const handleTaskDragEnd = useCallback((_event: DragEndEvent) => {
-    // Reordering disabled for unified list - tasks stay in their source order
+  const handleTaskDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setFormData(prev => {
+      const oldIndex = prev.weeklyTasks.findIndex(t => (t.id || t.label) === active.id);
+      const newIndex = prev.weeklyTasks.findIndex(t => (t.id || t.label) === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      return {
+        ...prev,
+        weeklyTasks: arrayMove(prev.weeklyTasks, oldIndex, newIndex),
+      };
+    });
   }, []);
 
   // Get days in this week
@@ -1004,9 +1333,88 @@ export function WeekEditor({
   ).sort((a, b) => a.dayIndex - b.dayIndex);
 
   // Reset form when week changes - but check for pending data first
-  // CRITICAL: Include clientContextId in deps so we check the correct context's pending data
+  // STABLE: Uses savedFormDataSnapshot to prevent resetting to stale week data after save
   useEffect(() => {
-    // Create a unique key for this state to prevent infinite loops
+    // Helper to normalize tasks for comparison
+    const normalizeTasks = (tasks: ProgramTaskTemplate[] | undefined) =>
+      (tasks || []).map(t => ({ id: t.id, label: t.label, isPrimary: t.isPrimary, dayTag: t.dayTag }));
+
+    const weekTasksNormalized = normalizeTasks(week.weeklyTasks);
+
+    // FIRST: Check if resetVersion changed (save/discard from global buttons)
+    // Use wasSavingWhenResetVersionChanged ref to know if this was a save or discard
+    // (by the time effect runs, isSaving is already false due to React batching)
+    if (editorContext && editorContext.resetVersion !== lastResetVersion.current) {
+      const wasSave = wasSavingWhenResetVersionChanged.current;
+
+      console.log('[WeekEditor:resetEffect] Reset version changed:', {
+        oldVersion: lastResetVersion.current,
+        newVersion: editorContext.resetVersion,
+        weekNumber: week.weekNumber,
+        wasSave,
+      });
+
+      lastResetVersion.current = editorContext.resetVersion;
+      wasSavingWhenResetVersionChanged.current = false; // Reset for next time
+
+      if (wasSave) {
+        // SAVE: Store snapshot of what we saved - formData has the correct values
+        savedFormDataSnapshot.current = {
+          weeklyTasks: normalizeTasks(formData.weeklyTasks),
+        };
+        console.log('[WeekEditor:resetEffect] SAVE - stored snapshot:',
+          savedFormDataSnapshot.current.weeklyTasks.map(t => `${t.label}:${t.isPrimary}`));
+      } else {
+        // DISCARD: Reset to original week data immediately, clear snapshot
+        console.log('[WeekEditor:resetEffect] DISCARD - resetting form');
+        savedFormDataSnapshot.current = null;
+        setFormData({
+          name: week.name || '',
+          theme: week.theme || '',
+          description: week.description || '',
+          weeklyPrompt: week.weeklyPrompt || '',
+          weeklyTasks: week.weeklyTasks || [],
+          currentFocus: week.currentFocus || [],
+          notes: week.notes || [],
+          manualNotes: week.manualNotes || '',
+          distribution: (week.distribution || 'spread') as TaskDistribution,
+          coachRecordingUrl: week.coachRecordingUrl || '',
+          coachRecordingNotes: week.coachRecordingNotes || '',
+          linkedSummaryIds: week.linkedSummaryIds || [],
+          linkedCallEventIds: week.linkedCallEventIds || [],
+          linkedArticleIds: week.linkedArticleIds || [],
+          linkedDownloadIds: week.linkedDownloadIds || [],
+          linkedLinkIds: week.linkedLinkIds || [],
+          linkedQuestionnaireIds: week.linkedQuestionnaireIds || [],
+          courseAssignments: week.courseAssignments || [],
+          resourceAssignments: week.resourceAssignments || [],
+        });
+      }
+      setHasChanges(false);
+      setShowSyncButton(false);
+      setSaveStatus('idle');
+      return; // Don't process further this cycle
+    }
+
+    // SECOND: If we have a saved snapshot, compare week prop against it
+    if (savedFormDataSnapshot.current) {
+      const snapshotStr = JSON.stringify(savedFormDataSnapshot.current.weeklyTasks);
+      const weekStr = JSON.stringify(weekTasksNormalized);
+
+      if (weekStr === snapshotStr) {
+        // Week caught up to saved state! Clear snapshot, formData is already correct
+        console.log('[WeekEditor:resetEffect] Week caught up to saved state - clearing snapshot');
+        savedFormDataSnapshot.current = null;
+        setHasChanges(false);
+        return;
+      } else {
+        // Week is still stale - DON'T reset formData, it has the saved values
+        console.log('[WeekEditor:resetEffect] Week is stale, keeping formData');
+        return;
+      }
+    }
+
+    // THIRD: Normal reset logic - create a unique key for this state to prevent infinite loops
     const stateKey = `${week.id}:${weekDataFingerprint}:${clientContextId}:${viewContext}`;
 
     // Skip if we've already processed this exact state
@@ -1016,23 +1424,16 @@ export function WeekEditor({
     lastProcessedFingerprint.current = stateKey;
 
     // Check if there's pending data in context for this week
-    // Uses current clientContextId to avoid finding stale template pending data
     const contextPendingData = editorContext?.getPendingData('week', week.id, clientContextId);
 
-    console.log('[WeekEditor:resetEffect] Triggered:', {
+    console.log('[WeekEditor:resetEffect] Processing:', {
       weekId: week.id,
       weekNumber: week.weekNumber,
       hasPendingData: !!contextPendingData,
-      clientContextId,
-      viewContext,
-      weekWeeklyTasksCount: week.weeklyTasks?.length ?? 0,
-      weekWeeklyTasks: week.weeklyTasks?.map(t => t.label),
     });
 
     if (contextPendingData) {
-      // Restore from pending data, merged with defaults to ensure all fields exist
-      // INLINE merge logic to avoid callback dependency issues
-      console.log('[WeekEditor:resetEffect] Restoring from pending data');
+      // Restore from pending data
       const defaults: WeekFormData = {
         name: week.name || '',
         theme: week.theme || '',
@@ -1057,7 +1458,6 @@ export function WeekEditor({
       const merged: WeekFormData = {
         ...defaults,
         ...contextPendingData,
-        // Ensure arrays are never undefined
         weeklyTasks: (contextPendingData.weeklyTasks as ProgramTaskTemplate[]) || defaults.weeklyTasks,
         currentFocus: (contextPendingData.currentFocus as string[]) || defaults.currentFocus,
         notes: (contextPendingData.notes as string[]) || defaults.notes,
@@ -1073,41 +1473,40 @@ export function WeekEditor({
       setFormData(merged);
       setHasChanges(true);
     } else {
-      // Reset to week data - inline to avoid callback dependency issues
-      const newFormData: WeekFormData = {
-        name: week.name || '',
-        theme: week.theme || '',
-        description: week.description || '',
-        weeklyPrompt: week.weeklyPrompt || '',
-        weeklyTasks: week.weeklyTasks || [],
-        currentFocus: week.currentFocus || [],
-        notes: week.notes || [],
-        manualNotes: week.manualNotes || '',
-        distribution: (week.distribution || 'spread') as TaskDistribution,
-        coachRecordingUrl: week.coachRecordingUrl || '',
-        coachRecordingNotes: week.coachRecordingNotes || '',
-        linkedSummaryIds: week.linkedSummaryIds || [],
-        linkedCallEventIds: week.linkedCallEventIds || [],
-        linkedArticleIds: weekLinkedArticleIds,
-        linkedDownloadIds: weekLinkedDownloadIds,
-        linkedLinkIds: weekLinkedLinkIds,
-        linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
-        courseAssignments: weekCourseAssignments,
-        resourceAssignments: weekResourceAssignments,
-      };
-      console.log('[WeekEditor:resetEffect] Resetting to week data:', {
-        newFormDataTasksCount: newFormData.weeklyTasks?.length ?? 0,
-        newFormDataTasks: newFormData.weeklyTasks?.map(t => t.label),
-      });
-      setFormData(newFormData);
+      // Sync formData to week data
+      const formTasksStr = JSON.stringify(normalizeTasks(formData.weeklyTasks));
+      const weekTasksStr = JSON.stringify(weekTasksNormalized);
+
+      if (formTasksStr !== weekTasksStr) {
+        console.log('[WeekEditor:resetEffect] Syncing formData to week');
+        setFormData({
+          name: week.name || '',
+          theme: week.theme || '',
+          description: week.description || '',
+          weeklyPrompt: week.weeklyPrompt || '',
+          weeklyTasks: week.weeklyTasks || [],
+          currentFocus: week.currentFocus || [],
+          notes: week.notes || [],
+          manualNotes: week.manualNotes || '',
+          distribution: (week.distribution || 'spread') as TaskDistribution,
+          coachRecordingUrl: week.coachRecordingUrl || '',
+          coachRecordingNotes: week.coachRecordingNotes || '',
+          linkedSummaryIds: week.linkedSummaryIds || [],
+          linkedCallEventIds: week.linkedCallEventIds || [],
+          linkedArticleIds: weekLinkedArticleIds,
+          linkedDownloadIds: weekLinkedDownloadIds,
+          linkedLinkIds: weekLinkedLinkIds,
+          linkedQuestionnaireIds: weekLinkedQuestionnaireIds,
+          courseAssignments: weekCourseAssignments,
+          resourceAssignments: weekResourceAssignments,
+        });
+      }
       setHasChanges(false);
-      // NOTE: Don't set skipCyclesRemaining here - this effect fires on initial load too.
-      // Skip cycles should only be set after a save (via resetVersion effect).
     }
     setShowSyncButton(false);
     setSaveStatus('idle');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [week.id, weekDataFingerprint, clientContextId, viewContext]);
+  }, [week.id, weekDataFingerprint, clientContextId, viewContext, editorContext?.resetVersion, editorContext?.isSaving]);
 
   // Track previous view context to detect changes
   const lastViewContext = useRef(viewContext);
@@ -1173,8 +1572,12 @@ export function WeekEditor({
         };
         setFormData(merged);
         setHasChanges(true);
+        // Clear snapshot since we're switching contexts
+        savedFormDataSnapshot.current = null;
       } else {
-        // Reset to the week data for the new context - inline to avoid callback dependency
+        // Reset to the week data for the new context
+        // Clear snapshot since we're switching contexts
+        savedFormDataSnapshot.current = null;
         setFormData({
           name: week.name || '',
           theme: week.theme || '',
@@ -1204,53 +1607,6 @@ export function WeekEditor({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewContext, clientContextId, week.id, week.weekNumber]);
 
-  // Watch for reset version changes (discard/save from global buttons)
-  useEffect(() => {
-    if (editorContext && editorContext.resetVersion !== lastResetVersion.current) {
-      console.log('[WeekEditor:resetVersion] Reset version changed:', {
-        oldVersion: lastResetVersion.current,
-        newVersion: editorContext.resetVersion,
-        weekNumber: week.weekNumber,
-        weekId: week.id,
-      });
-      lastResetVersion.current = editorContext.resetVersion;
-      // Set skip cycles to prevent re-registration during save->refresh cycle
-      // Use a few cycles (3) to give SWR time to fetch and React to re-render
-      skipCyclesRemaining.current = 3;
-      // Reset to original week data - inline to avoid callback dependency
-      const resetFormData: WeekFormData = {
-        name: week.name || '',
-        theme: week.theme || '',
-        description: week.description || '',
-        weeklyPrompt: week.weeklyPrompt || '',
-        weeklyTasks: week.weeklyTasks || [],
-        currentFocus: week.currentFocus || [],
-        notes: week.notes || [],
-        manualNotes: week.manualNotes || '',
-        distribution: (week.distribution || 'spread') as TaskDistribution,
-        coachRecordingUrl: week.coachRecordingUrl || '',
-        coachRecordingNotes: week.coachRecordingNotes || '',
-        linkedSummaryIds: week.linkedSummaryIds || [],
-        linkedCallEventIds: week.linkedCallEventIds || [],
-        linkedArticleIds: week.linkedArticleIds || [],
-        linkedDownloadIds: week.linkedDownloadIds || [],
-        linkedLinkIds: week.linkedLinkIds || [],
-        linkedQuestionnaireIds: week.linkedQuestionnaireIds || [],
-        courseAssignments: week.courseAssignments || [],
-        resourceAssignments: week.resourceAssignments || [],
-      };
-      setFormData(resetFormData);
-      // Track the reset formData as "saved" state
-      lastSavedFormDataRef.current = JSON.stringify({
-        weeklyTasks: resetFormData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
-      });
-      // Clear UI state
-      setHasChanges(false);
-      setShowSyncButton(false);
-      setSaveStatus('idle');
-    }
-  }, [editorContext?.resetVersion, week]);
-
   // Check for changes and register with context
   useEffect(() => {
     // Use ref to get current editorContext without adding it to dependencies
@@ -1263,37 +1619,38 @@ export function WeekEditor({
       return;
     }
 
-    // Skip if we have remaining skip cycles (waiting for instance to refresh after save)
-    if (skipCyclesRemaining.current > 0) {
-      skipCyclesRemaining.current--;
-      console.log('[WeekEditor:changeDetection] Skipping - cycles remaining:', skipCyclesRemaining.current + 1, 'week:', week.weekNumber);
-      setHasChanges(false);
-      return;
-    }
+    // Helper to normalize tasks for comparison
+    const normalizeTasks = (tasks: ProgramTaskTemplate[] | undefined) =>
+      (tasks || []).map(t => ({ id: t.id, label: t.label, isPrimary: t.isPrimary, dayTag: t.dayTag }));
 
-    // Check if formData matches what we last saved - if so, we're in a "clean" state
-    // even if week prop hasn't caught up yet
-    const currentFormFingerprint = JSON.stringify({
-      weeklyTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
-    });
-    const weekFingerprint = JSON.stringify({
-      weeklyTasks: week.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
-    });
+    const weekTasksNormalized = normalizeTasks(week.weeklyTasks);
+    const formTasksNormalized = normalizeTasks(formData.weeklyTasks);
 
-    // If week prop has caught up to match formData, clear the saved state
-    // This allows future edits to be detected normally
-    if (lastSavedFormDataRef.current && weekFingerprint === currentFormFingerprint) {
-      console.log('[WeekEditor:changeDetection] Week prop caught up, clearing saved state');
-      lastSavedFormDataRef.current = null;
-      setHasChanges(false);
-      return;
-    }
+    // If we have a saved snapshot, we're in post-save state
+    if (savedFormDataSnapshot.current) {
+      const snapshotStr = JSON.stringify(savedFormDataSnapshot.current.weeklyTasks);
+      const weekStr = JSON.stringify(weekTasksNormalized);
+      const formStr = JSON.stringify(formTasksNormalized);
 
-    if (lastSavedFormDataRef.current && currentFormFingerprint === lastSavedFormDataRef.current) {
-      // formData matches what was saved, so we're clean - don't register changes
-      // even if week prop is stale
-      setHasChanges(false);
-      return;
+      if (weekStr === snapshotStr) {
+        // Week caught up to saved state - clear snapshot
+        console.log('[WeekEditor:changeDetection] Week caught up to saved state - clearing snapshot');
+        savedFormDataSnapshot.current = null;
+        setHasChanges(false);
+        return;
+      }
+
+      // Week is stale. Check if formData still matches snapshot (no new edits)
+      if (formStr === snapshotStr) {
+        // formData has saved values, week is stale - no changes to report
+        setHasChanges(false);
+        return;
+      }
+
+      // formData differs from snapshot - user made NEW edits after save
+      // Clear snapshot and fall through to normal change detection
+      console.log('[WeekEditor:changeDetection] New edits after save - clearing snapshot');
+      savedFormDataSnapshot.current = null;
     }
 
     // EARLY EXIT: Check if we've already processed this exact form data + week combination
@@ -1311,8 +1668,8 @@ export function WeekEditor({
       formWeeklyPrompt: formData.weeklyPrompt,
       weekWeeklyPrompt: week.weeklyPrompt,
       // Tasks
-      formTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
-      weekTasks: week.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+      formTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label, isPrimary: t.isPrimary, dayTag: t.dayTag })),
+      weekTasks: week.weeklyTasks?.map(t => ({ id: t.id, label: t.label, isPrimary: t.isPrimary, dayTag: t.dayTag })),
       // Weekly outcomes
       formCurrentFocus: formData.currentFocus,
       weekCurrentFocus: week.currentFocus,
@@ -1333,8 +1690,17 @@ export function WeekEditor({
     });
     if (stateFingerprint === lastRegisteredFingerprint.current) {
       // Already processed this exact state, skip to prevent infinite loop
+      console.log('[WeekEditor:changeDetection] EARLY EXIT - fingerprint match, skipping');
       return;
     }
+
+    // Log fingerprint comparison for debugging
+    console.log('[WeekEditor:changeDetection] Fingerprint check:', {
+      weekNumber: week.weekNumber,
+      formTasksPrimary: formData.weeklyTasks?.map(t => t.isPrimary),
+      weekTasksPrimary: week.weeklyTasks?.map(t => t.isPrimary),
+      fingerprintsDiffer: stateFingerprint !== lastRegisteredFingerprint.current,
+    });
 
     const tasksMatch = JSON.stringify(formData.weeklyTasks) === JSON.stringify(week.weeklyTasks || []);
     const changed =
@@ -1364,8 +1730,8 @@ export function WeekEditor({
         tasksMatch,
         formDataTasksCount: formData.weeklyTasks?.length ?? 0,
         weekTasksCount: week.weeklyTasks?.length ?? 0,
-        formDataTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
-        weekTasks: week.weeklyTasks?.map(t => ({ id: t.id, label: t.label })),
+        formDataTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label, isPrimary: t.isPrimary, dayTag: t.dayTag })),
+        weekTasks: week.weeklyTasks?.map(t => ({ id: t.id, label: t.label, isPrimary: t.isPrimary, dayTag: t.dayTag })),
         // Show which fields differ
         nameMatch: formData.name === (week.name || ''),
         themeMatch: formData.theme === (week.theme || ''),
@@ -1373,7 +1739,16 @@ export function WeekEditor({
         distributionMatch: formData.distribution === (week.distribution || 'spread'),
       });
     }
-    
+
+    // Log the change detection result
+    console.log('[WeekEditor:changeDetection] Result:', {
+      weekNumber: week.weekNumber,
+      changed,
+      hasChangesWillBe: changed,
+      formTasksCount: formData.weeklyTasks?.length || 0,
+      weekTasksCount: week.weeklyTasks?.length || 0,
+    });
+
     setHasChanges(changed);
 
     // Register changes with context if available
@@ -1464,6 +1839,7 @@ export function WeekEditor({
           linkedLinkIds: week.linkedLinkIds,
           linkedQuestionnaireIds: week.linkedQuestionnaireIds,
           courseAssignments: week.courseAssignments,
+          resourceAssignments: week.resourceAssignments,
         },
         pendingData: pendingDataForContext,
         apiEndpoint: endpoint,
@@ -1473,6 +1849,10 @@ export function WeekEditor({
       // Remove from pending changes if no longer changed
       const changeKey = currentEditorContext.getChangeKey('week', week.id, clientContextId);
       currentEditorContext.discardChange(changeKey);
+      // CRITICAL: Update lastRegisteredFingerprint to the clean state
+      // so that subsequent edits create a DIFFERENT fingerprint
+      lastRegisteredFingerprint.current = stateFingerprint;
+      console.log('[WeekEditor:changeDetection] No changes - updated fingerprint to clean state');
     }
   // Note: editorContext is accessed via ref (editorContextRef.current) to prevent infinite loops
   // when registerChange updates pendingChanges and causes context reference to change
@@ -1752,6 +2132,101 @@ export function WeekEditor({
     ? week.endDayIndex - week.startDayIndex + 1
     : (includeWeekends ? 7 : 5);
 
+  // Compute preview days with distributed weekly tasks for Day Preview section
+  // This mirrors the server-side distribution logic so the preview updates in real-time
+  const previewDays = useMemo(() => {
+    const numDays = daysInWeek;
+    const distribution = formData.distribution || 'spread';
+
+    // Initialize days with existing tasks from props (day-level tasks)
+    // and clear any previous week-sourced tasks
+    const computedDays = Array.from({ length: numDays }, (_, i) => {
+      const existingDay = days[i];
+      // Filter out week-sourced tasks from existing days to avoid double-counting
+      const dayLevelTasks = (existingDay?.tasks || []).filter(t => t.source !== 'week');
+      return {
+        ...existingDay,
+        dayIndex: i + 1,
+        tasks: [...dayLevelTasks],
+      };
+    });
+
+    // Categorize weekly tasks by their dayTag
+    const dailyTasks: ProgramTaskTemplate[] = [];
+    const spreadTasks: ProgramTaskTemplate[] = [];
+    const specificDayTasks: Map<number, ProgramTaskTemplate[]> = new Map();
+    const autoTasks: ProgramTaskTemplate[] = [];
+
+    for (const task of formData.weeklyTasks) {
+      const dayTag = task.dayTag;
+      if (dayTag === 'daily') {
+        dailyTasks.push(task);
+      } else if (dayTag === 'spread') {
+        spreadTasks.push(task);
+      } else if (typeof dayTag === 'number' && dayTag >= 1 && dayTag <= numDays) {
+        const existing = specificDayTasks.get(dayTag) || [];
+        existing.push(task);
+        specificDayTasks.set(dayTag, existing);
+      } else {
+        // dayTag: undefined, 'auto', or invalid → use distribution setting
+        autoTasks.push(task);
+      }
+    }
+
+    // Add daily tasks to ALL days
+    for (const task of dailyTasks) {
+      for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+        computedDays[dayIdx].tasks.push({ ...task, source: 'week' as const });
+      }
+    }
+
+    // Add specific-day tasks to their designated day
+    for (const [dayNum, tasks] of specificDayTasks) {
+      const dayIdx = dayNum - 1;
+      if (dayIdx >= 0 && dayIdx < numDays) {
+        for (const task of tasks) {
+          computedDays[dayIdx].tasks.push({ ...task, source: 'week' as const });
+        }
+      }
+    }
+
+    // Combine spread tasks with auto tasks when distribution is 'spread'
+    // This ensures they're distributed together as one pool for even spacing
+    // When distribution is 'repeat-daily', spread tasks are still spread, auto tasks repeat
+    const tasksToSpread: ProgramTaskTemplate[] = [...spreadTasks];
+    const tasksToRepeat: ProgramTaskTemplate[] = [];
+
+    if (distribution === 'spread') {
+      // Auto tasks join the spread pool
+      tasksToSpread.push(...autoTasks);
+    } else if (distribution === 'repeat-daily') {
+      // Auto tasks go to repeat pool, spread tasks stay in spread pool
+      tasksToRepeat.push(...autoTasks);
+    }
+
+    // Spread tasks evenly across the week
+    if (tasksToSpread.length > 0 && numDays > 0) {
+      for (let taskIdx = 0; taskIdx < tasksToSpread.length; taskIdx++) {
+        let targetDayIdx: number;
+        if (tasksToSpread.length === 1) {
+          targetDayIdx = 0;
+        } else {
+          targetDayIdx = Math.round(taskIdx * (numDays - 1) / (tasksToSpread.length - 1));
+        }
+        computedDays[targetDayIdx].tasks.push({ ...tasksToSpread[taskIdx], source: 'week' as const });
+      }
+    }
+
+    // Add repeat tasks to all days
+    for (const task of tasksToRepeat) {
+      for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+        computedDays[dayIdx].tasks.push({ ...task, source: 'week' as const });
+      }
+    }
+
+    return computedDays;
+  }, [days, daysInWeek, formData.weeklyTasks, formData.distribution]);
+
   // Fetch members when task is expanded
   // Uses refs for taskMemberData/loadingTasks checks to avoid infinite loops
   useEffect(() => {
@@ -1779,7 +2254,9 @@ export function WeekEditor({
   // Toggle primary/backlog for a task
   const toggleTaskPrimary = (index: number) => {
     const updated = [...formData.weeklyTasks];
-    updated[index] = { ...updated[index], isPrimary: !updated[index].isPrimary };
+    const oldValue = updated[index].isPrimary;
+    updated[index] = { ...updated[index], isPrimary: !oldValue };
+    console.log('[WeekEditor] toggleTaskPrimary:', { index, oldValue, newValue: !oldValue, taskLabel: updated[index].label });
     setFormData({ ...formData, weeklyTasks: updated });
   };
 
@@ -2156,17 +2633,17 @@ export function WeekEditor({
           </h3>
           {/* Client/Cohort/Template mode badge */}
           {isClientView ? (
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
               {clientName || 'Client'}
             </span>
           ) : isCohortMode ? (
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
               <Users className="w-3 h-3" />
               {cohortName || 'Cohort'}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-[#f3f1ef] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2]">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#f3f1ef] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2]">
               <FileText className="w-3 h-3" />
               Template
             </span>
@@ -2186,16 +2663,16 @@ export function WeekEditor({
                 <button
                   onClick={() => editorContext.discardAllChanges()}
                   disabled={editorContext.isSaving}
-                  className="flex items-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 text-xs sm:text-sm text-[#5f5a55] hover:text-red-500 dark:text-[#b2b6c2] dark:hover:text-red-400 transition-colors disabled:opacity-50 rounded-lg border border-[#e1ddd8] dark:border-[#363d4a] hover:border-red-300 dark:hover:border-red-500/50"
+                  className="flex items-center justify-center h-8 sm:h-9 w-8 sm:w-auto sm:px-3 text-xs sm:text-sm text-[#5f5a55] hover:text-red-500 dark:text-[#b2b6c2] dark:hover:text-red-400 transition-colors disabled:opacity-50 rounded-xl bg-[#f3f1ef] hover:bg-red-50 dark:bg-[#262b35] dark:hover:bg-red-900/20"
                   title="Discard all changes"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 sm:hidden" />
                   <span className="hidden sm:inline">Discard</span>
                 </button>
                 <Button
                   onClick={() => editorContext.saveAllChanges()}
                   disabled={editorContext.isSaving}
-                  className="flex items-center gap-1.5 h-8 sm:h-9 px-3 sm:px-4 bg-brand-accent hover:bg-brand-accent/90 text-white text-xs sm:text-sm font-medium"
+                  className="flex items-center gap-1.5 h-8 sm:h-9 px-4 sm:px-6 bg-brand-accent hover:bg-brand-accent/90 text-white text-xs sm:text-sm font-medium"
                 >
                   {editorContext.isSaving ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -2263,12 +2740,12 @@ export function WeekEditor({
         title="Basic Info"
         icon={Info}
         defaultOpen={false}
-        hasContent={!!formData.theme || !!formData.description}
+        hasContent={!!formData.theme || !!formData.description || formData.currentFocus.length > 0}
       >
         {/* Week Theme */}
         <div>
           <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Theme
+            Weekly Theme
           </label>
           <input
             type="text"
@@ -2277,6 +2754,71 @@ export function WeekEditor({
             placeholder="e.g., Building Foundations"
             className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
           />
+        </div>
+
+        {/* Weekly Goal */}
+        <div>
+          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+            Weekly Goal
+          </label>
+          {formData.currentFocus.length < 3 && (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newFocus}
+                onChange={(e) => setNewFocus(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newFocus.trim()) {
+                    // Handle comma-separated entry
+                    const goals = newFocus.split(',').map(g => g.trim()).filter(g => g);
+                    const remaining = 3 - formData.currentFocus.length;
+                    const toAdd = goals.slice(0, remaining);
+                    if (toAdd.length > 0) {
+                      setFormData({ ...formData, currentFocus: [...formData.currentFocus, ...toAdd] });
+                      setNewFocus('');
+                    }
+                  }
+                }}
+                placeholder={formData.currentFocus.length === 0 ? "Type goals separated by comma..." : "Add another goal..."}
+                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!newFocus.trim()) return;
+                  const goals = newFocus.split(',').map(g => g.trim()).filter(g => g);
+                  const remaining = 3 - formData.currentFocus.length;
+                  const toAdd = goals.slice(0, remaining);
+                  if (toAdd.length > 0) {
+                    setFormData({ ...formData, currentFocus: [...formData.currentFocus, ...toAdd] });
+                    setNewFocus('');
+                  }
+                }}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-[#faf8f6] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent hover:text-brand-accent transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          {formData.currentFocus.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {formData.currentFocus.map((focus, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#faf8f6] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-full text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                >
+                  {focus}
+                  <button
+                    type="button"
+                    onClick={() => removeFocus(index)}
+                    className="p-0.5 text-[#a7a39e] hover:text-red-500 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Week Description */}
@@ -2293,8 +2835,8 @@ export function WeekEditor({
           />
         </div>
 
-        {/* Weekly Prompt */}
-        <div>
+        {/* Weekly Prompt - DEPRECATED: Hidden from UI but data preserved */}
+        {/* <div>
           <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
             Weekly Prompt
           </label>
@@ -2305,7 +2847,7 @@ export function WeekEditor({
             rows={2}
             className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
           />
-        </div>
+        </div> */}
       </CollapsibleSection>
 
       {/* Tasks & Focus Section */}
@@ -2313,7 +2855,7 @@ export function WeekEditor({
           title="Tasks & Focus"
           icon={ListTodo}
           defaultOpen={true}
-          hasContent={formData.weeklyTasks.length > 0 || formData.currentFocus.length > 0}
+          hasContent={formData.weeklyTasks.length > 0}
         >
           {/* Weekly Tasks */}
           <div>
@@ -2327,18 +2869,18 @@ export function WeekEditor({
                 onDragEnd={handleTaskDragEnd}
               >
                 <SortableContext
-                  items={formData.weeklyTasks.map((_, i) => `task-${i}`)}
+                  items={formData.weeklyTasks.map(t => t.id || t.label)}
                   strategy={verticalListSortingStrategy}
                 >
                   {formData.weeklyTasks.map((task, index) => {
-                    const taskKey = task.label;
+                    const taskKey = task.id || task.label;
                     const cohortCompletion = cohortId
                       ? (task.id && cohortWeeklyTaskCompletion.get(task.id)) || cohortWeeklyTaskCompletion.get(task.label)
                       : undefined;
                     return (
                       <SortableWeeklyTask
-                        key={`task-${index}`}
-                        id={`task-${index}`}
+                        key={taskKey}
+                        id={taskKey}
                         task={task}
                         index={index}
                         showCompletionStatus={isClientView || !!cohortId}
@@ -2378,19 +2920,17 @@ export function WeekEditor({
 
             {/* Day Preview Bar */}
             <div className="mt-4 pt-4 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40">
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2">
                 <span className="text-xs font-medium text-[#8c8c8c] dark:text-[#7d8190] font-albert">
                   Day Preview
-                </span>
-                <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
-                  Click to preview computed tasks
                 </span>
               </div>
               <div className="flex gap-2">
                 {Array.from({ length: daysInWeek }, (_, i) => {
                   const dayNum = i + 1;
-                  const day = days[i];
-                  const taskCount = day?.tasks?.filter(t => t.isPrimary !== false)?.length || 0;
+                  // Use previewDays for task counts (includes distributed weekly tasks)
+                  const previewDay = previewDays[i];
+                  const taskCount = previewDay?.tasks?.filter(t => t.isPrimary !== false)?.length || 0;
                   const dotCount = Math.min(taskCount, 3);
                   const isEmpty = taskCount === 0;
 
@@ -2444,7 +2984,7 @@ export function WeekEditor({
                       onClick={() => !isPreEnrollment && setPreviewDayNumber(dayNum)}
                       disabled={isPreEnrollment}
                       className={cn(
-                        'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-xl transition-all border',
+                        'relative flex-1 flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all border',
                         statusBgClass,
                         isPreEnrollment
                           ? 'opacity-30 cursor-not-allowed'
@@ -2453,7 +2993,7 @@ export function WeekEditor({
                       )}
                     >
                       <span className={cn(
-                        'text-xs font-medium font-albert',
+                        'text-xs font-medium font-albert text-center',
                         isPreEnrollment
                           ? 'text-[#a7a39e] dark:text-[#5a5e6a]'
                           : dayStatus === 'active'
@@ -2466,7 +3006,7 @@ export function WeekEditor({
                       </span>
                       {dateLabel && (
                         <span className={cn(
-                          'text-[10px] font-albert',
+                          'text-[10px] font-albert text-center',
                           isPreEnrollment
                             ? 'text-[#c4c0bb] dark:text-[#4a4f5c]'
                             : dayStatus === 'active'
@@ -2479,16 +3019,10 @@ export function WeekEditor({
                         </span>
                       )}
                       {taskCount > 0 && !isPreEnrollment && (
-                        <div className="flex items-center gap-0.5 mt-0.5">
-                          {Array.from({ length: dotCount }, (_, j) => (
-                            <span key={j} className="w-1.5 h-1.5 rounded-full bg-brand-accent" />
-                          ))}
-                          {taskCount > 3 && (
-                            <span className="text-[10px] text-brand-accent ml-0.5">+</span>
-                          )}
-                        </div>
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 text-[10px] font-medium bg-brand-accent text-white rounded-full flex items-center justify-center">
+                          {taskCount}
+                        </span>
                       )}
-                      {(isEmpty || isPreEnrollment) && <div className="h-[14px]" />}
                     </button>
                   );
                 })}
@@ -2496,69 +3030,6 @@ export function WeekEditor({
             </div>
           </div>
 
-          {/* Weekly Outcomes (max 3) */}
-          <div>
-            <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-              <Target className="w-4 h-4 inline mr-1.5" />
-              Weekly Outcomes <span className="text-xs text-[#a7a39e] font-normal">(max 3)</span>
-            </label>
-            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
-              Key outcomes for the client to achieve this week
-            </p>
-            <div className="space-y-2 mb-3">
-              {formData.currentFocus.map((focus, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-                >
-                  <span className="w-2 h-2 rounded-full bg-brand-accent flex-shrink-0" />
-                  {editingFocusIndex === index ? (
-                    <input
-                      type="text"
-                      value={editingFocusText}
-                      onChange={(e) => setEditingFocusText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveEditingFocus();
-                        if (e.key === 'Escape') cancelEditingFocus();
-                      }}
-                      onBlur={saveEditingFocus}
-                      autoFocus
-                      className="flex-1 px-2 py-1 text-sm bg-white dark:bg-[#11141b] border border-brand-accent rounded font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-                    />
-                  ) : (
-                    <span
-                      onClick={() => startEditingFocus(index)}
-                      className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer hover:text-brand-accent transition-colors"
-                      title="Click to edit"
-                    >
-                      {focus}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => removeFocus(index)}
-                    className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            {formData.currentFocus.length < 3 && (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newFocus}
-                  onChange={(e) => setNewFocus(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addFocus()}
-                  placeholder="Add outcome..."
-                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
-                />
-                <Button onClick={addFocus} variant="outline" size="sm">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          </div>
         </CollapsibleSection>
 
       {/* Sessions Section - Calls, Summaries, Recordings */}
@@ -2912,44 +3383,6 @@ export function WeekEditor({
           <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-3">
             Reminders or context for the client
           </p>
-          <div className="space-y-2 mb-3">
-            {formData.notes.map((note, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 p-2 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg group"
-              >
-                <span className="w-2 h-2 rounded-full bg-[#a7a39e] flex-shrink-0" />
-                {editingNoteIndex === index ? (
-                  <input
-                    type="text"
-                    value={editingNoteText}
-                    onChange={(e) => setEditingNoteText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveEditingNote();
-                      if (e.key === 'Escape') cancelEditingNote();
-                    }}
-                    onBlur={saveEditingNote}
-                    autoFocus
-                    className="flex-1 px-2 py-1 text-sm bg-white dark:bg-[#11141b] border border-brand-accent rounded font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-                  />
-                ) : (
-                  <span
-                    onClick={() => startEditingNote(index)}
-                    className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer hover:text-brand-accent transition-colors"
-                    title="Click to edit"
-                  >
-                    {note}
-                  </span>
-                )}
-                <button
-                  onClick={() => removeNote(index)}
-                  className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
           {formData.notes.length < 3 && (
             <div className="flex gap-2">
               <input
@@ -2960,9 +3393,50 @@ export function WeekEditor({
                 placeholder="Add note..."
                 className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
               />
-              <Button onClick={addNote} variant="outline" size="sm">
+              <button
+                type="button"
+                onClick={addNote}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-[#faf8f6] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-brand-accent hover:text-brand-accent transition-colors"
+              >
                 <Plus className="w-4 h-4" />
-              </Button>
+              </button>
+            </div>
+          )}
+          {formData.notes.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {formData.notes.map((note, index) => (
+                editingNoteIndex === index ? (
+                  <input
+                    key={index}
+                    type="text"
+                    value={editingNoteText}
+                    onChange={(e) => setEditingNoteText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveEditingNote();
+                      if (e.key === 'Escape') cancelEditingNote();
+                    }}
+                    onBlur={saveEditingNote}
+                    autoFocus
+                    className="px-3 py-1.5 text-sm bg-white dark:bg-[#11141b] border border-brand-accent rounded-full font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  />
+                ) : (
+                  <span
+                    key={index}
+                    onClick={() => startEditingNote(index)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#faf8f6] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-full text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer hover:border-brand-accent transition-colors"
+                    title="Click to edit"
+                  >
+                    {note}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); removeNote(index); }}
+                      className="p-0.5 text-[#a7a39e] hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                )
+              ))}
             </div>
           )}
         </div>
@@ -3003,7 +3477,7 @@ export function WeekEditor({
         isOpen={previewDayNumber !== null}
         onClose={() => setPreviewDayNumber(null)}
         dayNumber={previewDayNumber || 1}
-        day={previewDayNumber !== null ? days[previewDayNumber - 1] || null : null}
+        day={previewDayNumber !== null ? previewDays[previewDayNumber - 1] || null : null}
         habits={week.weeklyHabits}
         weekNumber={week.weekNumber}
         // Pass week data for resource assignments - use formData for live updates
