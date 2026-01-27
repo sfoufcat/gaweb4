@@ -3,8 +3,87 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
-import type { ProgramWeek, ProgramTaskTemplate, ProgramHabitTemplate, UnifiedEvent, CallSummary, DiscoverArticle } from '@/types';
+import type { ProgramWeek, ProgramTaskTemplate, ProgramHabitTemplate, UnifiedEvent, CallSummary, DiscoverArticle, ProgramInstanceDay } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
+
+/**
+ * Helper to convert task template to instance task
+ */
+function toInstanceTask(task: ProgramTaskTemplate): ProgramInstanceDay['tasks'][0] {
+  return {
+    id: task.id || crypto.randomUUID(),
+    label: task.label,
+    type: task.type,
+    isPrimary: task.isPrimary,
+    estimatedMinutes: task.estimatedMinutes,
+    notes: task.notes,
+    tag: task.tag,
+    source: 'week' as const,
+  };
+}
+
+/**
+ * Re-distributes tasks for a partial week using the correct active range.
+ * Used for migrating stale instances where tasks were distributed before the fix.
+ */
+function redistributeTasksForPartialWeek(
+  weeklyTasks: ProgramTaskTemplate[],
+  days: ProgramInstanceDay[],
+  distribution: string | undefined,
+  activeStartDay: number,
+  activeEndDay: number
+): ProgramInstanceDay[] {
+  const numDays = days.length;
+  if (numDays === 0 || weeklyTasks.length === 0) return days;
+
+  const activeStartIdx = Math.max(0, activeStartDay - 1);
+  const activeEndIdx = Math.min(numDays - 1, activeEndDay - 1);
+  const activeRange = activeEndIdx - activeStartIdx + 1;
+
+  // Clone days and clear tasks for re-distribution
+  const updatedDays = days.map(d => ({ ...d, tasks: [] as ProgramInstanceDay['tasks'] }));
+
+  const distType = distribution || 'spread';
+
+  if (distType === 'first_day') {
+    for (const task of weeklyTasks) {
+      updatedDays[activeStartIdx].tasks.push(toInstanceTask(task));
+    }
+  } else if (distType === 'all_days') {
+    for (const task of weeklyTasks) {
+      for (let dayIdx = activeStartIdx; dayIdx <= activeEndIdx; dayIdx++) {
+        updatedDays[dayIdx].tasks.push(toInstanceTask(task));
+      }
+    }
+  } else {
+    // 'spread'
+    const numTasks = weeklyTasks.length;
+    if (numTasks >= activeRange) {
+      let taskIdx = 0;
+      for (let d = activeStartIdx; d <= activeEndIdx; d++) {
+        const remainingDays = activeEndIdx - d + 1;
+        const remainingTasks = numTasks - taskIdx;
+        const count = Math.ceil(remainingTasks / remainingDays);
+        for (let j = 0; j < count && taskIdx < numTasks; j++) {
+          updatedDays[d].tasks.push(toInstanceTask(weeklyTasks[taskIdx++]));
+        }
+      }
+    } else {
+      for (let i = 0; i < numTasks; i++) {
+        let targetDayIdx: number;
+        if (numTasks === 1) {
+          targetDayIdx = activeStartIdx;
+        } else {
+          const offset = Math.round(i * (activeRange - 1) / (numTasks - 1));
+          targetDayIdx = activeStartIdx + offset;
+        }
+        updatedDays[targetDayIdx].tasks.push(toInstanceTask(weeklyTasks[i]));
+      }
+    }
+  }
+
+  return updatedDays;
+}
 
 /**
  * Weekly content response for client program view
@@ -24,6 +103,9 @@ export interface WeeklyContentResponse {
     endDayIndex: number;
     calendarStartDate?: string;
     calendarEndDate?: string;
+    // Partial week info (for blurring inactive days)
+    actualStartDayOfWeek?: number;  // 1-5 for Mon-Fri (1 = full week, >1 = partial start)
+    actualEndDayOfWeek?: number;    // 1-5 for Mon-Fri (5 = full week, <5 = partial end)
   } | null;
   days: Array<{
     dayIndex: number;
@@ -168,8 +250,28 @@ export async function GET(
 
     if (!instanceSnapshot.empty) {
       // Use instance data (new system)
-      const instance = instanceSnapshot.docs[0].data();
+      const instanceDoc = instanceSnapshot.docs[0];
+      const instance = instanceDoc.data();
       const weeks = instance.weeks || [];
+
+      // Fetch task completions from tasks collection for this user/instance
+      // This provides the completion status to merge with instance tasks
+      const taskCompletionsSnapshot = await adminDb.collection('tasks')
+        .where('userId', '==', userId)
+        .where('instanceId', '==', instanceDoc.id)
+        .get();
+
+      // Build a map of instanceTaskId -> completion data
+      const completionMap = new Map<string, { completed: boolean; completedAt?: string }>();
+      for (const doc of taskCompletionsSnapshot.docs) {
+        const data = doc.data();
+        if (data.instanceTaskId) {
+          completionMap.set(data.instanceTaskId, {
+            completed: data.completed === true || data.status === 'completed',
+            completedAt: data.completedAt,
+          });
+        }
+      }
 
       // Find current week
       let targetWeek = weeks.find((w: { weekNumber: number; startDayIndex?: number; endDayIndex?: number }) => {
@@ -187,6 +289,49 @@ export async function GET(
       }
 
       if (targetWeek) {
+        // MIGRATION: Check if this partial week has tasks on inactive days (stale distribution)
+        const hasPartialStart = targetWeek.actualStartDayOfWeek && targetWeek.actualStartDayOfWeek > 1;
+        const hasPartialEnd = targetWeek.actualEndDayOfWeek && targetWeek.actualEndDayOfWeek < daysPerWeek;
+        
+        let migratedDays = targetWeek.days || [];
+        
+        if ((hasPartialStart || hasPartialEnd) && targetWeek.weeklyTasks?.length && migratedDays.length) {
+          const activeStartIdx = (targetWeek.actualStartDayOfWeek || 1) - 1;
+          const activeEndIdx = (targetWeek.actualEndDayOfWeek || daysPerWeek) - 1;
+          
+          // Check if any tasks exist on inactive days
+          const hasTasksOnInactiveDays = migratedDays.some((day: ProgramInstanceDay, idx: number) => 
+            (idx < activeStartIdx || idx > activeEndIdx) && day.tasks && day.tasks.length > 0
+          );
+          
+          if (hasTasksOnInactiveDays) {
+            console.log(`[WEEKLY_CONTENT] MIGRATION: Fixing stale task distribution in week ${targetWeek.weekNumber}`);
+            console.log(`[WEEKLY_CONTENT] Active range: ${activeStartIdx + 1}-${activeEndIdx + 1}, daysPerWeek: ${daysPerWeek}`);
+            
+            // Re-distribute tasks to only active days
+            migratedDays = redistributeTasksForPartialWeek(
+              targetWeek.weeklyTasks,
+              migratedDays,
+              targetWeek.distribution,
+              targetWeek.actualStartDayOfWeek || 1,
+              targetWeek.actualEndDayOfWeek || daysPerWeek
+            );
+            
+            // Persist the fix to Firestore (update just this week in the instance)
+            const instanceDoc = instanceSnapshot.docs[0];
+            const instanceData = instanceDoc.data();
+            const weekIndex = instanceData.weeks.findIndex((w: { weekNumber: number }) => w.weekNumber === targetWeek.weekNumber);
+            if (weekIndex !== -1) {
+              instanceData.weeks[weekIndex].days = migratedDays;
+              await instanceDoc.ref.update({ 
+                weeks: instanceData.weeks,
+                updatedAt: new Date().toISOString()
+              });
+              console.log(`[WEEKLY_CONTENT] MIGRATION: Persisted fix to instance ${instanceDoc.id}`);
+            }
+          }
+        }
+
         weekData = {
           weekNumber: targetWeek.weekNumber,
           name: targetWeek.name,
@@ -200,6 +345,9 @@ export async function GET(
           endDayIndex: targetWeek.endDayIndex || 7,
           calendarStartDate: targetWeek.calendarStartDate,
           calendarEndDate: targetWeek.calendarEndDate,
+          // Partial week info for client UI blurring
+          actualStartDayOfWeek: targetWeek.actualStartDayOfWeek,
+          actualEndDayOfWeek: targetWeek.actualEndDayOfWeek,
         };
 
         // Collect week-level resources
@@ -212,7 +360,8 @@ export async function GET(
         weekLinkedQuestionnaireIds = targetWeek.linkedQuestionnaireIds || [];
 
         // Process days from instance (filter out weekends for 5-day programs)
-        const instanceDays = targetWeek.days || [];
+        // Use migrated days if migration was performed
+        const instanceDays = migratedDays;
         for (const day of instanceDays) {
           // Calculate calendar date if missing - use enrollment start + globalDayIndex
           const globalDay = day.globalDayIndex || day.dayIndex;
@@ -244,6 +393,16 @@ export async function GET(
           const daySummaryIds = day.linkedSummaryIds?.length ? day.linkedSummaryIds : weekLinkedSummaryIds;
           const dayQuestionnaireIds = day.linkedQuestionnaireIds?.length ? day.linkedQuestionnaireIds : weekLinkedQuestionnaireIds;
 
+          // Merge completion status from tasks collection into instance tasks
+          const tasksWithCompletion = (day.tasks || []).map((task: ProgramInstanceDay['tasks'][0]) => {
+            const completion = completionMap.get(task.id);
+            return {
+              ...task,
+              completed: completion?.completed || false,
+              completedAt: completion?.completedAt,
+            };
+          });
+
           daysData.push({
             dayIndex: day.dayIndex,
             globalDayIndex: globalDay,
@@ -251,7 +410,7 @@ export async function GET(
             dayName: dayNames[dayDateOfWeek],
             isToday: dayDate.toDateString() === today.toDateString(),
             isPast: dayDate < today,
-            tasks: day.tasks || [],
+            tasks: tasksWithCompletion,
             habits: day.habits,
             linkedEventIds: dayEventIds,
             linkedArticleIds: dayArticleIds,

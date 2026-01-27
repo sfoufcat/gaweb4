@@ -25,9 +25,88 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { ProgramInstance, ProgramInstanceWeek } from '@/types';
+import type { ProgramInstance, ProgramInstanceWeek, ProgramInstanceDay, ProgramTaskTemplate } from '@/types';
 
 type RouteParams = { params: Promise<{ instanceId: string }> };
+
+/**
+ * Helper to convert task template to instance task
+ */
+function toInstanceTask(task: ProgramTaskTemplate): ProgramInstanceDay['tasks'][0] {
+  return {
+    id: task.id || crypto.randomUUID(),
+    label: task.label,
+    type: task.type,
+    isPrimary: task.isPrimary,
+    estimatedMinutes: task.estimatedMinutes,
+    notes: task.notes,
+    tag: task.tag,
+    source: 'week' as const,
+  };
+}
+
+/**
+ * Re-distributes tasks for a partial week using the correct active range.
+ * Used for migrating stale instances where tasks were distributed before the fix.
+ */
+function redistributeTasksForPartialWeek(
+  weeklyTasks: ProgramTaskTemplate[],
+  days: ProgramInstanceDay[],
+  distribution: string | undefined,
+  activeStartDay: number,
+  activeEndDay: number
+): ProgramInstanceDay[] {
+  const numDays = days.length;
+  if (numDays === 0 || weeklyTasks.length === 0) return days;
+
+  const activeStartIdx = Math.max(0, activeStartDay - 1);
+  const activeEndIdx = Math.min(numDays - 1, activeEndDay - 1);
+  const activeRange = activeEndIdx - activeStartIdx + 1;
+
+  // Clone days and clear tasks for re-distribution
+  const updatedDays = days.map(d => ({ ...d, tasks: [] as ProgramInstanceDay['tasks'] }));
+
+  const distType = distribution || 'spread';
+
+  if (distType === 'first_day') {
+    for (const task of weeklyTasks) {
+      updatedDays[activeStartIdx].tasks.push(toInstanceTask(task));
+    }
+  } else if (distType === 'all_days') {
+    for (const task of weeklyTasks) {
+      for (let dayIdx = activeStartIdx; dayIdx <= activeEndIdx; dayIdx++) {
+        updatedDays[dayIdx].tasks.push(toInstanceTask(task));
+      }
+    }
+  } else {
+    // 'spread'
+    const numTasks = weeklyTasks.length;
+    if (numTasks >= activeRange) {
+      let taskIdx = 0;
+      for (let d = activeStartIdx; d <= activeEndIdx; d++) {
+        const remainingDays = activeEndIdx - d + 1;
+        const remainingTasks = numTasks - taskIdx;
+        const count = Math.ceil(remainingTasks / remainingDays);
+        for (let j = 0; j < count && taskIdx < numTasks; j++) {
+          updatedDays[d].tasks.push(toInstanceTask(weeklyTasks[taskIdx++]));
+        }
+      }
+    } else {
+      for (let i = 0; i < numTasks; i++) {
+        let targetDayIdx: number;
+        if (numTasks === 1) {
+          targetDayIdx = activeStartIdx;
+        } else {
+          const offset = Math.round(i * (activeRange - 1) / (numTasks - 1));
+          targetDayIdx = activeStartIdx + offset;
+        }
+        updatedDays[targetDayIdx].tasks.push(toInstanceTask(weeklyTasks[i]));
+      }
+    }
+  }
+
+  return updatedDays;
+}
 
 /**
  * GET /api/instances/[instanceId]
@@ -99,6 +178,62 @@ export async function GET(
       updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
       lastSyncedFromTemplate: data.lastSyncedFromTemplate?.toDate?.()?.toISOString?.() || data.lastSyncedFromTemplate,
     };
+
+    // MIGRATION: Fix stale task distribution in partial weeks
+    // Instances created before the partial week fix have tasks distributed to all days
+    // instead of only active days. Detect and fix this on load.
+    const daysPerWeek = data.includeWeekends !== false ? 7 : 5;
+    let needsMigration = false;
+
+    for (const week of instance.weeks) {
+      // Check if this is a partial week (onboarding or closing with partial days)
+      const hasPartialStart = week.actualStartDayOfWeek && week.actualStartDayOfWeek > 1;
+      const hasPartialEnd = week.actualEndDayOfWeek && week.actualEndDayOfWeek < daysPerWeek;
+
+      if ((hasPartialStart || hasPartialEnd) && week.weeklyTasks?.length && week.days?.length) {
+        // Calculate active range
+        const activeStartIdx = (week.actualStartDayOfWeek || 1) - 1;
+        const activeEndIdx = (week.actualEndDayOfWeek || daysPerWeek) - 1;
+
+        // Check if tasks exist on inactive days (sign of stale distribution)
+        const hasTasksOnInactiveDays = week.days.some((day, idx) =>
+          (idx < activeStartIdx || idx > activeEndIdx) && day.tasks && day.tasks.length > 0
+        );
+
+        if (hasTasksOnInactiveDays) {
+          console.log(`[INSTANCE_GET] Detected stale task distribution in week ${week.weekNumber}:`, {
+            actualStartDayOfWeek: week.actualStartDayOfWeek,
+            actualEndDayOfWeek: week.actualEndDayOfWeek,
+            activeRange: `${activeStartIdx + 1}-${activeEndIdx + 1}`,
+            daysWithTasks: week.days.map((d, i) => ({ dayIdx: i + 1, taskCount: d.tasks?.length || 0 })),
+          });
+
+          // Re-distribute tasks to correct days
+          week.days = redistributeTasksForPartialWeek(
+            week.weeklyTasks as ProgramTaskTemplate[],
+            week.days as ProgramInstanceDay[],
+            week.distribution,
+            week.actualStartDayOfWeek || 1,
+            week.actualEndDayOfWeek || daysPerWeek
+          );
+          needsMigration = true;
+        }
+      }
+    }
+
+    // Persist migration if needed
+    if (needsMigration) {
+      try {
+        await instanceDoc.ref.update({
+          weeks: instance.weeks,
+          updatedAt: new Date().toISOString(),
+        });
+        console.log(`[INSTANCE_GET] Migrated stale task distribution for instance ${instanceId}`);
+      } catch (migrationError) {
+        console.error(`[INSTANCE_GET] Failed to persist migration for instance ${instanceId}:`, migrationError);
+        // Continue anyway - the in-memory instance is already fixed
+      }
+    }
 
     // Debug: Log what weeks data we're returning from Firestore
     console.log('[INSTANCE_GET] Returning instance:', {

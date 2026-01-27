@@ -5,6 +5,7 @@ import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { SquadMember, SquadRoleInSquad } from '@/types';
+import { getSquadStatsWithCache } from '@/lib/squad-alignment';
 
 /**
  * GET /api/coach/org-squads/[squadId]/members
@@ -28,6 +29,10 @@ export async function GET(
     if (squadData?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Squad does not belong to your organization' }, { status: 403 });
     }
+
+    // Fetch alignment stats for all members (uses cache)
+    const coachId = squadData?.coachId || null;
+    const squadStats = await getSquadStatsWithCache(squadId, coachId);
 
     // Fetch all members of this squad
     const membersSnapshot = await adminDb.collection('squadMembers')
@@ -60,6 +65,9 @@ export async function GET(
         imageUrl = userData?.avatarUrl || userData?.imageUrl || '';
       }
 
+      // Get real alignment data for this member
+      const memberAlignment = squadStats.memberAlignments.get(memberData.userId);
+
       members.push({
         id: doc.id,
         squadId: memberData.squadId,
@@ -68,13 +76,20 @@ export async function GET(
         firstName,
         lastName,
         imageUrl,
-        alignmentScore: memberData.alignmentScore || null,
-        streak: memberData.streak || null,
+        alignmentScore: memberAlignment?.alignmentScore ?? 0,
+        streak: memberAlignment?.currentStreak ?? 0,
         moodState: memberData.moodState || null,
         createdAt: memberData.createdAt || new Date().toISOString(),
         updatedAt: memberData.updatedAt || new Date().toISOString(),
       });
     }
+
+    // Sort: coaches first, then by alignment score descending
+    members.sort((a, b) => {
+      if (a.roleInSquad === 'coach') return -1;
+      if (b.roleInSquad === 'coach') return 1;
+      return (b.alignmentScore || 0) - (a.alignmentScore || 0);
+    });
 
     return NextResponse.json({ members });
   } catch (error) {

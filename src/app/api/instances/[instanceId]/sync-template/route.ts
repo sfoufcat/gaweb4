@@ -22,9 +22,12 @@ import type {
   ProgramInstanceWeek,
   ProgramInstanceDay,
   ProgramTaskTemplate,
+  ProgramInstanceTask,
   TemplateSyncOptions,
+  ProgramEnrollment,
 } from '@/types';
 import { syncInstanceStructure } from '@/lib/program-utils';
+import { dayIndexToDate } from '@/lib/calendar-weeks';
 
 type RouteParams = { params: Promise<{ instanceId: string }> };
 
@@ -68,56 +71,297 @@ function toInstanceTask(task: ProgramTaskTemplate): ProgramInstanceDay['tasks'][
 
 /**
  * Distribute weekly tasks to days based on distribution setting
+ * 
+ * @param weeklyTasks - Tasks to distribute
+ * @param days - Days to distribute tasks into
+ * @param distribution - Distribution setting ('spread', 'all_days', 'first_day')
+ * @param activeStartDay - For partial weeks: first active day (1-based). E.g., 2 for Tue enrollment.
+ * @param activeEndDay - For partial weeks: last active day (1-based). E.g., 3 for program ending Wed.
  */
 function distributeTasksToDays(
   weeklyTasks: ProgramTaskTemplate[],
   days: ProgramInstanceDay[],
-  distribution?: string
+  distribution?: string,
+  activeStartDay?: number,
+  activeEndDay?: number
 ): ProgramInstanceDay[] {
-  if (!weeklyTasks.length || !days.length) return days;
+  const numDays = days.length;
+  if (numDays === 0 || weeklyTasks.length === 0) return days;
+
+  // Calculate active range (0-indexed)
+  // For onboarding: activeStartDay=2 (Tue) → activeStartIdx=1, activeEndIdx=4 (Tue-Fri)
+  // For closing ending Wed: activeStartDay=1, activeEndDay=3 → indices 0-2 (Mon-Wed)
+  const activeStartIdx = Math.max(0, (activeStartDay || 1) - 1);
+  const activeEndIdx = Math.min(numDays - 1, (activeEndDay || numDays) - 1);
+  const activeRange = activeEndIdx - activeStartIdx + 1;
+
+  // Clone days and clear tasks for re-distribution
+  const updatedDays = days.map(d => ({ ...d, tasks: [] as ProgramInstanceDay['tasks'] }));
 
   const distType = distribution || 'spread';
-  const updatedDays = days.map(d => ({ ...d, tasks: [...(d.tasks || [])] }));
 
   if (distType === 'first_day') {
-    // All tasks go to first day
-    updatedDays[0].tasks = weeklyTasks.map(toInstanceTask);
+    // All tasks go to first ACTIVE day
+    for (const task of weeklyTasks) {
+      updatedDays[activeStartIdx].tasks.push(toInstanceTask(task));
+    }
   } else if (distType === 'all_days') {
-    // All tasks go to every day
-    for (const day of updatedDays) {
-      day.tasks = weeklyTasks.map(toInstanceTask);
+    // All tasks go to every ACTIVE day
+    for (const task of weeklyTasks) {
+      for (let dayIdx = activeStartIdx; dayIdx <= activeEndIdx; dayIdx++) {
+        updatedDays[dayIdx].tasks.push(toInstanceTask(task));
+      }
     }
   } else {
-    // 'spread' - distribute evenly using interval-based positioning
+    // 'spread' - distribute evenly across ACTIVE days
     const numTasks = weeklyTasks.length;
-    const numDays = updatedDays.length;
 
-    // Clear all days first
-    for (const day of updatedDays) {
-      day.tasks = [];
-    }
+    if (numTasks === 0 || activeRange === 0) return updatedDays;
 
-    if (numTasks >= numDays) {
-      // More tasks than days: distribute roughly evenly
+    if (numTasks >= activeRange) {
+      // More tasks than active days: distribute roughly evenly
       let taskIdx = 0;
-      for (let d = 0; d < numDays; d++) {
-        const count = Math.ceil((numTasks - taskIdx) / (numDays - d));
+      for (let d = activeStartIdx; d <= activeEndIdx; d++) {
+        const remainingDays = activeEndIdx - d + 1;
+        const remainingTasks = numTasks - taskIdx;
+        const count = Math.ceil(remainingTasks / remainingDays);
         for (let j = 0; j < count && taskIdx < numTasks; j++) {
           updatedDays[d].tasks.push(toInstanceTask(weeklyTasks[taskIdx++]));
         }
       }
     } else {
-      // Fewer tasks than days: spread using intervals
-      const interval = numDays / numTasks;
+      // Fewer tasks than active days: spread using intervals within active range
       for (let i = 0; i < numTasks; i++) {
-        const dayOffset = Math.floor(i * interval + interval / 2);
-        const targetDay = Math.min(dayOffset, numDays - 1);
-        updatedDays[targetDay].tasks.push(toInstanceTask(weeklyTasks[i]));
+        let targetDayIdx: number;
+        if (numTasks === 1) {
+          targetDayIdx = activeStartIdx;
+        } else {
+          const offset = Math.round(i * (activeRange - 1) / (numTasks - 1));
+          targetDayIdx = activeStartIdx + offset;
+        }
+        updatedDays[targetDayIdx].tasks.push(toInstanceTask(weeklyTasks[i]));
       }
     }
   }
 
   return updatedDays;
+}
+
+/**
+ * Get enrollments for a program instance
+ * - For cohort instances: query by cohortId
+ * - For individual instances: query by enrollmentId
+ */
+async function getEnrollmentsForInstance(instance: ProgramInstance): Promise<ProgramEnrollment[]> {
+  console.log(`[INSTANCE_SYNC_TEMPLATE] getEnrollmentsForInstance: type=${instance.type}, cohortId=${instance.cohortId}, enrollmentId=${instance.enrollmentId}`);
+
+  // Use same status filter as Week Save route: active, upcoming, or completed
+  // (not 'cancelled' or 'paused')
+  let query = adminDb.collection('program_enrollments')
+    .where('status', 'in', ['active', 'upcoming', 'completed']);
+
+  if (instance.type === 'cohort' && instance.cohortId) {
+    query = query.where('cohortId', '==', instance.cohortId);
+  } else if (instance.type === 'individual' && instance.enrollmentId) {
+    query = query.where('__name__', '==', instance.enrollmentId);
+  } else {
+    console.log(`[INSTANCE_SYNC_TEMPLATE] getEnrollmentsForInstance: no cohortId or enrollmentId, returning []`);
+    return [];
+  }
+
+  const snapshot = await query.get();
+  console.log(`[INSTANCE_SYNC_TEMPLATE] getEnrollmentsForInstance: found ${snapshot.docs.length} enrollments`);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProgramEnrollment));
+}
+
+/**
+ * Sync day tasks to user's tasks collection using the instance-based system.
+ * Creates, updates, and DELETES tasks to match the instance.
+ * (Full sync - removes tasks no longer in instance, unlike cron which only adds)
+ */
+async function syncInstanceDayTasksToUser(
+  instanceId: string,
+  userId: string,
+  dayIndex: number,
+  tasks: ProgramInstanceTask[],
+  calendarDate: string,
+  organizationId: string | undefined
+): Promise<number> {
+  const batch = adminDb.batch();
+  const now = new Date().toISOString();
+  let created = 0, updated = 0, deleted = 0;
+
+  // Get org's focus limit setting
+  let focusLimit = 3; // Default
+  if (organizationId) {
+    try {
+      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+      const orgSettings = orgSettingsDoc.data();
+      focusLimit = orgSettings?.defaultDailyFocusSlots ?? 3;
+    } catch {
+      // Fallback to 3 if org settings can't be fetched
+    }
+  }
+
+  // Get existing tasks for this instance + day + user
+  const existingTasksQuery = await adminDb.collection('tasks')
+    .where('userId', '==', userId)
+    .where('instanceId', '==', instanceId)
+    .where('dayIndex', '==', dayIndex)
+    .get();
+
+  const existingTasksByInstanceTaskId = new Map<string, { id: string; listType?: string }>();
+  for (const doc of existingTasksQuery.docs) {
+    const data = doc.data();
+    if (data.instanceTaskId) {
+      existingTasksByInstanceTaskId.set(data.instanceTaskId, {
+        id: doc.id,
+        listType: data.listType,
+      });
+    }
+  }
+
+  // Count how many focus tasks the user already has for this date (excluding this instance's tasks)
+  let existingFocusCount = 0;
+  if (calendarDate) {
+    const focusTasksQuery = await adminDb.collection('tasks')
+      .where('userId', '==', userId)
+      .where('date', '==', calendarDate)
+      .where('listType', '==', 'focus')
+      .get();
+    // Count focus tasks that are NOT from this instance (to avoid double counting)
+    existingFocusCount = focusTasksQuery.docs.filter(doc => doc.data().instanceId !== instanceId).length;
+  }
+
+  let availableFocusSlots = focusLimit - existingFocusCount;
+  const processedInstanceTaskIds = new Set<string>();
+
+  // Separate primary and non-primary tasks
+  const primaryTasks = tasks.filter(t => t.isPrimary);
+  const nonPrimaryTasks = tasks.filter(t => !t.isPrimary);
+
+  // Process primary tasks first (try to put in Focus)
+  for (const task of primaryTasks) {
+    processedInstanceTaskIds.add(task.id);
+    const existing = existingTasksByInstanceTaskId.get(task.id);
+
+    if (existing) {
+      // Update existing task - preserve listType if already set
+      const taskRef = adminDb.collection('tasks').doc(existing.id);
+      batch.update(taskRef, {
+        label: task.label,
+        title: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes || null,
+        notes: task.notes || null,
+        tag: task.tag || null,
+        date: calendarDate,
+        updatedAt: now,
+      });
+      updated++;
+    } else {
+      // Create new task
+      const listType = availableFocusSlots > 0 ? 'focus' : 'backlog';
+      if (listType === 'focus') {
+        availableFocusSlots--;
+      }
+
+      const taskRef = adminDb.collection('tasks').doc();
+      batch.set(taskRef, {
+        userId,
+        instanceId,
+        instanceTaskId: task.id,
+        label: task.label,
+        title: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes || null,
+        notes: task.notes || null,
+        tag: task.tag || null,
+        source: 'program',
+        sourceType: 'program',
+        listType,
+        status: 'pending',
+        order: created,
+        isPrivate: false,
+        dayIndex,
+        date: calendarDate,
+        completed: false,
+        completedAt: null,
+        createdAt: now,
+        updatedAt: now,
+        ...(organizationId && { organizationId }),
+      });
+      created++;
+    }
+  }
+
+  // Process non-primary tasks (always go to backlog for new tasks)
+  for (const task of nonPrimaryTasks) {
+    processedInstanceTaskIds.add(task.id);
+    const existing = existingTasksByInstanceTaskId.get(task.id);
+
+    if (existing) {
+      // Update existing task - preserve listType
+      const taskRef = adminDb.collection('tasks').doc(existing.id);
+      batch.update(taskRef, {
+        label: task.label,
+        title: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes || null,
+        notes: task.notes || null,
+        tag: task.tag || null,
+        date: calendarDate,
+        updatedAt: now,
+      });
+      updated++;
+    } else {
+      // Create new task
+      const taskRef = adminDb.collection('tasks').doc();
+      batch.set(taskRef, {
+        userId,
+        instanceId,
+        instanceTaskId: task.id,
+        label: task.label,
+        title: task.label,
+        isPrimary: task.isPrimary,
+        type: task.type || 'task',
+        estimatedMinutes: task.estimatedMinutes || null,
+        notes: task.notes || null,
+        tag: task.tag || null,
+        source: 'program',
+        sourceType: 'program',
+        listType: 'backlog',
+        status: 'pending',
+        order: created,
+        isPrivate: false,
+        dayIndex,
+        date: calendarDate,
+        completed: false,
+        completedAt: null,
+        createdAt: now,
+        updatedAt: now,
+        ...(organizationId && { organizationId }),
+      });
+      created++;
+    }
+  }
+
+  // Delete tasks that are no longer in the instance (template removed them)
+  for (const [instanceTaskId, existing] of existingTasksByInstanceTaskId.entries()) {
+    if (!processedInstanceTaskIds.has(instanceTaskId)) {
+      const taskRef = adminDb.collection('tasks').doc(existing.id);
+      batch.delete(taskRef);
+      deleted++;
+    }
+  }
+
+  await batch.commit();
+  console.log(`[INSTANCE_SYNC_TEMPLATE] syncInstanceDayTasksToUser: ${created} created, ${updated} updated, ${deleted} deleted for user ${userId} day ${dayIndex}`);
+
+  return created;
 }
 
 export async function POST(
@@ -261,6 +505,10 @@ export async function POST(
         // Preserve existing calendar dates
         calendarStartDate: existingWeek?.calendarStartDate,
         calendarEndDate: existingWeek?.calendarEndDate,
+        // Preserve partial week indicators for task distribution
+        actualStartDayOfWeek: existingWeek?.actualStartDayOfWeek,
+        actualEndDayOfWeek: existingWeek?.actualEndDayOfWeek,
+        displayDaysCount: existingWeek?.displayDaysCount,
         // Initialize with existing or empty
         weeklyTasks: existingWeek?.weeklyTasks || [],
         days: existingWeek?.days || [],
@@ -379,7 +627,9 @@ export async function POST(
         syncedWeek.days = distributeTasksToDays(
           syncedWeek.weeklyTasks,
           syncedWeek.days,
-          syncedWeek.distribution || 'spread'
+          syncedWeek.distribution || 'spread',
+          syncedWeek.actualStartDayOfWeek,
+          syncedWeek.actualEndDayOfWeek
         );
       }
 
@@ -428,6 +678,50 @@ export async function POST(
       `(${weeksCreated} created, ${weeksUpdated} updated) for instance ${instanceId}`
     );
 
+    // Sync distributed tasks to user's tasks collection
+    let userTasksSynced = 0;
+    console.log(`[INSTANCE_SYNC_TEMPLATE] DEBUG: distributeAfterSync=${distributeAfterSync}, instance.startDate=${instance.startDate}`);
+    console.log(`[INSTANCE_SYNC_TEMPLATE] DEBUG: updatedWeeks=${updatedWeeks.length}, first week days=${updatedWeeks[0]?.days?.length}, tasks on first active day=${updatedWeeks[0]?.days?.find(d => d.tasks?.length)?.tasks?.length || 0}`);
+
+    if (distributeAfterSync) {
+      try {
+        const enrollments = await getEnrollmentsForInstance(instance);
+        console.log(`[INSTANCE_SYNC_TEMPLATE] Syncing tasks for ${enrollments.length} enrolled users`);
+
+        for (const enrollment of enrollments) {
+          for (const week of updatedWeeks) {
+            for (const day of week.days || []) {
+              // Calculate calendarDate if missing (same fallback as Week Save)
+              let effectiveCalendarDate = day.calendarDate;
+              if (!effectiveCalendarDate && instance.startDate && typeof day.globalDayIndex === 'number') {
+                const includeWeekends = instance.includeWeekends !== false;
+                const calculatedDate = dayIndexToDate(instance.startDate, day.globalDayIndex, includeWeekends);
+                effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
+                console.log(`[INSTANCE_SYNC_TEMPLATE] Calculated calendarDate for day ${day.globalDayIndex}: ${effectiveCalendarDate}`);
+              }
+
+              if (effectiveCalendarDate && day.tasks?.length > 0) {
+                const created = await syncInstanceDayTasksToUser(
+                  instanceId,
+                  enrollment.userId,
+                  day.globalDayIndex,
+                  day.tasks as ProgramInstanceTask[],
+                  effectiveCalendarDate,
+                  instance.organizationId
+                );
+                userTasksSynced += created;
+              }
+            }
+          }
+        }
+
+        console.log(`[INSTANCE_SYNC_TEMPLATE] Created ${userTasksSynced} user tasks`);
+      } catch (syncError) {
+        // Don't fail the whole operation if user task sync fails
+        console.error('[INSTANCE_SYNC_TEMPLATE] User task sync error:', syncError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       weeksUpdated: weeksUpdated + weeksCreated,
@@ -435,7 +729,7 @@ export async function POST(
       weeksModified: weeksUpdated,
       message: `Synced ${weeksUpdated + weeksCreated} weeks from template`,
       lastSyncedFromTemplate: now,
-      ...(distributeAfterSync && { distributed: true }),
+      ...(distributeAfterSync && { distributed: true, userTasksSynced }),
     });
   } catch (error) {
     console.error('[INSTANCE_SYNC_TEMPLATE] Error:', error);

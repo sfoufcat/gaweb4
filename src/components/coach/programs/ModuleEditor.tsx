@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { ProgramModule, ProgramWeek } from '@/types';
-import { Trash2, Calendar, AlertTriangle, Info } from 'lucide-react';
+import type { ProgramModule, ProgramWeek, ProgramHabitTemplate } from '@/types';
+import { Trash2, Calendar, AlertTriangle, Info, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
@@ -45,16 +45,14 @@ export function ModuleEditor({
   type ModuleFormData = {
     name: string;
     description: string;
-    previewTitle: string;
-    previewDescription: string;
+    habits: ProgramHabitTemplate[];
   };
 
   const getDefaultFormData = useCallback((): ModuleFormData => ({
     name: module.name,
     description: module.description || '',
-    previewTitle: module.previewTitle || '',
-    previewDescription: module.previewDescription || '',
-  }), [module.name, module.description, module.previewTitle, module.previewDescription]);
+    habits: module.habits || [],
+  }), [module.name, module.description, module.habits]);
 
   const [formData, setFormData] = useState<ModuleFormData>(() => {
     if (pendingData) {
@@ -98,11 +96,11 @@ export function ModuleEditor({
 
   // Check for changes and register with context
   useEffect(() => {
+    const habitsChanged = JSON.stringify(formData.habits) !== JSON.stringify(module.habits || []);
     const changed =
       formData.name !== module.name ||
       formData.description !== (module.description || '') ||
-      formData.previewTitle !== (module.previewTitle || '') ||
-      formData.previewDescription !== (module.previewDescription || '');
+      habitsChanged;
     setHasChanges(changed);
 
     // Register changes with context if available
@@ -114,8 +112,7 @@ export function ModuleEditor({
         originalData: {
           name: module.name,
           description: module.description,
-          previewTitle: module.previewTitle,
-          previewDescription: module.previewDescription,
+          habits: module.habits,
         },
         pendingData: formData,
         apiEndpoint: getApiEndpoint(),
@@ -137,8 +134,7 @@ export function ModuleEditor({
     await onSave({
       name: formData.name,
       description: formData.description || undefined,
-      previewTitle: formData.previewTitle || undefined,
-      previewDescription: formData.previewDescription || undefined,
+      habits: formData.habits,
     });
     setHasChanges(false);
 
@@ -147,6 +143,28 @@ export function ModuleEditor({
       const changeKey = editorContext.getChangeKey('module', module.id);
       editorContext.discardChange(changeKey);
     }
+  };
+
+  // Habit management helpers
+  const addHabit = () => {
+    if (formData.habits.length >= 3) return;
+    const newHabit: ProgramHabitTemplate = {
+      title: '',
+      description: '',
+      frequency: 'daily',
+    };
+    setFormData({ ...formData, habits: [...formData.habits, newHabit] });
+  };
+
+  const updateHabit = (index: number, updates: Partial<ProgramHabitTemplate>) => {
+    const newHabits = [...formData.habits];
+    newHabits[index] = { ...newHabits[index], ...updates };
+    setFormData({ ...formData, habits: newHabits });
+  };
+
+  const removeHabit = (index: number) => {
+    const newHabits = formData.habits.filter((_, i) => i !== index);
+    setFormData({ ...formData, habits: newHabits });
   };
 
   const handleDelete = async () => {
@@ -210,59 +228,126 @@ export function ModuleEditor({
         />
       </div>
 
-      {/* Module Description (Coach only) */}
+      {/* Module Description */}
       <div>
         <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-          Description <span className="text-xs text-[#a7a39e]">(coach notes, not shown to clients)</span>
+          Description <span className="text-xs text-[#a7a39e]">(shown to clients)</span>
         </label>
         <textarea
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="Internal notes about this module..."
+          placeholder="What clients will learn in this module..."
           rows={3}
           disabled={readOnly}
           className={`w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
         />
       </div>
 
-      {/* Client Preview Section */}
+      {/* Module Habits Section */}
       <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-        <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
-          Client Preview
-        </h4>
-        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-4">
-          This is what clients see before unlocking this module
-        </p>
-
-        {/* Preview Title */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Preview Title
-          </label>
-          <input
-            type="text"
-            value={formData.previewTitle}
-            onChange={(e) => setFormData({ ...formData, previewTitle: e.target.value })}
-            placeholder={formData.name || 'Module title...'}
-            disabled={readOnly}
-            className={`w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
-          />
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              Module Habits
+            </h4>
+            <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mt-1">
+              Habits active while users are in this module (max 3)
+            </p>
+          </div>
+          {!readOnly && formData.habits.length < 3 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addHabit}
+              className="text-xs"
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Habit
+            </Button>
+          )}
         </div>
 
-        {/* Preview Description */}
-        <div>
-          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-            Preview Description
-          </label>
-          <textarea
-            value={formData.previewDescription}
-            onChange={(e) => setFormData({ ...formData, previewDescription: e.target.value })}
-            placeholder="What clients will learn in this module..."
-            rows={2}
-            disabled={readOnly}
-            className={`w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
-          />
-        </div>
+        {formData.habits.length === 0 ? (
+          <div className="p-4 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg text-center">
+            <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+              No habits defined for this module
+            </p>
+            {!readOnly && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={addHabit}
+                className="mt-2 text-xs"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add your first habit
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {formData.habits.map((habit, index) => (
+              <div
+                key={index}
+                className="p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 space-y-3">
+                    {/* Habit Title */}
+                    <input
+                      type="text"
+                      value={habit.title}
+                      onChange={(e) => updateHabit(index, { title: e.target.value })}
+                      placeholder="Habit title (e.g., Morning journaling)"
+                      disabled={readOnly}
+                      className={`w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    />
+
+                    {/* Habit Description */}
+                    <input
+                      type="text"
+                      value={habit.description || ''}
+                      onChange={(e) => updateHabit(index, { description: e.target.value })}
+                      placeholder="Description (optional)"
+                      disabled={readOnly}
+                      className={`w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    />
+
+                    {/* Frequency Select */}
+                    <select
+                      value={habit.frequency}
+                      onChange={(e) => updateHabit(index, { frequency: e.target.value as 'daily' | 'weekday' | 'custom' })}
+                      disabled={readOnly}
+                      className={`w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekday">Weekdays only (Mon-Fri)</option>
+                      <option value="custom">Custom (Mon, Wed, Fri)</option>
+                    </select>
+                  </div>
+
+                  {/* Remove Button */}
+                  {!readOnly && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeHabit(index)}
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {formData.habits.length >= 3 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-albert">
+                Maximum 3 habits per module reached
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Weeks Overview - Collapsible */}

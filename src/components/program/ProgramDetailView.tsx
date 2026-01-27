@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -13,7 +13,7 @@ import { useProgramCoachingData } from '@/hooks/useProgramCoachingData';
 import { RequestCallModal } from '@/components/scheduling';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { calculateCalendarWeeks, getCalendarWeekForDay, type CalendarWeek } from '@/lib/calendar-weeks';
-import { useProgramWeeklyContent } from '@/hooks/useProgramWeeklyContent';
+import { useProgramWeeklyContent, type WeeklyContentResponse } from '@/hooks/useProgramWeeklyContent';
 import { WeeklySection } from './WeeklySection';
 import { ProgramSchedule } from './ProgramSchedule';
 import { WeeklyOutcomes } from './WeeklyOutcomes';
@@ -171,7 +171,68 @@ export function ProgramDetailView({
     downloads: weeklyDownloads,
     links: weeklyLinks,
     isLoading: weeklyContentLoading,
+    mutate: mutateWeeklyContent,
   } = useProgramWeeklyContent(program.id);
+
+  // Task toggle handler for program schedule
+  const handleTaskToggle = useCallback(async (taskId: string, dayIndex: number, completed: boolean) => {
+    if (!enrollment?.id || isDemoMode) {
+      if (isDemoMode) {
+        openSignupModal();
+      }
+      return;
+    }
+
+    // Find the day and task to get label and calendar date
+    const day = weeklyDays.find(d => d.dayIndex === dayIndex);
+    const task = day?.tasks.find(t => t.id === taskId);
+    const label = task?.label || 'Task';
+    const calendarDate = day?.calendarDate;
+
+    // Optimistic update
+    mutateWeeklyContent((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        days: current.days.map(d => {
+          if (d.dayIndex !== dayIndex) return d;
+          return {
+            ...d,
+            tasks: d.tasks.map(t => {
+              if (t.id !== taskId) return t;
+              return { ...t, completed };
+            }),
+          };
+        }),
+      };
+    }, { revalidate: false });
+
+    try {
+      const response = await fetch(`/api/programs/${program.id}/tasks/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enrollmentId: enrollment.id,
+          taskId,
+          dayIndex,
+          completed,
+          label,
+          calendarDate,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[TASK_TOGGLE] Error:', errorData.error);
+        // Revert optimistic update on error
+        mutateWeeklyContent();
+      }
+    } catch (error) {
+      console.error('[TASK_TOGGLE] Network error:', error);
+      // Revert optimistic update on error
+      mutateWeeklyContent();
+    }
+  }, [enrollment?.id, program.id, weeklyDays, mutateWeeklyContent, isDemoMode, openSignupModal]);
 
   // 3-day focus accordion state - all collapsed by default
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
@@ -811,12 +872,14 @@ export function ProgramDetailView({
         <div className="mt-8">
           <ProgramSchedule
             days={weeklyDays}
+            week={weeklyWeek}
             events={weeklyEvents}
             courses={weeklyCourses}
             articles={weeklyArticles}
             downloads={weeklyDownloads}
             links={weeklyLinks}
             enrollmentId={enrollment?.id}
+            onTaskToggle={handleTaskToggle}
           />
         </div>
       )}

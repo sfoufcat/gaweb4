@@ -20,6 +20,7 @@ import type { ProgramTaskTemplate } from '@/types';
 
 interface ProgramScheduleProps {
   days: WeeklyContentResponse['days'];
+  week: WeeklyContentResponse['week'];
   events: WeeklyContentResponse['events'];
   courses: WeeklyContentResponse['courses'];
   articles: WeeklyContentResponse['articles'];
@@ -31,6 +32,7 @@ interface ProgramScheduleProps {
 
 export function ProgramSchedule({
   days,
+  week,
   events,
   courses,
   articles,
@@ -39,9 +41,19 @@ export function ProgramSchedule({
   enrollmentId,
   onTaskToggle,
 }: ProgramScheduleProps) {
+  // Partial week info - which days are active (not blurred)
+  // actualStartDayOfWeek: 1=Mon, 2=Tue, etc. (>1 means partial start)
+  // actualEndDayOfWeek: 5=Fri, etc. (<5 means partial end for 5-day programs)
+  const actualStartDayOfWeek = week?.actualStartDayOfWeek ?? 1;
+  const actualEndDayOfWeek = week?.actualEndDayOfWeek ?? 5;
+  
+  // Find first active day for default selection
   const [selectedIdx, setSelectedIdx] = useState<number>(() => {
     const todayIdx = days.findIndex(d => d.isToday);
-    return todayIdx >= 0 ? todayIdx : 0;
+    if (todayIdx >= 0) return todayIdx;
+    // If no today, select first active day (respecting partial week)
+    const firstActiveIdx = actualStartDayOfWeek - 1;
+    return Math.max(0, firstActiveIdx);
   });
 
   if (days.length === 0) return null;
@@ -91,23 +103,31 @@ export function ProgramSchedule({
             const dayNum = date?.getDate() || '';
             const dayName = day.isToday ? 'Today' : day.dayName.slice(0, 3);
             const hasItems = day.tasks.length > 0 || hasResources(day);
+            
+            // Check if this day is inactive (outside the partial week range)
+            // day.dayIndex is 1-based within the week (1=Mon, 2=Tue, etc.)
+            const isInactive = day.dayIndex < actualStartDayOfWeek || day.dayIndex > actualEndDayOfWeek;
 
             return (
               <button
                 key={day.dayIndex}
-                onClick={() => setSelectedIdx(idx)}
+                onClick={() => !isInactive && setSelectedIdx(idx)}
+                disabled={isInactive}
                 className={`
                   flex-1 relative py-3.5 flex flex-col items-center gap-2
                   transition-all duration-200
-                  ${day.isPast && !day.isToday ? 'opacity-40' : ''}
+                  ${isInactive ? 'opacity-30 cursor-not-allowed' : ''}
+                  ${!isInactive && day.isPast && !day.isToday ? 'opacity-40' : ''}
                 `}
               >
                 {/* Day name */}
                 <span className={`
                   text-[10px] font-semibold uppercase tracking-wider
-                  ${day.isToday
-                    ? 'text-brand-accent'
-                    : 'text-zinc-400 dark:text-zinc-500'
+                  ${isInactive
+                    ? 'text-zinc-300 dark:text-zinc-600'
+                    : day.isToday
+                      ? 'text-brand-accent'
+                      : 'text-zinc-400 dark:text-zinc-500'
                   }
                 `}>
                   {dayName}
@@ -118,18 +138,24 @@ export function ProgramSchedule({
                   <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center
                     text-[16px] font-semibold transition-all duration-200
-                    ${day.isToday
-                      ? 'bg-brand-accent text-white'
-                      : isSelected
-                        ? 'bg-brand-accent/10 text-brand-accent'
-                        : 'text-zinc-700 dark:text-zinc-300'
+                    ${isInactive
+                      ? 'text-zinc-300 dark:text-zinc-600'
+                      : day.isToday
+                        ? 'bg-brand-accent text-white'
+                        : isSelected
+                          ? 'text-brand-accent'
+                          : 'text-zinc-700 dark:text-zinc-300'
                     }
                   `}>
                     {dayNum}
                   </div>
-                  {/* Content indicator */}
-                  {hasItems && !day.isToday && (
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-brand-accent/60" />
+                  {/* Selection underline */}
+                  {isSelected && !day.isToday && (
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-brand-accent" />
+                  )}
+                  {/* Content indicator (only when not selected) */}
+                  {hasItems && !day.isToday && !isInactive && !isSelected && (
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-brand-accent/50" />
                   )}
                 </div>
               </button>
@@ -138,20 +164,20 @@ export function ProgramSchedule({
         </div>
 
         {/* Content area */}
-        <div className="p-4">
+        <div className="px-5 py-4 min-h-[120px]">
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedIdx}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
             >
               {hasContent ? (
-                <div className="space-y-3">
+                <div className="space-y-1">
                   {/* Tasks */}
                   {selectedDay.tasks.length > 0 && (
-                    <div className="space-y-2">
+                    <div>
                       {selectedDay.tasks.map((task, i) => (
                         <TaskItem
                           key={task.id || i}
@@ -253,12 +279,9 @@ export function ProgramSchedule({
                   )}
                 </div>
               ) : (
-                <div className="py-8 text-center">
-                  <div className="w-10 h-10 mx-auto mb-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-zinc-400 dark:text-zinc-500" />
-                  </div>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    No tasks scheduled
+                <div className="flex items-center justify-center min-h-[80px]">
+                  <p className="text-sm text-zinc-400 dark:text-zinc-500">
+                    No tasks for this day
                   </p>
                 </div>
               )}
@@ -292,30 +315,30 @@ function TaskItem({
       onClick={handleClick}
       disabled={!onToggle}
       className={`
-        w-full flex items-center gap-3 py-2.5 text-left
+        w-full flex items-center gap-3 py-2 text-left
         transition-all duration-200 group
-        ${onToggle ? 'cursor-pointer' : 'cursor-default'}
+        ${onToggle ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}
       `}
     >
+      {/* Checkbox matching DailyFocus style */}
       <div className={`
-        w-[22px] h-[22px] rounded-full flex items-center justify-center flex-shrink-0
-        transition-all duration-200
+        w-6 h-6 rounded-md border flex items-center justify-center flex-shrink-0
+        transition-all duration-300 bg-white dark:bg-[#181d26]
         ${isCompleted
-          ? 'bg-brand-accent text-white'
-          : 'border-2 border-zinc-300 dark:border-zinc-600 group-hover:border-brand-accent/50'
+          ? 'border-brand-accent'
+          : 'border-[#e1ddd8] dark:border-[#262b35]'
         }
       `}>
         {isCompleted && (
-          <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-            <path d="M2.5 6L5 8.5L9.5 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          <div className="w-4 h-4 bg-brand-accent rounded-sm" />
         )}
       </div>
       <span className={`
-        text-[15px] leading-snug flex-1
+        font-albert text-[16px] font-medium tracking-[-0.3px] leading-snug flex-1
+        transition-all duration-300
         ${isCompleted
-          ? 'text-zinc-400 dark:text-zinc-500 line-through'
-          : 'text-zinc-800 dark:text-zinc-100'
+          ? 'text-text-muted dark:text-[#7d8190] line-through'
+          : 'text-text-primary dark:text-[#f5f5f8]'
         }
       `}>
         {task.label}

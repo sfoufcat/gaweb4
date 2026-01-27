@@ -516,14 +516,48 @@ Use Task Master for **project planning and task tracking** when working on large
 **PRD location:** `.taskmaster/docs/prd.txt`
 **Tasks file:** `.taskmaster/tasks/tasks.json`
 
+### Firebase MCP (Firestore Queries)
+
+**ALWAYS use Firebase MCP** for querying and interacting with Firestore data instead of writing code.
+
+**When to use:**
+- Querying Firestore collections/documents
+- Checking document structure and data
+- Debugging data issues
+- Listing collections
+- Getting/setting Realtime Database data
+
+**Key tools:**
+- `firestore_list_collections` - List all collections in the database
+- `firestore_get_documents` - Get documents by exact path
+- `firestore_query_collection` - Query with filters, ordering, limits
+- `firestore_delete_document` - Delete a document
+- `realtimedatabase_get_data` / `realtimedatabase_set_data` - RTDB operations
+- `firebase_get_security_rules` - View security rules
+- `firebase_validate_security_rules` - Check rules for errors
+
+**Example workflow:**
+```
+1. firestore_list_collections() → See all collections
+2. firestore_query_collection(collection_path="users", filters=[...]) → Query data
+3. firestore_get_documents(paths=["users/abc123"]) → Get specific doc
+```
+
+**DO NOT:**
+- Write custom scripts just to query Firestore data
+- Use Firebase Admin SDK in throwaway code for data inspection
+- Guess at document structure - query it directly
+- Ask the user to search Firebase - just use the MCP tools yourself
+
 ### MCP Best Practices
 
 1. **Prefer Serena over raw file reads** for code exploration
 2. **Use Context7** before implementing unfamiliar library features
 3. **Use Chrome DevTools** to verify UI changes work correctly
 4. **Use Task Master** for complex, multi-step feature work
-5. **Read relevant Serena memories** at the start of a session
-6. **Use thinking tools** (`think_about_collected_information`, `think_about_task_adherence`) before making changes
+5. **Use Firebase MCP** for all Firestore/RTDB queries and data inspection
+6. **Read relevant Serena memories** at the start of a session
+7. **Use thinking tools** (`think_about_collected_information`, `think_about_task_adherence`) before making changes
 
 ## Session Todos Workflow
 

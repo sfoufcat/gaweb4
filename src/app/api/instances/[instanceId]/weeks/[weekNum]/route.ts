@@ -565,7 +565,7 @@ export async function PATCH(
     // If distribution is specified (or distributeTasksNow flag is set), distribute weekly tasks to days
     // Note: body.weeklyTasks can be an empty array (coach deleted all tasks), so check for array type
     // Use body.distribution, or fall back to existing week distribution if distributeTasksNow is set
-    const distributionSetting = body.distribution || (body.distributeTasksNow && updatedWeek.distribution);
+    const distributionSetting = body.distribution || (body.distributeTasksNow && (updatedWeek.distribution || 'spread'));
 
     console.log(`[INSTANCE_WEEK_PATCH] Distribution check:`, {
       bodyDistribution: body.distribution,
@@ -597,11 +597,19 @@ export async function PATCH(
       // Get the days for this week (ensure it's an array)
       const daysToUpdate = updatedWeek.days || [];
 
-      console.log(`[INSTANCE_WEEK_PATCH] Distribution: ${distribution.type}, tasks: ${weeklyTasks.length}, days: ${daysToUpdate.length}`);
+      // Get active day range for partial weeks (e.g., onboarding starting mid-week)
+      // actualStartDayOfWeek: 1=Mon, 2=Tue, etc. (1-based)
+      const numDays = daysToUpdate.length;
+      const activeStartDay = (updatedWeek as { actualStartDayOfWeek?: number }).actualStartDayOfWeek || 1;
+      const activeEndDay = (updatedWeek as { actualEndDayOfWeek?: number }).actualEndDayOfWeek || numDays;
+      const activeStartIdx = activeStartDay - 1; // Convert to 0-based
+      const activeEndIdx = Math.min(activeEndDay - 1, numDays - 1);
+      const activeRange = activeEndIdx - activeStartIdx + 1;
+
+      console.log(`[INSTANCE_WEEK_PATCH] Distribution: ${distribution.type}, tasks: ${weeklyTasks.length}, days: ${numDays}, active range: ${activeStartIdx}-${activeEndIdx} (${activeRange} days)`);
 
       // Distribute tasks based on per-task dayTag (overrides) or program distribution (default)
       // IMPORTANT: Always clear old 'week' source tasks from days first
-      const numDays = daysToUpdate.length;
 
       // Build a set of weekly task labels for backwards compat filtering
       const weeklyTaskLabels = new Set(weeklyTasks.map(t => t.label));
@@ -648,9 +656,9 @@ export async function PATCH(
 
       console.log(`[INSTANCE_WEEK_PATCH] Task categories: daily=${dailyTasks.length}, spread=${spreadTasks.length}, specific=${specificDayTasks.size} days, auto=${autoTasks.length}`);
 
-      // Step 3: Add daily tasks to ALL days
+      // Step 3: Add daily tasks to ACTIVE days only (respects partial weeks)
       for (const task of dailyTasks) {
-        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+        for (let dayIdx = activeStartIdx; dayIdx <= activeEndIdx; dayIdx++) {
           daysToUpdate[dayIdx].tasks = [
             ...daysToUpdate[dayIdx].tasks,
             { ...task, source: 'week' as const },
@@ -658,10 +666,10 @@ export async function PATCH(
         }
       }
 
-      // Step 4: Add specific-day tasks to their designated day
+      // Step 4: Add specific-day tasks to their designated day (only if within active range)
       for (const [dayNum, tasks] of specificDayTasks) {
         const dayIdx = dayNum - 1; // dayTag is 1-based, array is 0-based
-        if (dayIdx >= 0 && dayIdx < numDays) {
+        if (dayIdx >= activeStartIdx && dayIdx <= activeEndIdx) {
           for (const task of tasks) {
             daysToUpdate[dayIdx].tasks = [
               ...daysToUpdate[dayIdx].tasks,
@@ -687,14 +695,15 @@ export async function PATCH(
         // Spread tasks still get spread
       }
 
-      // Spread tasks evenly across the week
-      if (tasksToSpread.length > 0 && numDays > 0) {
+      // Spread tasks evenly across ACTIVE days only (respects partial weeks)
+      if (tasksToSpread.length > 0 && activeRange > 0) {
         for (let taskIdx = 0; taskIdx < tasksToSpread.length; taskIdx++) {
           let targetDayIdx: number;
           if (tasksToSpread.length === 1) {
-            targetDayIdx = 0;
+            targetDayIdx = activeStartIdx;
           } else {
-            targetDayIdx = Math.round(taskIdx * (numDays - 1) / (tasksToSpread.length - 1));
+            const offset = Math.round(taskIdx * (activeRange - 1) / (tasksToSpread.length - 1));
+            targetDayIdx = activeStartIdx + offset;
           }
           daysToUpdate[targetDayIdx].tasks = [
             ...daysToUpdate[targetDayIdx].tasks,
@@ -703,9 +712,9 @@ export async function PATCH(
         }
       }
 
-      // Add repeat tasks to all days
+      // Add repeat tasks to ACTIVE days only (respects partial weeks)
       for (const task of tasksToRepeat) {
-        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+        for (let dayIdx = activeStartIdx; dayIdx <= activeEndIdx; dayIdx++) {
           daysToUpdate[dayIdx].tasks = [
             ...daysToUpdate[dayIdx].tasks,
             { ...task, source: 'week' as const },
@@ -713,11 +722,11 @@ export async function PATCH(
         }
       }
 
-      // Handle first_day distribution for auto tasks
+      // Handle first_day distribution for auto tasks (first ACTIVE day, not day 0)
       if (distribution.type === 'first_day' && autoTasks.length > 0) {
         for (const task of autoTasks) {
-          daysToUpdate[0].tasks = [
-            ...daysToUpdate[0].tasks,
+          daysToUpdate[activeStartIdx].tasks = [
+            ...daysToUpdate[activeStartIdx].tasks,
             { ...task, source: 'week' as const },
           ];
         }

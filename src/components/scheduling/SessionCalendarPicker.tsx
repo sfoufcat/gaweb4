@@ -183,7 +183,7 @@ export function SessionCalendarPicker({
             </div>
 
             {/* Days grid */}
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-1 justify-items-center">
               {calendarDays.map((day, index) => {
                 if (!day) {
                   return <div key={`empty-${index}`} className="h-9" />;
@@ -202,8 +202,8 @@ export function SessionCalendarPicker({
                     onClick={() => handleSelect(day)}
                     disabled={isDisabled || !isAvailable}
                     className={cn(
-                      'h-9 w-full rounded-lg text-sm font-medium transition-all duration-150',
-                      'focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-1 dark:focus:ring-offset-[#11141b]',
+                      'h-9 w-9 rounded-full text-sm font-medium transition-all duration-150',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/50 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-[#11141b]',
                       // Outside current month - always muted
                       !isCurrentMonth && 'text-[#d1cdc8] dark:text-[#3a4150] cursor-default',
                       // Current month but not available
@@ -213,18 +213,15 @@ export function SessionCalendarPicker({
                         'text-[#1a1a1a] dark:text-[#f5f5f8]',
                         'bg-brand-accent/10 dark:bg-brand-accent/15',
                         'hover:bg-brand-accent/20 dark:hover:bg-brand-accent/25',
-                        'ring-1 ring-inset ring-brand-accent/30',
                       ],
                       // Today (available, not selected)
                       isCurrentDay && isAvailable && !isSelected && [
                         'bg-brand-accent/15 dark:bg-brand-accent/20',
                         'text-brand-accent font-semibold',
-                        'ring-1 ring-inset ring-brand-accent/40',
                       ],
                       // Today (not available)
                       isCurrentDay && !isAvailable && isCurrentMonth && [
                         'text-[#a7a39e] dark:text-[#5f6470]',
-                        'ring-1 ring-inset ring-[#e1ddd8] dark:ring-[#3a4150]',
                       ],
                       // Selected
                       isSelected && [
@@ -246,11 +243,11 @@ export function SessionCalendarPicker({
             {/* Legend */}
             <div className="mt-3 pt-3 border-t border-[#e8e4df] dark:border-[#262b35] flex items-center justify-center gap-4 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-brand-accent/15 ring-1 ring-inset ring-brand-accent/30" />
+                <div className="w-3 h-3 rounded-full bg-brand-accent/15" />
                 <span>Available</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-brand-accent" />
+                <div className="w-3 h-3 rounded-full bg-brand-accent" />
                 <span>Selected</span>
               </div>
             </div>

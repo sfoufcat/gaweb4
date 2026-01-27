@@ -130,13 +130,11 @@ export function ModulePreviewSection({
 
                   <div className="text-left">
                     <h3 className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] leading-[1.3]">
-                      {isLocked && module.previewTitle
-                        ? module.previewTitle
-                        : module.name}
+                      {module.name}
                     </h3>
-                    {(isLocked ? module.previewDescription : module.description) && (
+                    {module.description && (
                       <p className="font-sans text-[13px] text-text-muted dark:text-[#7d8190] mt-0.5 line-clamp-1">
-                        {isLocked ? module.previewDescription : module.description}
+                        {module.description}
                       </p>
                     )}
                   </div>

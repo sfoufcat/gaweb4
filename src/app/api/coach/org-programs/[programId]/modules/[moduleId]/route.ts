@@ -81,12 +81,11 @@ export async function PATCH(
 
     if (body.name !== undefined) updateData.name = body.name.trim();
     if (body.description !== undefined) updateData.description = body.description?.trim() || null;
-    if (body.previewTitle !== undefined) updateData.previewTitle = body.previewTitle?.trim() || null;
-    if (body.previewDescription !== undefined) updateData.previewDescription = body.previewDescription?.trim() || null;
     if (body.order !== undefined) updateData.order = body.order;
     if (body.startDayIndex !== undefined) updateData.startDayIndex = body.startDayIndex;
     if (body.endDayIndex !== undefined) updateData.endDayIndex = body.endDayIndex;
     if (body.linkedCourseIds !== undefined) updateData.linkedCourseIds = body.linkedCourseIds || null;
+    if (body.habits !== undefined) updateData.habits = body.habits || [];
 
     await adminDb.collection('program_modules').doc(moduleId).update(updateData);
     console.log(`[COACH_ORG_PROGRAM_MODULE_PATCH] Updated module ${moduleId}`);

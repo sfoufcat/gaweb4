@@ -15,7 +15,8 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isUserOrgAdmin } from '@/lib/clerk-organizations';
-import { removeUserFromSquadEntirely } from '@/lib/program-engine';
+import { removeUserFromSquadEntirely, syncAllProgramTasks } from '@/lib/program-engine';
+import { ensureCohortInstanceExists, ensureEnrollmentInstanceExists } from '@/lib/program-instances';
 import type { ProgramEnrollment, Program } from '@/types';
 
 export async function GET(
@@ -638,6 +639,33 @@ export async function PATCH(
       } catch (cohortErr) {
         console.error(`[COACH_ENROLLMENT_RESUME] Failed to update cohort count (non-fatal):`, cohortErr);
       }
+    }
+
+    // 5. Ensure program_instances exists and sync program tasks
+    try {
+      if (enrollment.cohortId) {
+        await ensureCohortInstanceExists(programId, enrollment.cohortId, organizationId);
+        console.log(`[COACH_ENROLLMENT_RESUME] Ensured cohort instance exists for cohortId: ${enrollment.cohortId}`);
+      } else {
+        await ensureEnrollmentInstanceExists(programId, enrollmentId, organizationId);
+        console.log(`[COACH_ENROLLMENT_RESUME] Ensured enrollment instance exists for enrollmentId: ${enrollmentId}`);
+      }
+
+      // Sync all program tasks to the user's tasks collection
+      const syncResult = await syncAllProgramTasks({
+        userId: enrolledUserId,
+        enrollmentId,
+        mode: 'fill-empty',
+        coachUserId: userId,
+      });
+      console.log(`[COACH_ENROLLMENT_RESUME] Synced program tasks:`, {
+        tasksCreated: syncResult.tasksCreated,
+        daysProcessed: syncResult.daysProcessed,
+        totalDays: syncResult.totalDays,
+      });
+    } catch (syncErr) {
+      console.error(`[COACH_ENROLLMENT_RESUME] Failed to sync program tasks (non-fatal):`, syncErr);
+      // Non-fatal - enrollment is already resumed
     }
 
     console.log(`[COACH_ENROLLMENT_RESUME] Coach ${userId} resumed enrollment for user ${enrolledUserId} in program ${programId}`);

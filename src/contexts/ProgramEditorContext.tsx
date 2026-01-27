@@ -88,6 +88,10 @@ interface ProgramEditorContextType {
 
   // Get original data for an entity (for resetting on discard)
   getOriginalData: (entityType: PendingEntityType, entityId: string, clientContextId?: string) => Record<string, unknown> | undefined;
+
+  // Saved states - persists saved data until API refreshes (survives component unmounts)
+  getSavedState: (entityType: PendingEntityType, entityId: string, clientContextId?: string) => Record<string, unknown> | undefined;
+  clearSavedState: (entityType: PendingEntityType, entityId: string, clientContextId?: string) => void;
 }
 
 const ProgramEditorContext = createContext<ProgramEditorContextType | null>(null);
@@ -118,6 +122,9 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
   const [saveError, setSaveError] = useState<string | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
   const [bypassBeforeUnload, setBypassBeforeUnload] = useState(false);
+  // Saved states - stores data that was just saved, until API refreshes week prop
+  // This survives component unmounts, unlike refs in individual editors
+  const [savedStates, setSavedStates] = useState<Map<string, Record<string, unknown>>>(new Map());
 
   // Navigation blocking state (for in-app unsaved changes dialog)
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -199,6 +206,30 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     const change = getChangeForEntity(entityType, entityId, clientContextId);
     return change?.originalData;
   }, [getChangeForEntity]);
+
+  // Get saved state for an entity (data that was just saved, awaiting API refresh)
+  const getSavedState = useCallback((
+    entityType: PendingEntityType,
+    entityId: string,
+    clientContextId?: string
+  ): Record<string, unknown> | undefined => {
+    const key = generateChangeKey(entityType, entityId, clientContextId);
+    return savedStates.get(key);
+  }, [savedStates]);
+
+  // Clear saved state when API has refreshed
+  const clearSavedState = useCallback((
+    entityType: PendingEntityType,
+    entityId: string,
+    clientContextId?: string
+  ) => {
+    const key = generateChangeKey(entityType, entityId, clientContextId);
+    setSavedStates(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(key);
+      return newMap;
+    });
+  }, []);
 
   const registerChange = useCallback((change: PendingChange) => {
     const key = generateChangeKey(change.entityType, change.entityId, change.clientContextId);
@@ -581,6 +612,15 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
 
     // Clear successful changes
     if (result.success) {
+      // Store saved states before clearing pending changes
+      // This allows editors to restore saved data after unmount/remount
+      setSavedStates(prev => {
+        const newMap = new Map(prev);
+        pendingChanges.forEach((change, key) => {
+          newMap.set(key, change.pendingData);
+        });
+        return newMap;
+      });
       setPendingChanges(new Map());
       // Increment reset version to signal editors they can reset to saved state
       setResetVersion(v => v + 1);
@@ -632,6 +672,8 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     getChangeForEntity,
     getPendingData,
     getOriginalData,
+    getSavedState,
+    clearSavedState,
   }), [
     currentProgramId,
     pendingChanges,
@@ -655,6 +697,8 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     getChangeForEntity,
     getPendingData,
     getOriginalData,
+    getSavedState,
+    clearSavedState,
   ]);
 
   return (

@@ -11,10 +11,11 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { syncAllProgramTasks } from '@/lib/program-engine';
-import type { 
-  UpsellProductType, 
-  ProgramEnrollment, 
-  Squad, 
+import { ensureCohortInstanceExists, ensureEnrollmentInstanceExists } from '@/lib/program-instances';
+import type {
+  UpsellProductType,
+  ProgramEnrollment,
+  Squad,
   Program,
   ProgramCohort,
 } from '@/types';
@@ -229,9 +230,26 @@ async function enrollInProgram(
 
   console.log(`[ENROLL_USER] Enrolled user ${userId} in program ${programId}, enrollment ${enrollmentRef.id}`);
 
-  // Sync ALL program tasks in background if enrollment is active
-  // This ensures entire program tasks are synced immediately without blocking response
+  // Ensure program_instances document exists before syncing tasks
+  // This is required because syncAllProgramTasks reads from program_instances
   if (status === 'active') {
+    try {
+      if (cohortId) {
+        // Group program - ensure cohort instance exists
+        await ensureCohortInstanceExists(programId, cohortId, program.organizationId);
+        console.log(`[ENROLL_USER] Ensured cohort instance exists for cohortId: ${cohortId}`);
+      } else {
+        // Individual program - ensure enrollment instance exists
+        await ensureEnrollmentInstanceExists(programId, enrollmentRef.id, program.organizationId);
+        console.log(`[ENROLL_USER] Ensured enrollment instance exists for enrollmentId: ${enrollmentRef.id}`);
+      }
+    } catch (instanceError) {
+      console.error(`[ENROLL_USER] Failed to create program instance:`, instanceError);
+      // Non-fatal - sync may still work with legacy collections
+    }
+
+    // Sync ALL program tasks in background
+    // This ensures entire program tasks are synced immediately without blocking response
     // Fire-and-forget: run sync in background without blocking response
     setImmediate(async () => {
       try {

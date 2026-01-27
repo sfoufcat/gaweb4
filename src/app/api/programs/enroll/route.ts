@@ -15,6 +15,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { syncAllProgramTasks } from '@/lib/program-engine';
+import { ensureCohortInstanceExists, ensureEnrollmentInstanceExists } from '@/lib/program-instances';
 import { generateCoachingChannelId } from '@/lib/chat-server';
 import Stripe from 'stripe';
 import type { 
@@ -1087,12 +1088,21 @@ async function createEnrollment(
     console.error(`[PROGRAM_ENROLL] Failed to auto-grant program content:`, contentError);
   }
 
-  // Sync ALL program tasks in background if enrollment is active
+  // Ensure program_instances exists and sync ALL program tasks if enrollment is active
   // This ensures all tasks appear right away without requiring client to visit each day
   if (status === 'active') {
     // Fire-and-forget: run sync in background without blocking response
     setImmediate(async () => {
       try {
+        // Ensure program_instances document exists before syncing
+        if (cohort?.id) {
+          await ensureCohortInstanceExists(program.id, cohort.id, program.organizationId);
+          console.log(`[PROGRAM_ENROLL] Ensured cohort instance exists for cohortId: ${cohort.id}`);
+        } else {
+          await ensureEnrollmentInstanceExists(program.id, enrollmentRef.id, program.organizationId);
+          console.log(`[PROGRAM_ENROLL] Ensured enrollment instance exists for enrollmentId: ${enrollmentRef.id}`);
+        }
+
         console.log(`[PROGRAM_ENROLL] Starting background sync of all tasks for enrollment ${enrollmentRef.id}`);
         const syncResult = await syncAllProgramTasks({
           userId,

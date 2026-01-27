@@ -897,9 +897,12 @@ export function WeekEditor({
   });
   
   const effectiveInstanceId = instanceId || lookedUpInstanceId;
-  
+
   // Determine if we're in a client/cohort context (not template mode)
   const isInstanceContext = !!(cohortId || enrollmentId);
+
+  // Detect missing instance condition - this prevents changes from being saved
+  const isMissingInstance = isInstanceContext && !instanceLookupLoading && !effectiveInstanceId;
 
   // Determine view context for the editor
   const viewContext = isClientView ? 'client' : cohortId ? 'cohort' : 'template';
@@ -1460,30 +1463,57 @@ export function WeekEditor({
         console.log('[WeekEditor:resetEffect] SAVE - stored snapshot:',
           { tasks: savedFormDataSnapshot.current.weeklyTasks.length, goals: savedFormDataSnapshot.current.currentFocus?.length });
       } else {
-        // DISCARD: Reset to original week data immediately, clear snapshot
-        console.log('[WeekEditor:resetEffect] DISCARD - resetting form');
+        // DISCARD: Reset to saved state from context (has full data) or week prop
+        const savedState = editorContext?.getSavedState?.('week', week.id, clientContextId);
+        if (savedState) {
+          console.log('[WeekEditor:resetEffect] DISCARD - resetting to saved state from context');
+          // Use saved state values with week defaults for missing fields
+          setFormData({
+            name: week.name || '',
+            theme: (savedState.theme as string) || '',
+            description: (savedState.description as string) || '',
+            weeklyPrompt: (savedState.weeklyPrompt as string) || '',
+            weeklyTasks: (savedState.weeklyTasks as ProgramTaskTemplate[]) || [],
+            currentFocus: (savedState.currentFocus as string[]) || [],
+            notes: (savedState.notes as string[]) || [],
+            manualNotes: (savedState.manualNotes as string) || '',
+            distribution: ((savedState.distribution as string) || week.distribution || 'spread') as TaskDistribution,
+            coachRecordingUrl: (savedState.coachRecordingUrl as string) || week.coachRecordingUrl || '',
+            coachRecordingNotes: (savedState.coachRecordingNotes as string) || week.coachRecordingNotes || '',
+            linkedSummaryIds: (savedState.linkedSummaryIds as string[]) || week.linkedSummaryIds || [],
+            linkedCallEventIds: (savedState.linkedCallEventIds as string[]) || week.linkedCallEventIds || [],
+            linkedArticleIds: (savedState.linkedArticleIds as string[]) || week.linkedArticleIds || [],
+            linkedDownloadIds: (savedState.linkedDownloadIds as string[]) || week.linkedDownloadIds || [],
+            linkedLinkIds: (savedState.linkedLinkIds as string[]) || week.linkedLinkIds || [],
+            linkedQuestionnaireIds: (savedState.linkedQuestionnaireIds as string[]) || week.linkedQuestionnaireIds || [],
+            courseAssignments: (savedState.courseAssignments as DayCourseAssignment[]) || week.courseAssignments || [],
+            resourceAssignments: (savedState.resourceAssignments as WeekResourceAssignment[]) || week.resourceAssignments || [],
+          });
+        } else {
+          console.log('[WeekEditor:resetEffect] DISCARD - resetting to week prop (no snapshot)');
+          setFormData({
+            name: week.name || '',
+            theme: week.theme || '',
+            description: week.description || '',
+            weeklyPrompt: week.weeklyPrompt || '',
+            weeklyTasks: week.weeklyTasks || [],
+            currentFocus: week.currentFocus || [],
+            notes: week.notes || [],
+            manualNotes: week.manualNotes || '',
+            distribution: (week.distribution || 'spread') as TaskDistribution,
+            coachRecordingUrl: week.coachRecordingUrl || '',
+            coachRecordingNotes: week.coachRecordingNotes || '',
+            linkedSummaryIds: week.linkedSummaryIds || [],
+            linkedCallEventIds: week.linkedCallEventIds || [],
+            linkedArticleIds: week.linkedArticleIds || [],
+            linkedDownloadIds: week.linkedDownloadIds || [],
+            linkedLinkIds: week.linkedLinkIds || [],
+            linkedQuestionnaireIds: week.linkedQuestionnaireIds || [],
+            courseAssignments: week.courseAssignments || [],
+            resourceAssignments: week.resourceAssignments || [],
+          });
+        }
         savedFormDataSnapshot.current = null;
-        setFormData({
-          name: week.name || '',
-          theme: week.theme || '',
-          description: week.description || '',
-          weeklyPrompt: week.weeklyPrompt || '',
-          weeklyTasks: week.weeklyTasks || [],
-          currentFocus: week.currentFocus || [],
-          notes: week.notes || [],
-          manualNotes: week.manualNotes || '',
-          distribution: (week.distribution || 'spread') as TaskDistribution,
-          coachRecordingUrl: week.coachRecordingUrl || '',
-          coachRecordingNotes: week.coachRecordingNotes || '',
-          linkedSummaryIds: week.linkedSummaryIds || [],
-          linkedCallEventIds: week.linkedCallEventIds || [],
-          linkedArticleIds: week.linkedArticleIds || [],
-          linkedDownloadIds: week.linkedDownloadIds || [],
-          linkedLinkIds: week.linkedLinkIds || [],
-          linkedQuestionnaireIds: week.linkedQuestionnaireIds || [],
-          courseAssignments: week.courseAssignments || [],
-          resourceAssignments: week.resourceAssignments || [],
-        });
       }
       setHasChanges(false);
       setShowSyncButton(false);
@@ -1514,10 +1544,37 @@ export function WeekEditor({
       });
 
       if (weekFingerprint === snapshotFingerprint) {
-        // Week caught up to saved state! Clear snapshot, formData is already correct
-        console.log('[WeekEditor:resetEffect] Week caught up to saved state - clearing snapshot');
+        // Week caught up to saved state - sync formData to week and clear snapshot
+        console.log('[WeekEditor:resetEffect] Week caught up to saved state - syncing formData');
         savedFormDataSnapshot.current = null;
+        setFormData({
+          name: week.name || '',
+          theme: week.theme || '',
+          description: week.description || '',
+          weeklyPrompt: week.weeklyPrompt || '',
+          weeklyTasks: week.weeklyTasks || [],
+          currentFocus: week.currentFocus || [],
+          notes: week.notes || [],
+          manualNotes: week.manualNotes || '',
+          distribution: (week.distribution || 'spread') as TaskDistribution,
+          coachRecordingUrl: week.coachRecordingUrl || '',
+          coachRecordingNotes: week.coachRecordingNotes || '',
+          linkedSummaryIds: week.linkedSummaryIds || [],
+          linkedCallEventIds: week.linkedCallEventIds || [],
+          linkedArticleIds: week.linkedArticleIds || [],
+          linkedDownloadIds: week.linkedDownloadIds || [],
+          linkedLinkIds: week.linkedLinkIds || [],
+          linkedQuestionnaireIds: week.linkedQuestionnaireIds || [],
+          courseAssignments: week.courseAssignments || [],
+          resourceAssignments: week.resourceAssignments || [],
+        });
         setHasChanges(false);
+        // Clear pending change and saved state from context since week is now in sync
+        if (editorContext) {
+          const changeKey = editorContext.getChangeKey('week', week.id, clientContextId);
+          editorContext.discardChange(changeKey);
+          editorContext.clearSavedState?.('week', week.id, clientContextId);
+        }
         return;
       } else {
         // Week is still stale - DON'T reset formData, it has the saved values
@@ -1535,17 +1592,21 @@ export function WeekEditor({
     }
     lastProcessedFingerprint.current = stateKey;
 
-    // Check if there's pending data in context for this week
+    // Check if there's pending data or saved state in context for this week
     const contextPendingData = editorContext?.getPendingData('week', week.id, clientContextId);
+    const contextSavedState = editorContext?.getSavedState?.('week', week.id, clientContextId);
 
     console.log('[WeekEditor:resetEffect] Processing:', {
       weekId: week.id,
       weekNumber: week.weekNumber,
       hasPendingData: !!contextPendingData,
+      hasSavedState: !!contextSavedState,
     });
 
-    if (contextPendingData) {
-      // Restore from pending data
+    // Restore from pending data (unsaved edits) or saved state (just saved, awaiting API refresh)
+    const dataToRestore = contextPendingData || contextSavedState;
+    if (dataToRestore) {
+      // Restore from pending data or saved state
       const defaults: WeekFormData = {
         name: week.name || '',
         theme: week.theme || '',
@@ -1569,21 +1630,22 @@ export function WeekEditor({
       };
       const merged: WeekFormData = {
         ...defaults,
-        ...contextPendingData,
-        weeklyTasks: (contextPendingData.weeklyTasks as ProgramTaskTemplate[]) || defaults.weeklyTasks,
-        currentFocus: (contextPendingData.currentFocus as string[]) || defaults.currentFocus,
-        notes: (contextPendingData.notes as string[]) || defaults.notes,
-        linkedSummaryIds: (contextPendingData.linkedSummaryIds as string[]) || defaults.linkedSummaryIds,
-        linkedCallEventIds: (contextPendingData.linkedCallEventIds as string[]) || defaults.linkedCallEventIds,
-        linkedArticleIds: (contextPendingData.linkedArticleIds as string[]) || defaults.linkedArticleIds,
-        linkedDownloadIds: (contextPendingData.linkedDownloadIds as string[]) || defaults.linkedDownloadIds,
-        linkedLinkIds: (contextPendingData.linkedLinkIds as string[]) || defaults.linkedLinkIds,
-        linkedQuestionnaireIds: (contextPendingData.linkedQuestionnaireIds as string[]) || defaults.linkedQuestionnaireIds,
-        courseAssignments: (contextPendingData.courseAssignments as DayCourseAssignment[]) || defaults.courseAssignments,
-        resourceAssignments: (contextPendingData.resourceAssignments as WeekResourceAssignment[]) || defaults.resourceAssignments,
+        ...dataToRestore,
+        weeklyTasks: (dataToRestore.weeklyTasks as ProgramTaskTemplate[]) || defaults.weeklyTasks,
+        currentFocus: (dataToRestore.currentFocus as string[]) || defaults.currentFocus,
+        notes: (dataToRestore.notes as string[]) || defaults.notes,
+        linkedSummaryIds: (dataToRestore.linkedSummaryIds as string[]) || defaults.linkedSummaryIds,
+        linkedCallEventIds: (dataToRestore.linkedCallEventIds as string[]) || defaults.linkedCallEventIds,
+        linkedArticleIds: (dataToRestore.linkedArticleIds as string[]) || defaults.linkedArticleIds,
+        linkedDownloadIds: (dataToRestore.linkedDownloadIds as string[]) || defaults.linkedDownloadIds,
+        linkedLinkIds: (dataToRestore.linkedLinkIds as string[]) || defaults.linkedLinkIds,
+        linkedQuestionnaireIds: (dataToRestore.linkedQuestionnaireIds as string[]) || defaults.linkedQuestionnaireIds,
+        courseAssignments: (dataToRestore.courseAssignments as DayCourseAssignment[]) || defaults.courseAssignments,
+        resourceAssignments: (dataToRestore.resourceAssignments as WeekResourceAssignment[]) || defaults.resourceAssignments,
       };
       setFormData(merged);
-      setHasChanges(true);
+      // Only mark as having changes if it's pending data (unsaved), not saved state
+      setHasChanges(!!contextPendingData);
     } else {
       // Sync formData to week data - compare ALL fields, not just tasks
       const formFingerprint = JSON.stringify({
@@ -1760,31 +1822,79 @@ export function WeekEditor({
     const weekTasksNormalized = normalizeTasks(week.weeklyTasks);
     const formTasksNormalized = normalizeTasks(formData.weeklyTasks);
 
-    // If we have a saved snapshot, we're in post-save state
-    if (savedFormDataSnapshot.current) {
-      const snapshotStr = JSON.stringify(savedFormDataSnapshot.current.weeklyTasks);
-      const weekStr = JSON.stringify(weekTasksNormalized);
-      const formStr = JSON.stringify(formTasksNormalized);
+    // Check for saved state in context (persists across unmounts)
+    const contextSavedState = currentEditorContext?.getSavedState?.('week', week.id, clientContextId);
 
-      if (weekStr === snapshotStr) {
-        // Week caught up to saved state - clear snapshot
-        console.log('[WeekEditor:changeDetection] Week caught up to saved state - clearing snapshot');
-        savedFormDataSnapshot.current = null;
-        setHasChanges(false);
-        return;
+    // If we have a saved snapshot (local ref) or saved state (context), we're in post-save state
+    // Compare ALL fields stored in snapshot, not just tasks
+    if (savedFormDataSnapshot.current || contextSavedState) {
+      // Use local snapshot if available, otherwise build from context saved state
+      const snapshotData = savedFormDataSnapshot.current || (contextSavedState ? {
+        weeklyTasks: normalizeTasks(contextSavedState.weeklyTasks as ProgramTaskTemplate[]),
+        currentFocus: contextSavedState.currentFocus || [],
+        description: contextSavedState.description || '',
+        theme: contextSavedState.theme || '',
+        weeklyPrompt: contextSavedState.weeklyPrompt || '',
+        notes: contextSavedState.notes || [],
+        manualNotes: contextSavedState.manualNotes || '',
+      } : null);
+
+      if (!snapshotData) {
+        // Shouldn't happen, but fallback to normal detection
+        console.log('[WeekEditor:changeDetection] No snapshot data available');
+      } else {
+        const snapshotStr = JSON.stringify({
+          weeklyTasks: snapshotData.weeklyTasks,
+          currentFocus: snapshotData.currentFocus || [],
+          description: snapshotData.description || '',
+          theme: snapshotData.theme || '',
+          weeklyPrompt: snapshotData.weeklyPrompt || '',
+          notes: snapshotData.notes || [],
+          manualNotes: snapshotData.manualNotes || '',
+        });
+        const weekStr = JSON.stringify({
+          weeklyTasks: weekTasksNormalized,
+          currentFocus: week.currentFocus || [],
+          description: week.description || '',
+          theme: week.theme || '',
+          weeklyPrompt: week.weeklyPrompt || '',
+          notes: week.notes || [],
+          manualNotes: week.manualNotes || '',
+        });
+        const formStr = JSON.stringify({
+          weeklyTasks: formTasksNormalized,
+          currentFocus: formData.currentFocus,
+          description: formData.description,
+          theme: formData.theme,
+          weeklyPrompt: formData.weeklyPrompt,
+          notes: formData.notes,
+          manualNotes: formData.manualNotes,
+        });
+
+        if (weekStr === snapshotStr) {
+          // Week caught up to saved state - clear snapshot and saved state
+          console.log('[WeekEditor:changeDetection] Week caught up to saved state - clearing snapshot');
+          savedFormDataSnapshot.current = null;
+          setHasChanges(false);
+          // Also clear saved state from context
+          if (currentEditorContext?.clearSavedState) {
+            currentEditorContext.clearSavedState('week', week.id, clientContextId);
+          }
+          return;
+        }
+
+        // Week is stale. Check if formData still matches snapshot (no new edits)
+        if (formStr === snapshotStr) {
+          // formData has saved values, week is stale - no changes to report
+          setHasChanges(false);
+          return;
+        }
+
+        // formData differs from snapshot - user has unsaved edits
+        // Keep snapshot as baseline (don't clear it) so undo can detect match
+        // Fall through to normal change detection to register with context
+        console.log('[WeekEditor:changeDetection] New edits after save - falling through to register change');
       }
-
-      // Week is stale. Check if formData still matches snapshot (no new edits)
-      if (formStr === snapshotStr) {
-        // formData has saved values, week is stale - no changes to report
-        setHasChanges(false);
-        return;
-      }
-
-      // formData differs from snapshot - user made NEW edits after save
-      // Clear snapshot and fall through to normal change detection
-      console.log('[WeekEditor:changeDetection] New edits after save - clearing snapshot');
-      savedFormDataSnapshot.current = null;
     }
 
     // EARLY EXIT: Check if we've already processed this exact form data + week combination
@@ -1896,8 +2006,17 @@ export function WeekEditor({
           console.log('[WEEK_EDITOR] Waiting for instance lookup before registering change...');
           return;
         }
-        // Not loading but no instanceId - this shouldn't happen, but log it
-        console.warn('[WEEK_EDITOR] In client/cohort mode but no instanceId available after lookup');
+        // Not loading but no instanceId - this is a problem!
+        // Either the instance doesn't exist or auto-creation failed
+        console.error('[WEEK_EDITOR] MISSING INSTANCE - Changes cannot be saved!', {
+          isInstanceContext,
+          cohortId,
+          enrollmentId,
+          programId,
+          effectiveInstanceId,
+          instanceLookupLoading,
+          viewContext,
+        });
         return;
       }
 
@@ -2889,6 +3008,21 @@ export function WeekEditor({
         </div>
       </div>
 
+      {/* Warning banner for missing instance - changes cannot be saved */}
+      {isMissingInstance && (
+        <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg">
+          <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              Program instance not found
+            </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+              Changes cannot be saved. Please try refreshing the page. If the issue persists, the cohort may need to be re-configured.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Fill source indicator */}
       {week.fillSource && (
         <div className="flex items-center gap-2 p-2 bg-brand-accent/10 rounded-lg">
@@ -2925,6 +3059,9 @@ export function WeekEditor({
         <div>
           <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
             Weekly Goal
+            <span className="ml-2 text-xs font-normal text-[#a7a39e] dark:text-[#6b7280]">
+              {formData.currentFocus.length}/3
+            </span>
           </label>
           {formData.currentFocus.length < 3 && (
             <div className="flex gap-2">

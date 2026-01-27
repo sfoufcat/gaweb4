@@ -19,6 +19,7 @@ export interface UseProgramWeeklyContentReturn {
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  mutate: (data?: WeeklyContentResponse | Promise<WeeklyContentResponse> | ((current?: WeeklyContentResponse) => WeeklyContentResponse | undefined), opts?: { revalidate?: boolean }) => Promise<WeeklyContentResponse | undefined>;
 }
 
 /**
@@ -130,6 +131,7 @@ export function useProgramWeeklyContent(
       isLoading: false,
       error: null,
       refresh: async () => {},
+      mutate: async () => undefined,
     };
   }
 
@@ -145,5 +147,6 @@ export function useProgramWeeklyContent(
     isLoading: isLoading && !data,
     error: error?.message ?? null,
     refresh: async () => { await mutate(); },
+    mutate,
   };
 }

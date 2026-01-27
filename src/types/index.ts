@@ -353,7 +353,7 @@ export interface HabitProgress {
 export type HabitStatus = 'active' | 'completed' | 'archived';
 
 // Source of the habit - used to track how the habit was created
-export type HabitSource = 'track_default' | 'program_default' | 'user';
+export type HabitSource = 'track_default' | 'program_default' | 'module_default' | 'user';
 
 export interface Habit {
   id: string;
@@ -368,8 +368,10 @@ export interface Habit {
   progress: HabitProgress;
   archived: boolean; // Legacy field, keep for backward compatibility
   status?: HabitStatus; // New field: 'active', 'completed', or 'archived'
-  source?: HabitSource; // 'track_default' = pre-loaded from track, 'user' = manually created
+  source?: HabitSource; // 'track_default' | 'program_default' | 'module_default' | 'user'
   trackDefaultId?: string; // Original template ID if source is 'track_default' (e.g., 'creator_publish')
+  programId?: string; // FK to programs (if source is 'program_default' or 'module_default')
+  moduleId?: string; // FK to program_modules (if source is 'module_default')
   createdAt: string;
   updatedAt: string;
 }
@@ -1139,15 +1141,14 @@ export interface ProgramModule {
   // Position & Identification
   order: number; // 1-based ordering within program
   name: string; // e.g., "Foundation Phase", "Deep Work", "Integration"
-  description?: string; // Rich text description for coach admin view
-
-  // Client-facing preview (visible before unlocking)
-  previewTitle?: string; // What client sees before module unlocks
-  previewDescription?: string;
+  description?: string; // Rich text description (used for both coach and client views)
 
   // Timing - which days this module spans
   startDayIndex: number; // Day index where this module begins (1-based)
   endDayIndex: number; // Day index where this module ends (inclusive)
+
+  // Module-level habits (synced to users when they enter this module)
+  habits?: ProgramHabitTemplate[];
 
   // Course integration
   linkedCourseIds?: string[]; // DiscoverCourse IDs included in this module

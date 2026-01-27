@@ -56,7 +56,7 @@ interface CreateEventModalProps {
 }
 
 // For normal flow: 3 steps (info → meeting → schedule)
-// For program context: 2 steps (info → schedule with meeting)
+// For program context: 3 steps (info → schedule → meeting)
 type WizardStep = 'info' | 'meeting' | 'schedule';
 
 const DURATION_OPTIONS = [
@@ -115,9 +115,10 @@ interface ProgramWithCohorts {
  * - Step 2 (meeting): Event type, program/cohort selector, meeting provider
  * - Step 3 (schedule): Calendar picker, time slots, duration, timezone, recurrence
  *
- * Program context flow (2 steps) - when programId and cohortId are provided:
+ * Program context flow (3 steps) - when programId and cohortId are provided:
  * - Step 1 (info): Title, description, cover image, AI options
- * - Step 2 (schedule): Calendar picker, time slots, meeting link, duration, timezone, recurrence
+ * - Step 2 (schedule): Calendar picker, time slots only
+ * - Step 3 (meeting): Meeting link, duration, timezone, recurrence
  */
 export function CreateEventModal({
   isOpen,
@@ -370,34 +371,34 @@ export function CreateEventModal({
     }
 
     if (currentStep === 'meeting') {
-      // Check if cohort/squad is selected when required
-      if (eventType === 'cohort_call' && !selectedCohortId) {
-        setError('Please select a cohort');
-        return false;
-      }
-      if (eventType === 'squad_call' && !selectedSquadId) {
-        setError('Please select a squad');
-        return false;
-      }
-
-      // Meeting provider validation
-      const integrations = { zoom: { connected: zoom.connected }, googleMeet: { connected: googleMeet.connected } };
-      if (!isMeetingProviderReady(meetingProvider, integrations, useManualOverride, manualMeetingLink)) {
-        if (meetingProvider === 'manual' && !manualMeetingLink.trim()) {
-          setError('Please enter a meeting link');
-          return false;
-        }
-        if ((meetingProvider === 'zoom' || meetingProvider === 'google_meet') && useManualOverride && !manualMeetingLink.trim()) {
-          setError('Please enter a meeting link or disable manual override');
-          return false;
-        }
-      }
-      return true;
-    }
-
-    if (currentStep === 'schedule') {
-      // For program context, also validate meeting here
       if (isProgramContext) {
+        // Program context: meeting step is final step, validate meeting + recurrence
+        const integrations = { zoom: { connected: zoom.connected }, googleMeet: { connected: googleMeet.connected } };
+        if (!isMeetingProviderReady(meetingProvider, integrations, useManualOverride, manualMeetingLink)) {
+          if (meetingProvider === 'manual' && !manualMeetingLink.trim()) {
+            setError('Please enter a meeting link');
+            return false;
+          }
+          if ((meetingProvider === 'zoom' || meetingProvider === 'google_meet') && useManualOverride && !manualMeetingLink.trim()) {
+            setError('Please enter a meeting link or disable manual override');
+            return false;
+          }
+        }
+        if (recurrence !== 'none' && recurrenceEndType === 'specific_date' && !recurrenceEndDate) {
+          setError('Please select an end date for the recurring event');
+          return false;
+        }
+      } else {
+        // Normal flow: meeting step is step 2, validate event type + meeting
+        if (eventType === 'cohort_call' && !selectedCohortId) {
+          setError('Please select a cohort');
+          return false;
+        }
+        if (eventType === 'squad_call' && !selectedSquadId) {
+          setError('Please select a squad');
+          return false;
+        }
+
         const integrations = { zoom: { connected: zoom.connected }, googleMeet: { connected: googleMeet.connected } };
         if (!isMeetingProviderReady(meetingProvider, integrations, useManualOverride, manualMeetingLink)) {
           if (meetingProvider === 'manual' && !manualMeetingLink.trim()) {
@@ -410,13 +411,17 @@ export function CreateEventModal({
           }
         }
       }
+      return true;
+    }
 
-      // Schedule validation
+    if (currentStep === 'schedule') {
+      // Schedule validation - just date/time for program context, full for normal
       if (!date || !time) {
         setError('Please select a date and time');
         return false;
       }
-      if (recurrence !== 'none' && recurrenceEndType === 'specific_date' && !recurrenceEndDate) {
+      // Recurrence validation only for normal flow (program context validates in meeting step)
+      if (!isProgramContext && recurrence !== 'none' && recurrenceEndType === 'specific_date' && !recurrenceEndDate) {
         setError('Please select an end date for the recurring event');
         return false;
       }
@@ -431,8 +436,9 @@ export function CreateEventModal({
     if (!validateStep(step)) return;
 
     if (isProgramContext) {
-      // Program context: info → schedule (2 steps)
+      // Program context: info → schedule → meeting (3 steps)
       if (step === 'info') setStep('schedule');
+      else if (step === 'schedule') setStep('meeting');
     } else {
       // Normal flow: info → meeting → schedule (3 steps)
       if (step === 'info') setStep('meeting');
@@ -443,8 +449,9 @@ export function CreateEventModal({
   const goToPrevStep = () => {
     setError(null);
     if (isProgramContext) {
-      // Program context: schedule → info
-      if (step === 'schedule') setStep('info');
+      // Program context: meeting → schedule → info
+      if (step === 'meeting') setStep('schedule');
+      else if (step === 'schedule') setStep('info');
     } else {
       // Normal flow: schedule → meeting → info
       if (step === 'schedule') setStep('meeting');
@@ -455,18 +462,18 @@ export function CreateEventModal({
   // Get step index for progress dots
   const getStepIndex = () => {
     if (isProgramContext) {
-      // 2-step flow: info, schedule
-      const steps: WizardStep[] = ['info', 'schedule'];
+      // 3-step flow for program context: info, schedule, meeting
+      const steps: WizardStep[] = ['info', 'schedule', 'meeting'];
       return steps.indexOf(step);
     } else {
-      // 3-step flow: info, meeting, schedule
+      // 3-step flow for normal: info, meeting, schedule
       const steps: WizardStep[] = ['info', 'meeting', 'schedule'];
       return steps.indexOf(step);
     }
   };
 
-  // Total steps for progress dots
-  const totalSteps = isProgramContext ? 2 : 3;
+  // Total steps for progress dots (both flows now have 3 steps)
+  const totalSteps = 3;
 
   // Handle form submission
   const handleSubmit = async () => {
@@ -671,12 +678,12 @@ export function CreateEventModal({
           <div>
             <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
               {step === 'info' && 'Create Event'}
-              {step === 'meeting' && 'Event Type & Meeting'}
+              {step === 'meeting' && (isProgramContext ? 'Meeting Details' : 'Event Type & Meeting')}
               {step === 'schedule' && 'Schedule'}
             </h2>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
               {step === 'info' && 'Set up your event details'}
-              {step === 'meeting' && 'Choose event type and meeting provider'}
+              {step === 'meeting' && (isProgramContext ? 'Set meeting link and options' : 'Choose event type and meeting provider')}
               {step === 'schedule' && 'Pick a date and time'}
             </p>
           </div>
@@ -1159,7 +1166,7 @@ export function CreateEventModal({
             </motion.div>
           )}
 
-          {/* Step 3: Schedule (or Step 2 for program context) */}
+          {/* Step 2/3: Schedule - calendar and time only for program context, full for normal */}
           {step === 'schedule' && (
             <motion.div
               key="schedule"
@@ -1212,19 +1219,192 @@ export function CreateEventModal({
                 </div>
               )}
 
-              {/* Meeting Provider (only for program context - it's on step 2 for normal flow) */}
-              {isProgramContext && (
-                <MeetingProviderSelector
-                  allowInApp={false}
-                  value={meetingProvider}
-                  onChange={setMeetingProvider}
-                  manualLink={manualMeetingLink}
-                  onManualLinkChange={setManualMeetingLink}
-                  useManualOverride={useManualOverride}
-                  onUseManualOverrideChange={setUseManualOverride}
-                  label="Meeting Link"
-                />
+              {/* Duration, Timezone, Recurrence - only for normal flow (not program context) */}
+              {!isProgramContext && (
+                <>
+                  {/* Duration */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                      Duration
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {DURATION_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setDuration(opt.value)}
+                          className={`
+                            px-4 py-2 rounded-full font-albert text-sm transition-colors
+                            ${duration === opt.value
+                              ? 'bg-brand-accent text-white'
+                              : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d]'
+                            }
+                          `}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Timezone */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                      <Globe className="inline w-4 h-4 mr-1 -mt-0.5" />
+                      Timezone
+                    </label>
+                    <Select value={timezone} onValueChange={setTimezone}>
+                      <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                        <SelectValue>
+                          {timezone === 'local'
+                            ? `My timezone (${Intl.DateTimeFormat().resolvedOptions().timeZone})`
+                            : COMMON_TIMEZONES.find(tz => tz.value === timezone)?.label || timezone}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg max-h-60">
+                        {COMMON_TIMEZONES.map((tz) => (
+                          <SelectItem
+                            key={tz.value}
+                            value={tz.value}
+                            className="cursor-pointer font-albert"
+                          >
+                            {tz.value === 'local'
+                              ? `My timezone (${Intl.DateTimeFormat().resolvedOptions().timeZone})`
+                              : tz.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Recurrence */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                      <Repeat className="inline w-4 h-4 mr-1 -mt-0.5" />
+                      Repeat
+                    </label>
+                    <Select value={recurrence} onValueChange={(value) => setRecurrence(value as RecurrenceFrequency | 'none')}>
+                      <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
+                        {RECURRENCE_OPTIONS.map((opt) => (
+                          <SelectItem
+                            key={opt.value}
+                            value={opt.value}
+                            className="cursor-pointer font-albert"
+                          >
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Recurrence End Options */}
+                    {recurrence !== 'none' && (
+                      <div className="mt-3 p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] space-y-3">
+                        <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">
+                          End after
+                        </p>
+
+                        {/* Occurrences option */}
+                        <button
+                          type="button"
+                          onClick={() => setRecurrenceEndType('occurrences')}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                            recurrenceEndType === 'occurrences'
+                              ? 'border-brand-accent bg-brand-accent/5'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            recurrenceEndType === 'occurrences'
+                              ? 'border-brand-accent bg-brand-accent'
+                              : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                          }`}>
+                            {recurrenceEndType === 'occurrences' && (
+                              <Check className="w-3 h-3 text-white" />
+                            )}
+                          </div>
+                          <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                            Number of occurrences
+                          </span>
+                          {recurrenceEndType === 'occurrences' && (
+                            <input
+                              type="number"
+                              value={recurrenceOccurrences}
+                              onChange={(e) => setRecurrenceOccurrences(Math.max(1, parseInt(e.target.value) || 1))}
+                              onClick={(e) => e.stopPropagation()}
+                              min={1}
+                              max={52}
+                              className="ml-auto w-16 px-2 py-1 text-sm bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                            />
+                          )}
+                        </button>
+
+                        {/* Specific date option */}
+                        <button
+                          type="button"
+                          onClick={() => setRecurrenceEndType('specific_date')}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                            recurrenceEndType === 'specific_date'
+                              ? 'border-brand-accent bg-brand-accent/5'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            recurrenceEndType === 'specific_date'
+                              ? 'border-brand-accent bg-brand-accent'
+                              : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                          }`}>
+                            {recurrenceEndType === 'specific_date' && (
+                              <Check className="w-3 h-3 text-white" />
+                            )}
+                          </div>
+                          <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                            Specific date
+                          </span>
+                        </button>
+
+                        {recurrenceEndType === 'specific_date' && (
+                          <DatePicker
+                            value={recurrenceEndDate}
+                            onChange={(d) => setRecurrenceEndDate(d)}
+                            minDate={date ? new Date(date + 'T00:00:00') : new Date()}
+                            placeholder="End date"
+                            displayFormat="MMM d, yyyy"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
+            </motion.div>
+          )}
+
+          {/* Step 3: Meeting Details (only for program context) */}
+          {step === 'meeting' && isProgramContext && (
+            <motion.div
+              key="meeting-program"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="space-y-5"
+            >
+              {/* Meeting Provider */}
+              <MeetingProviderSelector
+                allowInApp={false}
+                value={meetingProvider}
+                onChange={setMeetingProvider}
+                manualLink={manualMeetingLink}
+                onManualLinkChange={setManualMeetingLink}
+                useManualOverride={useManualOverride}
+                onUseManualOverrideChange={setUseManualOverride}
+                label="Meeting Link"
+              />
 
               {/* Duration */}
               <div>
@@ -1404,8 +1584,8 @@ export function CreateEventModal({
             ))}
           </div>
 
-          {/* Action Button */}
-          {step === 'schedule' ? (
+          {/* Action Button - final step is 'schedule' for normal flow, 'meeting' for program context */}
+          {(isProgramContext ? step === 'meeting' : step === 'schedule') ? (
             <button
               type="button"
               onClick={handleSubmit}

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import { BookOpen, CheckCircle, GraduationCap, FileText, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -116,17 +117,21 @@ export function ContentCompletionList({ items, className }: ContentCompletionLis
                   </div>
                   {/* Progress bar */}
                   <div className="mt-2">
-                    <div className="h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                      <div
+                    <div className="h-2 bg-[#f3f1ef] dark:bg-[#262b35] rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
                         className={cn(
-                          'h-full rounded-full transition-all',
-                          rate >= 80
-                            ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+                          'h-full rounded-full',
+                          rate >= 100
+                            ? 'bg-green-500'
                             : rate >= 50
-                            ? 'bg-gradient-to-r from-blue-400 to-blue-500'
-                            : 'bg-gradient-to-r from-amber-400 to-amber-500'
+                            ? 'bg-brand-accent'
+                            : rate >= 25
+                            ? 'bg-amber-500'
+                            : 'bg-[#d1ccc6] dark:bg-[#4a5060]'
                         )}
-                        style={{ width: `${rate}%` }}
                       />
                     </div>
                   </div>

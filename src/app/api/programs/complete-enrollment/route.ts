@@ -13,6 +13,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { syncAllProgramTasks } from '@/lib/program-engine';
+import { ensureCohortInstanceExists, ensureEnrollmentInstanceExists } from '@/lib/program-instances';
 import { generateCoachingChannelId } from '@/lib/chat-server';
 import Stripe from 'stripe';
 import type {
@@ -530,12 +531,21 @@ export async function POST(request: NextRequest) {
 
     console.log(`[COMPLETE_ENROLLMENT] Created enrollment ${enrollmentRef.id} for user ${userId} in program ${program.id}`);
 
-    // Sync ALL program tasks in background if enrollment is active
+    // Ensure program_instances exists and sync ALL program tasks if enrollment is active
     // This ensures entire program tasks are synced immediately without blocking response
     if (status === 'active') {
       // Fire-and-forget: run sync in background without blocking response
       setImmediate(async () => {
         try {
+          // Ensure program_instances document exists before syncing
+          if (cohort?.id) {
+            await ensureCohortInstanceExists(program.id, cohort.id, program.organizationId);
+            console.log(`[COMPLETE_ENROLLMENT] Ensured cohort instance exists for cohortId: ${cohort.id}`);
+          } else {
+            await ensureEnrollmentInstanceExists(program.id, enrollmentRef.id, program.organizationId);
+            console.log(`[COMPLETE_ENROLLMENT] Ensured enrollment instance exists for enrollmentId: ${enrollmentRef.id}`);
+          }
+
           console.log(`[COMPLETE_ENROLLMENT] Starting background sync of all tasks for enrollment ${enrollmentRef.id}`);
           const syncResult = await syncAllProgramTasks({
             userId,

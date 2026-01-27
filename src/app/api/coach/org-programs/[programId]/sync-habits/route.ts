@@ -1,18 +1,20 @@
 /**
- * Coach API: Sync Program Habits to Enrolled Users
- * 
+ * Coach API: Sync Module Habits to Enrolled Users
+ *
  * POST /api/coach/org-programs/[programId]/sync-habits
- * 
- * Syncs the program's defaultHabits to all currently enrolled users.
- * - Creates new habits for users who don't have them
- * - Updates existing habits (preserving user progress)
- * - Respects the 3-habit limit per user
+ *
+ * Syncs module-level habits to enrolled users based on their current module.
+ * - Determines each user's current module from their enrollment start date
+ * - Archives habits from previous modules (preserves progress history)
+ * - Creates new habits for current module
+ * - Preserves habits that exist in both old and new modules (continuous tracking)
+ * - Respects 3-habit-per-module limit
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { Program, ProgramEnrollment, ProgramHabitTemplate, FrequencyType, Habit } from '@/types';
+import type { Program, ProgramEnrollment, ProgramHabitTemplate, ProgramModule, FrequencyType, Habit } from '@/types';
 
 /**
  * Map program habit frequency to Habit format
@@ -29,6 +31,66 @@ function mapFrequency(frequency: ProgramHabitTemplate['frequency']): {
     // custom defaults to Mon, Wed, Fri
     return { frequencyType: 'weekly_specific_days', frequencyValue: [1, 3, 5] };
   }
+}
+
+/**
+ * Calculate user's current day index based on enrollment start date
+ */
+function calculateCurrentDayIndex(startedAt: string, includeWeekends: boolean = false): number {
+  const startDate = new Date(startedAt);
+  const today = new Date();
+
+  // Reset times to compare dates only
+  startDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  if (includeWeekends) {
+    // Simple day count (7-day weeks)
+    const diffMs = today.getTime() - startDate.getTime();
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+  } else {
+    // Count only weekdays (5-day weeks)
+    let dayIndex = 0;
+    const current = new Date(startDate);
+
+    while (current <= today) {
+      const dayOfWeek = current.getDay();
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        dayIndex++;
+      }
+      current.setDate(current.getDate() + 1);
+    }
+
+    return Math.max(1, dayIndex);
+  }
+}
+
+/**
+ * Find the module a user should be in based on their current day index
+ */
+function getCurrentModule(modules: ProgramModule[], currentDayIndex: number): ProgramModule | null {
+  // Sort modules by order
+  const sortedModules = [...modules].sort((a, b) => a.order - b.order);
+
+  // Find module where currentDayIndex falls within startDayIndex...endDayIndex
+  for (const module of sortedModules) {
+    if (currentDayIndex >= module.startDayIndex && currentDayIndex <= module.endDayIndex) {
+      return module;
+    }
+  }
+
+  // If user is past all modules, return the last module
+  if (sortedModules.length > 0 && currentDayIndex > sortedModules[sortedModules.length - 1].endDayIndex) {
+    return sortedModules[sortedModules.length - 1];
+  }
+
+  // If user hasn't started yet, return first module
+  if (sortedModules.length > 0 && currentDayIndex < sortedModules[0].startDayIndex) {
+    return sortedModules[0];
+  }
+
+  return null;
 }
 
 export async function POST(
@@ -52,14 +114,29 @@ export async function POST(
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
 
-    // 2. Get program's default habits
-    const defaultHabits = program.defaultHabits || [];
+    // 2. Get all modules for this program
+    const modulesSnapshot = await adminDb
+      .collection('program_modules')
+      .where('programId', '==', programId)
+      .orderBy('order', 'asc')
+      .get();
 
-    if (defaultHabits.length === 0) {
+    const modules = modulesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as ProgramModule[];
+
+    // Check if program has modules with habits
+    const modulesWithHabits = modules.filter(m => m.habits && m.habits.length > 0);
+
+    // Fallback to program.defaultHabits if no modules have habits
+    const useModuleHabits = modulesWithHabits.length > 0;
+
+    if (!useModuleHabits && (!program.defaultHabits || program.defaultHabits.length === 0)) {
       return NextResponse.json({
         success: true,
-        message: 'No default habits configured for this program',
-        summary: { usersProcessed: 0, habitsCreated: 0, habitsUpdated: 0 },
+        message: 'No habits configured for this program',
+        summary: { usersProcessed: 0, habitsCreated: 0, habitsUpdated: 0, habitsArchived: 0 },
       });
     }
 
@@ -74,7 +151,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         message: 'No active enrollments to sync',
-        summary: { usersProcessed: 0, habitsCreated: 0, habitsUpdated: 0 },
+        summary: { usersProcessed: 0, habitsCreated: 0, habitsUpdated: 0, habitsArchived: 0 },
       });
     }
 
@@ -83,100 +160,177 @@ export async function POST(
       ...doc.data(),
     })) as ProgramEnrollment[];
 
-    console.log(`[SYNC_HABITS] Processing ${enrollments.length} enrollments for program ${programId}`);
+    console.log(`[SYNC_HABITS] Processing ${enrollments.length} enrollments for program ${programId}, useModuleHabits: ${useModuleHabits}`);
 
     // 4. Process each enrolled user
     let totalCreated = 0;
     let totalUpdated = 0;
+    let totalArchived = 0;
     let usersProcessed = 0;
     const now = new Date().toISOString();
-    const maxHabits = 3;
+    const maxHabitsPerModule = 3;
 
     for (const enrollment of enrollments) {
       const userId = enrollment.userId;
+      const includeWeekends = program.includeWeekends !== false;
 
-      // Get user's existing habits from this program
+      // Calculate user's current day index
+      const currentDayIndex = calculateCurrentDayIndex(enrollment.startedAt, includeWeekends);
+
+      // Determine which habits to sync
+      let habitsToSync: ProgramHabitTemplate[] = [];
+      let currentModuleId: string | null = null;
+
+      if (useModuleHabits) {
+        // Find user's current module
+        const currentModule = getCurrentModule(modules, currentDayIndex);
+        if (currentModule) {
+          currentModuleId = currentModule.id;
+          habitsToSync = currentModule.habits || [];
+          console.log(`[SYNC_HABITS] User ${userId}: day ${currentDayIndex}, module "${currentModule.name}" (${currentModuleId}), ${habitsToSync.length} habits`);
+        }
+      } else {
+        // Fallback to program-level habits (legacy)
+        habitsToSync = program.defaultHabits || [];
+        console.log(`[SYNC_HABITS] User ${userId}: using program-level habits (legacy), ${habitsToSync.length} habits`);
+      }
+
+      // Get user's existing module habits for this program
       const existingHabitsSnapshot = await adminDb
         .collection('habits')
         .where('userId', '==', userId)
         .where('organizationId', '==', organizationId)
         .where('programId', '==', programId)
-        .where('source', '==', 'program_default')
+        .where('source', 'in', ['module_default', 'program_default'])
         .get();
 
-      // Create a map of existing habits by title for easy lookup
+      // Create maps of existing habits
       const existingByTitle = new Map<string, Habit & { docId: string }>();
+      const existingByModuleId = new Map<string, (Habit & { docId: string })[]>();
+
       existingHabitsSnapshot.docs.forEach(doc => {
         const habit = { id: doc.id, docId: doc.id, ...doc.data() } as Habit & { docId: string };
         existingByTitle.set(habit.text, habit);
+
+        const moduleId = habit.moduleId || 'none';
+        if (!existingByModuleId.has(moduleId)) {
+          existingByModuleId.set(moduleId, []);
+        }
+        existingByModuleId.get(moduleId)!.push(habit);
       });
 
-      // Count all active habits for this user in this org (for 3-habit limit)
-      const allHabitsSnapshot = await adminDb
-        .collection('habits')
-        .where('userId', '==', userId)
-        .where('organizationId', '==', organizationId)
-        .where('archived', '==', false)
-        .get();
-
-      let currentHabitCount = allHabitsSnapshot.size;
       let userCreated = 0;
       let userUpdated = 0;
+      let userArchived = 0;
 
-      for (const template of defaultHabits) {
+      // Track which habit titles we're syncing
+      const syncingTitles = new Set(habitsToSync.map(h => h.title));
+
+      // Archive habits from other modules that aren't in the current module
+      for (const [moduleId, habits] of existingByModuleId) {
+        // Skip habits from current module
+        if (moduleId === currentModuleId) continue;
+
+        for (const habit of habits) {
+          // If this habit title exists in the new module, update it instead of archiving
+          if (syncingTitles.has(habit.text)) {
+            // Will be handled in the create/update loop below
+            continue;
+          }
+
+          // Archive habits that are not in the new module
+          if (!habit.archived) {
+            await adminDb.collection('habits').doc(habit.docId).update({
+              archived: true,
+              status: 'archived',
+              updatedAt: now,
+            });
+            userArchived++;
+          }
+        }
+      }
+
+      // Create or update habits for current module
+      let currentModuleHabitCount = 0;
+
+      for (const template of habitsToSync) {
+        // Check per-module limit
+        if (currentModuleHabitCount >= maxHabitsPerModule) {
+          console.log(`[SYNC_HABITS] User ${userId}: reached ${maxHabitsPerModule} habit limit for module, skipping remaining`);
+          break;
+        }
+
         const existingHabit = existingByTitle.get(template.title);
         const { frequencyType, frequencyValue } = mapFrequency(template.frequency);
 
         if (existingHabit) {
-          // UPDATE existing habit - preserve progress, createdAt, etc.
-          await adminDb.collection('habits').doc(existingHabit.docId).update({
+          // UPDATE existing habit - preserve progress, update moduleId if needed
+          const updateData: Record<string, unknown> = {
             linkedRoutine: template.description || null,
             frequencyType,
             frequencyValue,
             updatedAt: now,
-          });
-          userUpdated++;
-        } else {
-          // CREATE new habit (if under limit)
-          if (currentHabitCount < maxHabits) {
-            const habitData = {
-              userId,
-              organizationId,
-              text: template.title,
-              linkedRoutine: template.description || null,
-              frequencyType,
-              frequencyValue,
-              reminder: null,
-              targetRepetitions: null,
-              progress: {
-                currentCount: 0,
-                lastCompletedDate: null,
-                completionDates: [],
-                skipDates: [],
-              },
-              archived: false,
-              status: 'active',
-              source: 'program_default' as const,
-              programId,
-              createdAt: now,
-              updatedAt: now,
-            };
+          };
 
-            await adminDb.collection('habits').add(habitData);
-            currentHabitCount++;
-            userCreated++;
+          // Update moduleId and source if moving to module-based
+          if (useModuleHabits && currentModuleId) {
+            updateData.moduleId = currentModuleId;
+            updateData.source = 'module_default';
           }
+
+          // Unarchive if it was archived
+          if (existingHabit.archived) {
+            updateData.archived = false;
+            updateData.status = 'active';
+          }
+
+          await adminDb.collection('habits').doc(existingHabit.docId).update(updateData);
+          userUpdated++;
+          currentModuleHabitCount++;
+        } else {
+          // CREATE new habit
+          const habitData: Record<string, unknown> = {
+            userId,
+            organizationId,
+            text: template.title,
+            linkedRoutine: template.description || null,
+            frequencyType,
+            frequencyValue,
+            reminder: null,
+            targetRepetitions: null,
+            progress: {
+              currentCount: 0,
+              lastCompletedDate: null,
+              completionDates: [],
+              skipDates: [],
+            },
+            archived: false,
+            status: 'active',
+            source: useModuleHabits ? 'module_default' : 'program_default',
+            programId,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          if (useModuleHabits && currentModuleId) {
+            habitData.moduleId = currentModuleId;
+          }
+
+          await adminDb.collection('habits').add(habitData);
+          userCreated++;
+          currentModuleHabitCount++;
         }
       }
 
       totalCreated += userCreated;
       totalUpdated += userUpdated;
+      totalArchived += userArchived;
       usersProcessed++;
 
-      console.log(`[SYNC_HABITS] User ${userId}: created ${userCreated}, updated ${userUpdated}`);
+      console.log(`[SYNC_HABITS] User ${userId}: created ${userCreated}, updated ${userUpdated}, archived ${userArchived}`);
     }
 
-    console.log(`[SYNC_HABITS] Completed sync for program ${programId}: ${usersProcessed} users, ${totalCreated} created, ${totalUpdated} updated`);
+    console.log(`[SYNC_HABITS] Completed sync for program ${programId}: ${usersProcessed} users, ${totalCreated} created, ${totalUpdated} updated, ${totalArchived} archived`);
 
     return NextResponse.json({
       success: true,
@@ -185,6 +339,7 @@ export async function POST(
         usersProcessed,
         habitsCreated: totalCreated,
         habitsUpdated: totalUpdated,
+        habitsArchived: totalArchived,
       },
     });
   } catch (error) {
@@ -201,8 +356,3 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to sync habits' }, { status: 500 });
   }
 }
-
-
-
-
-
