@@ -577,7 +577,15 @@ export async function PATCH(
       instanceStartDate: instanceStartDate || 'NOT SET',
     });
 
-    if (distributionSetting && Array.isArray(body.weeklyTasks)) {
+    // Redistribute if:
+    // 1. distributeTasksNow is true (regardless of whether weeklyTasks was provided), OR
+    // 2. weeklyTasks array was explicitly provided
+    // Use body.weeklyTasks if provided, otherwise fall back to existing weeklyTasks
+    const weeklyTasksForDistribution = Array.isArray(body.weeklyTasks)
+      ? body.weeklyTasks
+      : (body.distributeTasksNow ? (updatedWeek.weeklyTasks || []) : null);
+
+    if (distributionSetting && weeklyTasksForDistribution) {
       // Normalize distribution format:
       // - String format: 'spread' | 'repeat-daily' (from TypeScript TaskDistribution type)
       // - Object format: { type: 'spread' | 'all_days' | 'first_day', targetDays?: number[] }
@@ -592,7 +600,7 @@ export async function PATCH(
       } else {
         distribution = distributionSetting;
       }
-      const weeklyTasks = processTasksWithIds(body.weeklyTasks);
+      const weeklyTasks = processTasksWithIds(weeklyTasksForDistribution);
 
       // Get the days for this week (ensure it's an array)
       const daysToUpdate = updatedWeek.days || [];
@@ -611,16 +619,29 @@ export async function PATCH(
       // Distribute tasks based on per-task dayTag (overrides) or program distribution (default)
       // IMPORTANT: Always clear old 'week' source tasks from days first
 
-      // Build a set of weekly task labels for backwards compat filtering
-      const weeklyTaskLabels = new Set(weeklyTasks.map(t => t.label));
+      // Build set of weekly task labels - both old (Firestore) and new (incoming)
+      const existingWeeklyTaskLabels = new Set((existingWeek.weeklyTasks || []).map(t => t.label));
+      const newWeeklyTaskLabels = new Set(weeklyTasks.map(t => t.label));
+      const allWeeklyTaskLabels = new Set([...existingWeeklyTaskLabels, ...newWeeklyTaskLabels]);
 
       // Step 1: Clear all week-sourced tasks from all days
-      // Also clear tasks matching weekly task labels (for backwards compat with old data without source)
+      // Clear tasks that:
+      // - Have source: 'week' (explicitly from weekly distribution), OR
+      // - Match a weekly task label (old or new) for backwards compat with legacy data
       for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
         const existingTasks = daysToUpdate[dayIdx].tasks || [];
-        daysToUpdate[dayIdx].tasks = existingTasks.filter(t =>
-          t.source !== 'week' && !weeklyTaskLabels.has(t.label)
-        );
+        daysToUpdate[dayIdx].tasks = existingTasks.filter(t => {
+          // Always remove tasks with source: 'week'
+          if (t.source === 'week') return false;
+          // Always keep tasks with source: 'day'
+          if (t.source === 'day') return true;
+          // For tasks with no source (legacy): remove if label matches any weekly task
+          // This catches orphaned tasks like "test 99" that were removed from weeklyTasks
+          if (allWeeklyTaskLabels.has(t.label)) return false;
+          // Keep legacy tasks that don't match weekly task labels
+          // (these are likely manually-added day tasks from before source field existed)
+          return true;
+        });
       }
 
       // Step 2: Categorize tasks by their dayTag

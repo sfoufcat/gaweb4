@@ -5082,6 +5082,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       programType={selectedProgram?.type}
                       enrollments={programEnrollments}
                       cohorts={programCohorts}
+                      onSaveSuccess={handleSaveSuccess}
                       onSave={async (updates) => {
                         try {
                           const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/modules/${selectedModule.id}`, {

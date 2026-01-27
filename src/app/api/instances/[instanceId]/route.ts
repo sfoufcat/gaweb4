@@ -172,6 +172,7 @@ export async function GET(
       startDate,
       endDate: data.endDate,
       weeks: data.weeks || [],
+      modules: data.modules || [],
       includeWeekends: data.includeWeekends,
       dailyFocusSlots: data.dailyFocusSlots,
       createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,

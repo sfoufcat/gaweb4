@@ -40,6 +40,8 @@ interface ModuleEditorProps {
   clientContextId?: string;
   /** Program type for showing appropriate sync button */
   programType?: 'individual' | 'group';
+  /** Callback after successful save (for refreshing data) */
+  onSaveSuccess?: () => Promise<void>;
   /** Enrollments for sync dialog (individual programs) */
   enrollments?: EnrollmentWithUser[];
   /** Cohorts for sync dialog (group programs) */
@@ -63,6 +65,7 @@ export function ModuleEditor({
   viewContext = 'template',
   clientContextId,
   programType,
+  onSaveSuccess,
   enrollments,
   cohorts,
 }: ModuleEditorProps) {
@@ -115,13 +118,14 @@ export function ModuleEditor({
   // Build API endpoint - instance vs template
   const getApiEndpoint = useCallback(() => {
     if (isInstanceMode && instanceId) {
-      // Instance-level module endpoint
-      return `/api/instances/${instanceId}/modules/${module.id}`;
+      // Instance-level module endpoint - use templateModuleId (API looks up by this)
+      const lookupId = 'templateModuleId' in module ? module.templateModuleId : module.id;
+      return `/api/instances/${instanceId}/modules/${lookupId}`;
     }
     if (!programId) return '';
     // Template-level module endpoint
     return `/api/coach/org-programs/${programId}/modules/${module.id}`;
-  }, [programId, module.id, instanceId, isInstanceMode]);
+  }, [programId, module, instanceId, isInstanceMode]);
 
   // Reset form when module changes - but check for pending data or saved state first
   useEffect(() => {
@@ -324,7 +328,12 @@ export function ModuleEditor({
                   <span className="hidden sm:inline">Discard</span>
                 </button>
                 <Button
-                  onClick={() => editorContext.saveAllChanges()}
+                  onClick={async () => {
+                    const result = await editorContext.saveAllChanges();
+                    if (result.success && onSaveSuccess) {
+                      await onSaveSuccess();
+                    }
+                  }}
                   disabled={editorContext.isSaving}
                   className="flex items-center gap-1.5 h-8 sm:h-9 px-4 sm:px-6 bg-brand-accent hover:bg-brand-accent/90 text-white text-xs sm:text-sm font-medium"
                 >

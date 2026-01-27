@@ -7,6 +7,52 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Make the plan extremely concise. Sacrifice grammar for the sake of concision.
 - At the end of each plan, give me a list of unresolved questions to answer, if any.
 
+## Communication Style
+
+**Be terse. Prioritize action over explanation.**
+
+- Skip preamble, pleasantries, and unnecessary narration
+- Don't announce what you're about to do — just do it
+- Don't summarize what you just did unless asked
+- Don't explain obvious things or repeat information from the prompt
+- No filler phrases: "Let me...", "I'll now...", "Great question!", "Sure!", etc.
+- When exploring code, report findings briefly, not step-by-step commentary
+- Only explain when: (1) something is non-obvious, (2) there's a decision to justify, (3) user explicitly asks
+
+**Examples of what NOT to do:**
+- ❌ "I'll read the file to understand..." → Just read it
+- ❌ "Now let me search for..." → Just search
+- ❌ "I found the issue! The problem is..." → Just fix it and mention what was wrong
+- ❌ "Let me explain what this code does..." → Only if asked
+
+**Do:**
+- ✅ Take action immediately
+- ✅ Report findings concisely: "Bug in `fetchUser`: missing null check on line 42"
+- ✅ Ask clarifying questions when genuinely blocked
+- ✅ Provide thorough solutions with minimal chatter
+
+## Solution Approach Philosophy
+
+**ALWAYS choose clean, thorough solutions over quick fixes:**
+
+- **Single source of truth**: Never duplicate data or logic. If something exists, reference it; don't copy it.
+- **Scalability first**: Choose approaches that scale well even if they require more upfront work.
+- **Root cause fixes**: Fix the actual problem, not just the symptoms. Trace issues to their source.
+- **Proper abstractions**: Create the right abstraction rather than patching around limitations.
+- **Data model integrity**: Get the data model right. Refactor if needed rather than working around a bad schema.
+- **No band-aids**: Avoid temporary workarounds that will need to be revisited. Do it right the first time.
+- **Long-term maintainability**: Consider how changes will be maintained, extended, and debugged in 6 months.
+
+**When faced with options:**
+1. Quick hack that works now → **NO**
+2. Proper solution that takes longer → **YES**
+
+**Examples:**
+- Don't add a field to work around a missing relationship → Fix the data model
+- Don't duplicate logic in multiple places → Create a shared utility/hook
+- Don't patch UI to hide data issues → Fix the data layer
+- Don't add special cases → Generalize the solution
+
 ## Project Overview
 
 Coachful is a productivity and accountability SaaS platform built with Next.js 16+. It's a multi-tenant coaching platform where coaches can create organizations with custom domains, programs, and squads to support their clients.

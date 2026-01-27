@@ -40,8 +40,8 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Find the module
-    const module = (instance.modules || []).find(m => m.id === moduleId);
+    // Find the module by templateModuleId (more stable than instance UUID)
+    const module = (instance.modules || []).find(m => m.templateModuleId === moduleId);
     if (!module) {
       return NextResponse.json({ error: 'Module not found in instance' }, { status: 404 });
     }
@@ -90,9 +90,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Find the module index
+    // Find the module index by templateModuleId (more stable than instance UUID)
     const modules = instance.modules || [];
-    const moduleIndex = modules.findIndex(m => m.id === moduleId);
+    const moduleIndex = modules.findIndex(m => m.templateModuleId === moduleId);
     if (moduleIndex === -1) {
       return NextResponse.json({ error: 'Module not found in instance' }, { status: 404 });
     }
