@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Gift, Loader2, X, Search, UserPlus, Users, AlertCircle, Check } from 'lucide-react';
+import { Gift, Loader2, X, UserPlus, Users, AlertCircle, Check } from 'lucide-react';
+import { ExpandableSearch } from '@/components/ui/expandable-search';
 import {
   Dialog,
   DialogContent,
@@ -112,11 +113,26 @@ export function EnrollClientsModal({
     const fetchClients = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/coach/my-clients');
+        // Use /api/coach/org-users which gets all org members from Clerk
+        // (same as "All Clients" page) - this works on localhost and prod
+        const res = await fetch('/api/coach/org-users');
         if (res.ok) {
           const data = await res.json();
+          // Map from org-users format to Client format
+          // org-users returns: { users: [{ id, email, firstName, lastName, imageUrl, orgRole, ... }] }
+          const allClients = (data.users || [])
+            // Filter out coaches/admins - only show members
+            .filter((u: { orgRole?: string }) => !u.orgRole || u.orgRole === 'member')
+            .map((u: { id: string; email?: string; firstName?: string; lastName?: string; imageUrl?: string }) => ({
+              id: u.id,
+              email: u.email || '',
+              firstName: u.firstName || '',
+              lastName: u.lastName || '',
+              name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Unnamed',
+              imageUrl: u.imageUrl || '',
+            }));
           // Filter out already enrolled clients
-          const available = (data.users || []).filter(
+          const available = allClients.filter(
             (u: Client) => !existingEnrollmentUserIds.includes(u.id)
           );
           setClients(available);
@@ -319,52 +335,17 @@ export function EnrollClientsModal({
         </div>
       )}
 
-      {/* Search */}
-      <div className="px-4 pt-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8c8c8c] dark:text-[#7d8190]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search clients..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
-          />
-        </div>
-      </div>
-
-      {/* Cohort Selector (for group programs) */}
-      {isGroupProgram && (
-        <div className="px-4 pt-3">
-          {loadingCohorts ? (
-            <div className="flex items-center justify-center py-3">
-              <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
-            </div>
-          ) : cohorts.length === 0 ? (
-            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-amber-700 dark:text-amber-300 font-albert">
-                    No available cohorts
-                  </p>
-                  <p className="text-xs text-amber-600/80 dark:text-amber-400/80 font-albert mt-0.5">
-                    Create a cohort first in program settings
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <Select
-              value={selectedCohortId || ''}
-              onValueChange={setSelectedCohortId}
-            >
-              <SelectTrigger className="w-full h-10 font-albert text-sm">
-                <SelectValue placeholder="Select a cohort..." />
-              </SelectTrigger>
-              <SelectContent>
-                {cohorts.map((cohort) => (
-                  <SelectItem key={cohort.id} value={cohort.id} className="font-albert text-sm">
+      {/* Combined Controls Row */}
+      <div className="px-4 pt-4 flex items-center gap-3">
+        {/* Cohort Selector - pill style with status badge */}
+        {isGroupProgram && !loadingCohorts && cohorts.length > 0 && (
+          <Select value={selectedCohortId || ''} onValueChange={setSelectedCohortId}>
+            <SelectTrigger className="w-auto min-w-[140px] h-10 rounded-full bg-white dark:bg-[#1e222a] border-[#e1ddd8] dark:border-[#262b35] shadow-sm px-4 font-albert text-sm font-medium hover:shadow-md transition-all focus:ring-2 focus:ring-brand-accent/50">
+              <SelectValue placeholder="Select cohort...">
+                {(() => {
+                  const cohort = cohorts.find(c => c.id === selectedCohortId);
+                  if (!cohort) return null;
+                  return (
                     <div className="flex items-center gap-2">
                       <span>{cohort.name}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
@@ -375,17 +356,57 @@ export function EnrollClientsModal({
                         {cohort.status}
                       </span>
                     </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+                  );
+                })()}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {cohorts.map((cohort) => (
+                <SelectItem key={cohort.id} value={cohort.id} className="font-albert text-sm">
+                  <div className="flex items-center gap-2">
+                    <span>{cohort.name}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                      cohort.status === 'active'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                    }`}>
+                      {cohort.status}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Loading state */}
+        {isGroupProgram && loadingCohorts && (
+          <div className="flex items-center h-10 px-4">
+            <Loader2 className="w-4 h-4 animate-spin text-brand-accent" />
+          </div>
+        )}
+
+        {/* No cohorts warning - inline pill */}
+        {isGroupProgram && !loadingCohorts && cohorts.length === 0 && (
+          <div className="flex items-center gap-2 h-10 px-3 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-xs text-amber-700 dark:text-amber-300 font-albert">No cohorts</span>
+          </div>
+        )}
+
+        {/* Expandable Search - right aligned */}
+        <div className="ml-auto">
+          <ExpandableSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search clients..."
+          />
         </div>
-      )}
+      </div>
 
       {/* Select All */}
       {filteredClients.length > 0 && (
-        <div className="px-4 pt-3">
+        <div className="px-4 pt-3 mt-3 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
           <button
             onClick={toggleSelectAll}
             className="flex items-center gap-2 text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
@@ -405,7 +426,7 @@ export function EnrollClientsModal({
       )}
 
       {/* Client List */}
-      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 min-h-[200px]">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
@@ -517,7 +538,7 @@ export function EnrollClientsModal({
   if (isDesktop) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-2xl max-h-[85vh]">
+        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-2xl max-h-[90vh]">
           <DialogHeader className="px-4 pt-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
             <div className="flex items-center justify-between">
               <div>
@@ -540,23 +561,13 @@ export function EnrollClientsModal({
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="max-h-[90vh]">
-        <DrawerHeader className="px-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
-          <div className="flex items-center justify-between">
-            <div>
-              <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                Enroll Clients
-              </DrawerTitle>
-              <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                Add clients to &quot;{program.name}&quot;
-              </DrawerDescription>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-            >
-              <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-            </button>
-          </div>
+        <DrawerHeader className="px-4 pt-0 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
+          <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            Enroll Clients
+          </DrawerTitle>
+          <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+            Add clients to &quot;{program.name}&quot;
+          </DrawerDescription>
         </DrawerHeader>
         {content}
         {/* Safe area padding for mobile */}

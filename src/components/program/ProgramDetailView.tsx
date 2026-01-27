@@ -10,7 +10,6 @@ import { useUser } from '@clerk/nextjs';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import { useProgramContent } from '@/hooks/useProgramContent';
 import { useProgramCoachingData } from '@/hooks/useProgramCoachingData';
-import { ArticleCard } from '@/components/discover/ArticleCard';
 import { RequestCallModal } from '@/components/scheduling';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { calculateCalendarWeeks, getCalendarWeekForDay, type CalendarWeek } from '@/lib/calendar-weeks';
@@ -310,26 +309,20 @@ export function ProgramDetailView({
     <div className="space-y-8">
       {/* Header Section */}
       <div className="space-y-4">
-        {/* Back Arrow + Title */}
-        {showBackButton && onBack && (
-          <div className="flex items-center gap-2">
+        {/* Back Arrow + Title + Badges (inline) */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {showBackButton && onBack && (
             <button
               onClick={onBack}
-              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors flex-shrink-0"
             >
               <ArrowLeft className="w-5 h-5 text-text-primary dark:text-[#f5f5f8]" />
             </button>
-            <h1 className="font-albert text-[36px] font-normal text-text-primary dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2]">
-              {program.name}
-            </h1>
-          </div>
-        )}
-
-        {!showBackButton && (
+          )}
           <h1 className="font-albert text-[36px] font-normal text-text-primary dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2]">
             {program.name}
           </h1>
-        )}
+        </div>
 
         {/* Description */}
         {program.description && (
@@ -337,26 +330,6 @@ export function ProgramDetailView({
             {program.description}
           </p>
         )}
-
-        {/* Badges Row: Enrolled + Progress - Both same height */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Enrolled Badge */}
-          <div className="bg-[rgba(76,175,80,0.15)] h-7 px-3 rounded-full flex items-center">
-            <span className="font-sans text-[13px] font-medium text-[#4caf50] leading-none">
-              Enrolled
-            </span>
-          </div>
-
-          {/* Progress Pill */}
-          <div className="bg-[#f3f1ef] dark:bg-[#11141b] h-7 px-3 rounded-full flex items-center gap-2">
-            <svg className="w-4 h-4 text-text-secondary dark:text-[#7d8190]" viewBox="0 0 15 14" fill="none" stroke="currentColor" strokeWidth={1.5}>
-              <path d="M1 9.5V13h3.5V9.5H1zm5-4V13h3.5V5.5H6zm5-4V13h3V1.5h-3z" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="font-sans text-[13px] font-medium text-text-secondary dark:text-[#7d8190] leading-none">
-              {weekProgressLabel}
-            </span>
-          </div>
-        </div>
 
         {/* Cover Image */}
         <div className="relative h-[220px] w-full rounded-[20px] overflow-hidden bg-gray-200 dark:bg-gray-800">
@@ -376,140 +349,154 @@ export function ProgramDetailView({
             </div>
           )}
         </div>
+
       </div>
 
-      {/* Program Overview Section */}
-      <div className="py-5 space-y-4">
-        <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-          Program overview
-        </h2>
+      {/* Program Overview Section - Glass Card */}
+      <div className="relative rounded-[20px] p-6 overflow-hidden bg-white/70 dark:bg-[#1c2026]/70 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent dark:from-white/5 pointer-events-none" />
+        <div className="relative space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="font-albert text-[20px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
+              Program overview
+            </h2>
+            {/* Enrolled Badge - matches week badge style */}
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100/80 dark:bg-green-500/20 border border-green-200/60 dark:border-green-500/30">
+              <span className="font-sans text-[12px] font-semibold text-green-700 dark:text-green-300 tracking-[-0.2px]">
+                Enrolled
+              </span>
+            </span>
+          </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {isGroup ? (
-            /* Group Program Overview */
-            <>
-              {/* Stacked Avatars - Only show actual members (1-3) */}
-              {squadMembers && squadMembers.length > 0 && (
-                <div className="flex items-center -space-x-3">
-                  {squadMembers.slice(0, 3).map((member) => (
-                    <div
-                      key={member.id}
-                      className="w-[38px] h-[38px] rounded-full border-2 border-white dark:border-[#05070b] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
-                    >
-                      {member.imageUrl ? (
-                        <Image
-                          src={member.imageUrl}
-                          alt={`${member.firstName} ${member.lastName}`}
-                          width={38}
-                          height={38}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-xs font-medium text-white">
-                            {member.firstName?.[0] || member.lastName?.[0] || 'M'}
-                          </span>
+          <div className="flex items-center gap-4 flex-wrap">
+            {isGroup ? (
+              /* Group Program Overview */
+              <>
+                {/* Stacked Avatars + Group Info */}
+                <div className="flex items-center gap-3">
+                  {squadMembers && squadMembers.length > 0 && (
+                    <div className="flex items-center -space-x-3">
+                      {squadMembers.slice(0, 3).map((member) => (
+                        <div
+                          key={member.id}
+                          className="w-[38px] h-[38px] rounded-full border-2 border-white dark:border-[#1c2026] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
+                        >
+                          {member.imageUrl ? (
+                            <Image
+                              src={member.imageUrl}
+                              alt={`${member.firstName} ${member.lastName}`}
+                              width={38}
+                              height={38}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-xs font-medium text-white">
+                                {member.firstName?.[0] || member.lastName?.[0] || 'M'}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Group Info */}
-              <div className="flex flex-col ml-2">
-                <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
-                  Group program
-                </span>
-                <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
-                  {memberCount} member{memberCount !== 1 ? 's' : ''}
-                </span>
-              </div>
-
-              {/* Coach Avatar */}
-              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 ml-2">
-                {program.coachImageUrl ? (
-                  <Image
-                    src={program.coachImageUrl}
-                    alt={program.coachName}
-                    width={38}
-                    height={38}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="font-albert font-semibold text-sm text-text-secondary dark:text-[#7d8190]">
-                      {program.coachName[0]}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Coach Info */}
-              <div className="flex flex-col">
-                <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
-                  {program.coachName}
-                </span>
-                <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
-                  Program coach
-                </span>
-              </div>
-            </>
-          ) : (
-            /* 1:1 Program Overview */
-            <>
-              {/* Phone Icon */}
-              <Phone className="w-6 h-6 text-text-primary dark:text-[#f5f5f8]" />
-
-              {/* Next Session Info */}
-              <div className="flex flex-col ml-1" style={{ width: '162px' }}>
-                <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
-                  Next session
-                </span>
-                <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
-                  {nextCall?.datetime ? (
-                    new Date(nextCall.datetime).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })
-                  ) : (
-                    'Not scheduled'
                   )}
-                </span>
-              </div>
-
-              {/* Coach Avatar */}
-              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800">
-                {(coachingCoach?.imageUrl || program.coachImageUrl) ? (
-                  <Image
-                    src={coachingCoach?.imageUrl || program.coachImageUrl || ''}
-                    alt={coachingCoach?.name || program.coachName}
-                    width={38}
-                    height={38}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="font-albert font-semibold text-sm text-text-secondary dark:text-[#7d8190]">
-                      {(coachingCoach?.name || program.coachName)?.[0] || 'C'}
+                  <div className="flex flex-col">
+                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
+                      Group program
+                    </span>
+                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
+                      {memberCount} member{memberCount !== 1 ? 's' : ''}
                     </span>
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Coach Info */}
-              <div className="flex flex-col">
-                <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
-                  {coachingCoach?.name || program.coachName}
-                </span>
-                <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
-                  One-on-one coach
-                </span>
-              </div>
-            </>
-          )}
+                {/* Coach Avatar + Info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-brand-accent/10">
+                    {program.coachImageUrl ? (
+                      <Image
+                        src={program.coachImageUrl}
+                        alt={program.coachName}
+                        width={38}
+                        height={38}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="font-albert font-semibold text-sm text-brand-accent">
+                          {program.coachName[0]}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
+                      {program.coachName}
+                    </span>
+                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
+                      Program coach
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* 1:1 Program Overview */
+              <>
+                {/* Next Session Info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-5 h-5 text-brand-accent" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
+                      Next session
+                    </span>
+                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
+                      {nextCall?.datetime ? (
+                        new Date(nextCall.datetime).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })
+                      ) : (
+                        'Not scheduled'
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Coach Avatar + Info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-brand-accent/10">
+                    {(coachingCoach?.imageUrl || program.coachImageUrl) ? (
+                      <Image
+                        src={coachingCoach?.imageUrl || program.coachImageUrl || ''}
+                        alt={coachingCoach?.name || program.coachName}
+                        width={38}
+                        height={38}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="font-albert font-semibold text-sm text-brand-accent">
+                          {(coachingCoach?.name || program.coachName)?.[0] || 'C'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
+                      {coachingCoach?.name || program.coachName}
+                    </span>
+                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
+                      Program coach
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -816,9 +803,7 @@ export function ProgramDetailView({
 
       {/* Weekly Section - Theme, Description, Prompt */}
       {weeklyWeek && (
-        <div className="mt-6">
-          <WeeklySection week={weeklyWeek} totalWeeks={calendarWeeks.length} />
-        </div>
+        <WeeklySection week={weeklyWeek} totalWeeks={calendarWeeks.length} />
       )}
 
       {/* Schedule Section - Replaces 3 Day Focus */}
@@ -850,19 +835,32 @@ export function ProgramDetailView({
         </div>
       )}
 
-      {/* Weekly Resources */}
-      {weeklyWeek && (weeklyCourses.length > 0 || weeklyArticles.length > 0 || weeklyDownloads.length > 0 || weeklyLinks.length > 0 || weeklyEvents.length > 0) && (
-        <div className="mt-8">
-          <WeeklyResources
-            courses={weeklyCourses}
-            articles={weeklyArticles}
-            downloads={weeklyDownloads}
-            links={weeklyLinks}
-            events={weeklyEvents}
-            enrollmentId={enrollment?.id}
-          />
-        </div>
-      )}
+      {/* Resources Section - Show weekly resources if available, otherwise program-level resources */}
+      {(() => {
+        // Prefer weekly resources, fall back to program-level
+        const displayCourses = weeklyCourses.length > 0 ? weeklyCourses : courses;
+        const displayArticles = weeklyArticles.length > 0 ? weeklyArticles : articles;
+        const displayDownloads = weeklyDownloads.length > 0 ? weeklyDownloads : downloads;
+        const displayLinks = weeklyLinks.length > 0 ? weeklyLinks : links;
+        const displayEvents = weeklyEvents;
+
+        const hasAnyResources = displayCourses.length > 0 || displayArticles.length > 0 || displayDownloads.length > 0 || displayLinks.length > 0 || displayEvents.length > 0;
+
+        if (!hasAnyResources) return null;
+
+        return (
+          <div className="mt-8">
+            <WeeklyResources
+              courses={displayCourses}
+              articles={displayArticles}
+              downloads={displayDownloads}
+              links={displayLinks}
+              events={displayEvents}
+              enrollmentId={enrollment?.id}
+            />
+          </div>
+        );
+      })()}
 
       {/* Legacy 3 Day Focus Section - Fallback when no weekly content */}
       {hasAnyTasks && !weeklyWeek && (
@@ -1081,137 +1079,6 @@ export function ProgramDetailView({
         </div>
       )}
 
-      {/* Courses (horizontal scroll) */}
-      {courses.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-            Courses
-          </h2>
-          
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {courses.map((course) => (
-              <Link
-                key={course.id}
-                href={`/discover/courses/${course.id}?enrollmentId=${enrollment.id}`}
-                className="flex-shrink-0 w-[180px] bg-[rgba(255,255,255,0.7)] dark:bg-[#171b22] rounded-[20px] p-4 hover:shadow-lg transition-shadow"
-              >
-                <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.2]">
-                  {course.category || 'Course'}
-                </span>
-                <p className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3] mt-6 line-clamp-2">
-                  {course.title}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Articles */}
-      {articles.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-            Articles
-          </h2>
-          
-          {articles.length === 1 ? (
-            /* Full-width single article with large cover image */
-            <Link href={`/discover/articles/${articles[0].id}`}>
-              <div className="bg-white dark:bg-[#171b22] rounded-[20px] overflow-hidden hover:shadow-md dark:hover:shadow-black/30 transition-shadow cursor-pointer">
-                {/* Cover Image */}
-                <div className="relative h-[200px] w-full bg-earth-100 dark:bg-[#262b35]">
-                  {articles[0].coverImageUrl ? (
-                    <Image
-                      src={articles[0].coverImageUrl}
-                      alt={articles[0].title}
-                      fill
-                      className="object-cover"
-                      sizes="100vw"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <svg className="w-12 h-12 text-earth-300 dark:text-[#7d8190]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Content */}
-                <div className="p-4 flex flex-col gap-1.5">
-                  <h3 className="font-albert font-semibold text-lg text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] leading-[1.3]">
-                    {articles[0].title}
-                  </h3>
-                  <p className="font-sans text-sm text-text-muted dark:text-[#7d8190]">
-                    {articles[0].authorName}
-                    {articles[0].readingTimeMinutes && ` · ${articles[0].readingTimeMinutes} min`}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ) : (
-            /* Grid layout for multiple articles */
-            <div className="grid grid-cols-2 gap-3">
-              {articles.slice(0, 4).map((article) => (
-                <ArticleCard key={article.id} article={article} variant="grid" />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Links (pill chips) */}
-      {links.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-            Links
-          </h2>
-          
-          <div className="flex flex-wrap gap-2">
-            {links.map((link) => (
-              <a
-                key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-white dark:bg-[#171b22] rounded-full px-4 py-2 flex items-center gap-2 border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors"
-              >
-                <ExternalLink className="w-4 h-4 text-text-secondary dark:text-[#7d8190]" />
-                <span className="font-sans text-[14px] font-medium text-text-secondary dark:text-[#7d8190]">
-                  {link.title}
-                </span>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Downloads (horizontal scroll) */}
-      {downloads.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-            Downloads
-          </h2>
-          
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {downloads.map((download) => (
-              <a
-                key={download.id}
-                href={download.fileUrl}
-                download
-                className="flex-shrink-0 w-[180px] bg-[rgba(255,255,255,0.7)] dark:bg-[#171b22] rounded-[20px] p-4 hover:shadow-lg transition-shadow"
-              >
-                <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.2]">
-                  {download.fileType?.toUpperCase() || 'File'}
-                </span>
-                <p className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3] mt-6 line-clamp-2">
-                  {download.title}
-                </p>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
 
 
     </div>

@@ -510,7 +510,7 @@ export function ProgramCommunityTab({
       </div>
 
       {/* Squad Stats */}
-      {squad && (squad.avgAlignment !== undefined || squad.streak !== undefined) && (
+      {squad && (
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 text-center">
             <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">

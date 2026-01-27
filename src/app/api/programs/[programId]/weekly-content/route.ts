@@ -113,22 +113,45 @@ export async function GET(
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
 
+    // Get program configuration
+    const includeWeekends = program.includeWeekends !== false;
+    const daysPerWeek = includeWeekends ? 7 : 5;
+
     // Calculate current day and week
     const startDate = new Date(enrollment.startedAt);
     startDate.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    // For 5-day programs on weekends, we'll show next week
     const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     const currentDayIndex = Math.max(1, daysSinceStart + 1);
 
     // Try to get instance-based data first (new system)
-    const instanceSnapshot = await adminDb
+    // First try individual instance for this enrollment
+    let instanceSnapshot = await adminDb
       .collection('program_instances')
       .where('programId', '==', programId)
       .where('enrollmentId', '==', enrollmentId)
       .where('type', '==', 'individual')
       .limit(1)
       .get();
+
+    // If no individual instance found and enrollment has a cohortId, try cohort instance
+    if (instanceSnapshot.empty && enrollment.cohortId) {
+      console.log(`[WEEKLY_CONTENT] No individual instance, trying cohort instance for cohortId: ${enrollment.cohortId}`);
+      instanceSnapshot = await adminDb
+        .collection('program_instances')
+        .where('programId', '==', programId)
+        .where('cohortId', '==', enrollment.cohortId)
+        .where('type', '==', 'cohort')
+        .limit(1)
+        .get();
+    }
+
+    console.log(`[WEEKLY_CONTENT] Instance found: ${!instanceSnapshot.empty}, instanceId: ${instanceSnapshot.docs[0]?.id || 'none'}`);
 
     let weekData: WeeklyContentResponse['week'] = null;
     let daysData: WeeklyContentResponse['days'] = [];
@@ -188,28 +211,55 @@ export async function GET(
         weekLinkedSummaryIds = targetWeek.linkedSummaryIds || [];
         weekLinkedQuestionnaireIds = targetWeek.linkedQuestionnaireIds || [];
 
-        // Process days
+        // Process days from instance (filter out weekends for 5-day programs)
         const instanceDays = targetWeek.days || [];
         for (const day of instanceDays) {
-          const dayDate = day.calendarDate ? new Date(day.calendarDate) : null;
-          const dayOfWeek = dayDate ? dayDate.getDay() : (day.dayIndex - 1) % 7;
+          // Calculate calendar date if missing - use enrollment start + globalDayIndex
+          const globalDay = day.globalDayIndex || day.dayIndex;
+          let calendarDate = day.calendarDate;
+          let dayDate: Date;
+
+          if (calendarDate) {
+            dayDate = new Date(calendarDate);
+          } else {
+            // Calculate from enrollment start date
+            dayDate = new Date(startDate);
+            dayDate.setDate(dayDate.getDate() + (globalDay - 1));
+            calendarDate = dayDate.toISOString().split('T')[0];
+          }
+
+          const dayDateOfWeek = dayDate.getDay();
+
+          // For 5-day programs, skip weekend days
+          if (!includeWeekends && (dayDateOfWeek === 0 || dayDateOfWeek === 6)) {
+            continue;
+          }
+
+          // Inherit week-level resources if day-level is empty
+          const dayEventIds = day.linkedEventIds?.length ? day.linkedEventIds : weekLinkedCallEventIds;
+          const dayArticleIds = day.linkedArticleIds?.length ? day.linkedArticleIds : weekLinkedArticleIds;
+          const dayDownloadIds = day.linkedDownloadIds?.length ? day.linkedDownloadIds : weekLinkedDownloadIds;
+          const dayLinkIds = day.linkedLinkIds?.length ? day.linkedLinkIds : weekLinkedLinkIds;
+          const dayCourseIds = day.linkedCourseIds?.length ? day.linkedCourseIds : weekLinkedCourseIds;
+          const daySummaryIds = day.linkedSummaryIds?.length ? day.linkedSummaryIds : weekLinkedSummaryIds;
+          const dayQuestionnaireIds = day.linkedQuestionnaireIds?.length ? day.linkedQuestionnaireIds : weekLinkedQuestionnaireIds;
 
           daysData.push({
             dayIndex: day.dayIndex,
-            globalDayIndex: day.globalDayIndex || day.dayIndex,
-            calendarDate: day.calendarDate,
-            dayName: dayNames[dayOfWeek],
-            isToday: dayDate ? dayDate.toDateString() === today.toDateString() : day.globalDayIndex === currentDayIndex,
-            isPast: dayDate ? dayDate < today : day.globalDayIndex < currentDayIndex,
+            globalDayIndex: globalDay,
+            calendarDate,
+            dayName: dayNames[dayDateOfWeek],
+            isToday: dayDate.toDateString() === today.toDateString(),
+            isPast: dayDate < today,
             tasks: day.tasks || [],
             habits: day.habits,
-            linkedEventIds: day.linkedEventIds,
-            linkedArticleIds: day.linkedArticleIds,
-            linkedDownloadIds: day.linkedDownloadIds,
-            linkedLinkIds: day.linkedLinkIds,
-            linkedQuestionnaireIds: day.linkedQuestionnaireIds,
-            linkedCourseIds: targetWeek.linkedCourseIds,
-            linkedSummaryIds: day.linkedSummaryIds,
+            linkedEventIds: dayEventIds,
+            linkedArticleIds: dayArticleIds,
+            linkedDownloadIds: dayDownloadIds,
+            linkedLinkIds: dayLinkIds,
+            linkedQuestionnaireIds: dayQuestionnaireIds,
+            linkedCourseIds: dayCourseIds,
+            linkedSummaryIds: daySummaryIds,
           });
         }
       }
@@ -254,16 +304,34 @@ export async function GET(
         weekLinkedSummaryIds = targetWeek.linkedSummaryIds || [];
         weekLinkedQuestionnaireIds = targetWeek.linkedQuestionnaireIds || [];
 
-        // Generate days from week range
-        const daysInWeek = targetWeek.endDayIndex - targetWeek.startDayIndex + 1;
+        // Generate days from week range (respect includeWeekends)
         const weekStartDate = new Date(startDate);
         weekStartDate.setDate(weekStartDate.getDate() + targetWeek.startDayIndex - 1);
 
-        for (let i = 0; i < daysInWeek; i++) {
-          const globalDayIndex = targetWeek.startDayIndex + i;
-          const dayDate = new Date(weekStartDate);
+        // For 5-day programs on weekends, shift to next Monday
+        let adjustedWeekStartDate = new Date(weekStartDate);
+        if (!includeWeekends && isWeekend && !requestedWeekNumber) {
+          // Calculate days until Monday
+          const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+          adjustedWeekStartDate = new Date(today);
+          adjustedWeekStartDate.setDate(today.getDate() + daysUntilMonday);
+        }
+
+        // Generate days - for 5-day programs, we need to iterate more to skip weekends
+        const maxIterations = includeWeekends ? 7 : 9; // Allow extra iterations for skipping weekends
+        let addedDays = 0;
+        for (let i = 0; i < maxIterations && addedDays < daysPerWeek; i++) {
+          const dayDate = new Date(adjustedWeekStartDate);
           dayDate.setDate(dayDate.getDate() + i);
-          const dayOfWeek = dayDate.getDay();
+          const dayDateOfWeek = dayDate.getDay();
+
+          // For 5-day programs, skip weekends
+          if (!includeWeekends && (dayDateOfWeek === 0 || dayDateOfWeek === 6)) {
+            continue;
+          }
+
+          addedDays++;
+          const globalDayIndex = targetWeek.startDayIndex + addedDays - 1;
 
           // Distribute tasks based on distribution setting
           let dayTasks: ProgramTaskTemplate[] = [];
@@ -274,16 +342,16 @@ export async function GET(
           } else if (distribution === 'spread') {
             // Spread tasks across days
             const allTasks = targetWeek.weeklyTasks || [];
-            const tasksPerDay = Math.ceil(allTasks.length / daysInWeek);
-            const startIdx = i * tasksPerDay;
+            const tasksPerDay = Math.ceil(allTasks.length / daysPerWeek);
+            const startIdx = (addedDays - 1) * tasksPerDay;
             dayTasks = allTasks.slice(startIdx, startIdx + tasksPerDay);
           }
 
           daysData.push({
-            dayIndex: i + 1,
+            dayIndex: addedDays,
             globalDayIndex,
             calendarDate: dayDate.toISOString().split('T')[0],
-            dayName: dayNames[dayOfWeek],
+            dayName: dayNames[dayDateOfWeek],
             isToday: dayDate.toDateString() === today.toDateString(),
             isPast: dayDate < today,
             tasks: dayTasks,

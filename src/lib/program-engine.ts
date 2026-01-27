@@ -1133,6 +1133,48 @@ export async function removeUserFromSquadEntirely(
   }
 }
 
+/**
+ * Remove a user from a squad's Stream chat channel ONLY.
+ * Keeps Firebase squad membership intact for re-enrollment.
+ * Used when stopping an enrollment - user loses chat access but remains enrollable.
+ *
+ * @param userId - User ID to remove from chat
+ * @param squadId - Squad ID whose chat to remove from
+ */
+export async function removeUserFromSquadChat(
+  userId: string,
+  squadId: string
+): Promise<void> {
+  try {
+    const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+
+    if (!squadDoc.exists) {
+      console.log(`[SQUAD_CHAT_REMOVE] Squad ${squadId} not found`);
+      return;
+    }
+
+    const squadData = squadDoc.data() as Squad;
+
+    // Only remove from Stream chat - keep Firebase membership
+    if (squadData.chatChannelId) {
+      try {
+        const streamClient = await getStreamServerClient();
+        const channel = streamClient.channel('messaging', squadData.chatChannelId);
+        await channel.removeMembers([userId]);
+        console.log(`[SQUAD_CHAT_REMOVE] Removed user ${userId} from Stream channel ${squadData.chatChannelId}`);
+      } catch (streamError) {
+        console.error('[SQUAD_CHAT_REMOVE] Error removing from Stream channel:', streamError);
+        // Non-fatal - enrollment status already updated
+      }
+    } else {
+      console.log(`[SQUAD_CHAT_REMOVE] Squad ${squadId} has no chat channel`);
+    }
+  } catch (error) {
+    console.error('[SQUAD_CHAT_REMOVE] Error:', error);
+    // Non-fatal - don't throw, let enrollment status update proceed
+  }
+}
+
 // ============================================================================
 // PROGRAMS V2 SYNC (program_enrollments + program_days collections)
 // ============================================================================

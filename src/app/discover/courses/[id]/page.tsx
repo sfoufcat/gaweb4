@@ -410,18 +410,13 @@ function CourseContent({
           {/* Course Info */}
           <div className="flex flex-col gap-2">
             {/* Tags */}
-            <div className="flex items-center gap-2">
-              {course.category && (
+            {course.category && (
+              <div className="flex items-center gap-2">
                 <span className="px-3 py-1 bg-earth-100 dark:bg-[#222631] rounded-full font-sans text-xs text-earth-600 dark:text-brand-accent">
                   {course.category}
                 </span>
-              )}
-              {course.level && (
-                <span className="px-3 py-1 bg-earth-100 dark:bg-[#222631] rounded-full font-sans text-xs text-earth-600 dark:text-brand-accent">
-                  {course.level}
-                </span>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Title */}
             <h1 className="font-albert font-medium text-2xl text-text-primary tracking-[-1.5px] leading-[1.3]">
@@ -444,16 +439,53 @@ function CourseContent({
 
             {/* Course Completion Progress */}
             {totalLessons > 0 && (
-              <div className="flex items-center gap-3 mt-2">
-                <div className="flex-1 h-2 bg-earth-100 dark:bg-[#262b35] rounded-full overflow-hidden">
+              <div className="mt-4 p-4 bg-white dark:bg-[#171b22] rounded-2xl border border-earth-100 dark:border-[#262b35]">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    {completionPercent === 100 ? (
+                      <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-earth-100 dark:bg-[#262b35] flex items-center justify-center">
+                        <svg className="w-4 h-4 text-earth-500 dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-albert font-semibold text-sm text-text-primary dark:text-[#f5f5f8] tracking-[-0.3px]">
+                        {completionPercent === 100 ? 'Course Complete!' : 'Your Progress'}
+                      </p>
+                      <p className="font-sans text-xs text-text-muted dark:text-[#7d8190]">
+                        {completedLessons} of {totalLessons} lessons
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-albert font-bold text-2xl text-earth-600 dark:text-brand-accent tracking-[-1px]">
+                      {completionPercent}%
+                    </span>
+                  </div>
+                </div>
+                <div className="relative h-3 bg-earth-100 dark:bg-[#262b35] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-green-500 dark:bg-green-400 transition-all duration-300"
+                    className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out ${
+                      completionPercent === 100
+                        ? 'bg-gradient-to-r from-green-400 to-green-500'
+                        : 'bg-gradient-to-r from-earth-400 to-earth-500 dark:from-brand-accent/80 dark:to-brand-accent'
+                    }`}
                     style={{ width: `${completionPercent}%` }}
                   />
+                  {completionPercent > 0 && completionPercent < 100 && (
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full shadow-sm transition-all duration-500"
+                      style={{ left: `calc(${completionPercent}% - 4px)` }}
+                    />
+                  )}
                 </div>
-                <span className="text-sm text-text-secondary whitespace-nowrap">
-                  {completedLessons}/{totalLessons} completed
-                </span>
               </div>
             )}
           </div>
@@ -551,11 +583,13 @@ function CourseContent({
                           <div className="flex items-center gap-3">
                             {/* Show checkmark for completed, play icon otherwise */}
                             {lessonCompleted ? (
-                              <div className="w-8 h-8 rounded-full bg-green-500 dark:bg-green-500 flex items-center justify-center">
-                                <CheckCircle2 className="w-5 h-5 text-white" />
+                              <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
                               </div>
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-earth-500 dark:bg-brand-accent flex items-center justify-center group-hover:bg-earth-600 transition-colors">
+                              <div className="w-10 h-10 rounded-full bg-earth-500 dark:bg-brand-accent flex items-center justify-center group-hover:bg-earth-600 transition-colors">
                                 <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                                   <path d="M8 5v14l11-7z" />
                                 </svg>
@@ -563,8 +597,8 @@ function CourseContent({
                             )}
 
                             {/* Lesson Info */}
-                            <div className="flex flex-col">
-                              <span className={`font-sans text-sm leading-[1.2] ${
+                            <div className="flex flex-col gap-0.5">
+                              <span className={`font-albert font-medium text-[15px] tracking-[-0.3px] leading-[1.3] ${
                                 lessonCompleted
                                   ? 'text-text-secondary dark:text-[#b2b6c2]'
                                   : 'text-text-primary dark:text-[#f5f5f8]'
@@ -572,11 +606,11 @@ function CourseContent({
                                 {lessonIndex + 1}. {lesson.title}
                               </span>
                               {lessonCompleted ? (
-                                <span className="font-sans text-xs text-green-600 dark:text-green-400 mt-0.5">
+                                <span className="font-albert text-xs font-medium text-green-600 dark:text-green-400">
                                   Completed
                                 </span>
                               ) : lesson.videoUrl ? (
-                                <span className="font-sans text-xs text-text-muted dark:text-[#7d8190] mt-0.5">
+                                <span className="font-albert text-xs text-text-muted dark:text-[#7d8190]">
                                   Video lesson
                                 </span>
                               ) : null}
@@ -586,11 +620,11 @@ function CourseContent({
                           {/* Duration & Arrow */}
                           <div className="flex items-center gap-2">
                             {lesson.durationMinutes && (
-                              <span className="font-sans text-xs text-text-muted">
+                              <span className="font-albert text-xs text-text-muted dark:text-[#7d8190]">
                                 {lesson.durationMinutes} min
                               </span>
                             )}
-                            <svg className="w-4 h-4 text-earth-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-4 h-4 text-earth-300 dark:text-[#3d424d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                           </div>

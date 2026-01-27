@@ -37,14 +37,29 @@ import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks'
 /**
  * Distributes weeklyTasks to days based on each task's dayTag and the week's distribution setting.
  * This is used during instance creation to pre-populate days with tasks.
+ *
+ * @param weeklyTasks - Tasks to distribute
+ * @param days - Days to distribute tasks into
+ * @param distribution - Distribution setting ('spread', 'all_days', 'first_day')
+ * @param activeStartDay - For partial weeks: first active day (1-based). E.g., 3 for Wed enrollment.
+ * @param activeEndDay - For partial weeks: last active day (1-based). E.g., 3 for program ending Wed.
  */
 function distributeTasksToDays(
   weeklyTasks: Array<{ id?: string; label: string; dayTag?: 'auto' | 'spread' | 'daily' | number; [key: string]: unknown }>,
   days: ProgramInstanceDay[],
-  distribution: string | undefined
+  distribution: string | undefined,
+  activeStartDay?: number,
+  activeEndDay?: number
 ): ProgramInstanceDay[] {
   const numDays = days.length;
   if (numDays === 0 || weeklyTasks.length === 0) return days;
+
+  // Calculate active range (0-indexed)
+  // For onboarding: activeStartDay=3 (Wed) → activeStartIdx=2, activeEndIdx=4 (Wed-Fri = indices 2-4)
+  // For closing ending Wed: activeStartDay=1, activeEndDay=3 → indices 0-2 (Mon-Wed)
+  const activeStartIdx = Math.max(0, (activeStartDay || 1) - 1);
+  const activeEndIdx = Math.min(numDays - 1, (activeEndDay || numDays) - 1);
+  const activeRange = activeEndIdx - activeStartIdx + 1;
 
   // Helper to create a day task from a weekly task template
   const createDayTask = (task: typeof weeklyTasks[0]) => ({
@@ -54,8 +69,8 @@ function distributeTasksToDays(
   });
 
   // Categorize tasks by their dayTag
-  const dailyTasks: typeof weeklyTasks = [];      // dayTag: 'daily' → all days
-  const spreadTasks: typeof weeklyTasks = [];     // dayTag: 'spread' → spread evenly
+  const dailyTasks: typeof weeklyTasks = [];      // dayTag: 'daily' → all active days
+  const spreadTasks: typeof weeklyTasks = [];     // dayTag: 'spread' → spread evenly across active days
   const specificDayTasks: Map<number, typeof weeklyTasks> = new Map(); // dayTag: 1-7 → specific day
   const autoTasks: typeof weeklyTasks = [];       // dayTag: undefined/'auto' → use program distribution
 
@@ -66,7 +81,7 @@ function distributeTasksToDays(
     } else if (dayTag === 'spread') {
       spreadTasks.push(task);
     } else if (Array.isArray(dayTag)) {
-      // Multiple specific days - add task to each specified day
+      // Multiple specific days - add task to each specified day within active range
       for (const dayNum of dayTag) {
         if (dayNum >= 1 && dayNum <= numDays) {
           const existing = specificDayTasks.get(dayNum) || [];
@@ -87,58 +102,61 @@ function distributeTasksToDays(
   // Clone days to avoid mutation - use 'any' to allow flexible task structure
   const updatedDays = days.map(d => ({ ...d, tasks: [...(d.tasks || [])] as unknown[] }));
 
-  // Add daily tasks to ALL days
+  // Add daily tasks to ACTIVE days only
   for (const task of dailyTasks) {
-    for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+    for (let dayIdx = activeStartIdx; dayIdx <= activeEndIdx; dayIdx++) {
       updatedDays[dayIdx].tasks.push(createDayTask(task));
     }
   }
 
-  // Add specific-day tasks to their designated day
+  // Add specific-day tasks to their designated day (only if within active range)
   for (const [dayNum, tasks] of specificDayTasks) {
     const dayIdx = dayNum - 1; // dayTag is 1-based, array is 0-based
-    if (dayIdx >= 0 && dayIdx < numDays) {
+    if (dayIdx >= activeStartIdx && dayIdx <= activeEndIdx) {
       for (const task of tasks) {
         updatedDays[dayIdx].tasks.push(createDayTask(task));
       }
     }
   }
 
-  // Spread tasks with dayTag: 'spread' evenly across the week
-  if (spreadTasks.length > 0) {
+  // Spread tasks with dayTag: 'spread' evenly across ACTIVE days
+  if (spreadTasks.length > 0 && activeRange > 0) {
     for (let taskIdx = 0; taskIdx < spreadTasks.length; taskIdx++) {
       let targetDayIdx: number;
       if (spreadTasks.length === 1) {
-        targetDayIdx = 0;
+        targetDayIdx = activeStartIdx;
       } else {
-        targetDayIdx = Math.round(taskIdx * (numDays - 1) / (spreadTasks.length - 1));
+        // Spread within active range
+        const offset = Math.round(taskIdx * (activeRange - 1) / (spreadTasks.length - 1));
+        targetDayIdx = activeStartIdx + offset;
       }
       updatedDays[targetDayIdx].tasks.push(createDayTask(spreadTasks[taskIdx]));
     }
   }
 
-  // Apply program distribution to 'auto' tasks
-  if (autoTasks.length > 0) {
+  // Apply program distribution to 'auto' tasks within ACTIVE days
+  if (autoTasks.length > 0 && activeRange > 0) {
     const distType = distribution || 'spread';
     if (distType === 'spread') {
       for (let taskIdx = 0; taskIdx < autoTasks.length; taskIdx++) {
         let targetDayIdx: number;
         if (autoTasks.length === 1) {
-          targetDayIdx = 0;
+          targetDayIdx = activeStartIdx;
         } else {
-          targetDayIdx = Math.round(taskIdx * (numDays - 1) / (autoTasks.length - 1));
+          const offset = Math.round(taskIdx * (activeRange - 1) / (autoTasks.length - 1));
+          targetDayIdx = activeStartIdx + offset;
         }
         updatedDays[targetDayIdx].tasks.push(createDayTask(autoTasks[taskIdx]));
       }
     } else if (distType === 'all_days') {
       for (const task of autoTasks) {
-        for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+        for (let dayIdx = activeStartIdx; dayIdx <= activeEndIdx; dayIdx++) {
           updatedDays[dayIdx].tasks.push(createDayTask(task));
         }
       }
     } else if (distType === 'first_day') {
       for (const task of autoTasks) {
-        updatedDays[0].tasks.push(createDayTask(task));
+        updatedDays[activeStartIdx].tasks.push(createDayTask(task));
       }
     }
   }
@@ -377,8 +395,10 @@ export async function GET(request: NextRequest) {
                   return startDate.toISOString().split('T')[0];
                 };
 
+                // For UI: use displayDaysCount if available (for partial weeks showing full week)
+                const daysToCreate = calendarWeek.displayDaysCount || (endDayIndex - startDayIndex + 1);
                 let days: ProgramInstanceDay[] = [];
-                for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
+                for (let i = 0; i < daysToCreate; i++) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
@@ -395,8 +415,15 @@ export async function GET(request: NextRequest) {
                 }));
 
                 // Distribute tasks to days based on dayTag and distribution setting
+                // Pass actualStartDayOfWeek/actualEndDayOfWeek for partial weeks
                 if (weeklyTasks.length > 0) {
-                  days = distributeTasksToDays(weeklyTasks, days, templateWeek?.distribution);
+                  days = distributeTasksToDays(
+                    weeklyTasks,
+                    days,
+                    templateWeek?.distribution,
+                    calendarWeek.actualStartDayOfWeek,
+                    calendarWeek.actualEndDayOfWeek
+                  );
                 }
 
                 return {
@@ -416,6 +443,8 @@ export async function GET(request: NextRequest) {
                   calendarStartDate: calendarWeek.startDate,
                   calendarEndDate: calendarWeek.endDate,
                   actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
+                  actualEndDayOfWeek: calendarWeek.actualEndDayOfWeek,
+                  displayDaysCount: calendarWeek.displayDaysCount,
                   days,
                   // Client-facing summary fields
                   currentFocus: templateWeek?.currentFocus,
@@ -472,8 +501,10 @@ export async function GET(request: NextRequest) {
                   return startDate.toISOString().split('T')[0];
                 };
 
+                // For UI: use displayDaysCount if available (for partial weeks showing full week)
+                const daysToCreate = calendarWeek.displayDaysCount || (endDayIndex - startDayIndex + 1);
                 let days: ProgramInstanceDay[] = [];
-                for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
+                for (let i = 0; i < daysToCreate; i++) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
@@ -490,8 +521,15 @@ export async function GET(request: NextRequest) {
                 }));
 
                 // Distribute tasks to days based on dayTag and distribution setting
+                // Pass actualStartDayOfWeek/actualEndDayOfWeek for partial weeks
                 if (weeklyTasks.length > 0) {
-                  days = distributeTasksToDays(weeklyTasks, days, weekData?.distribution);
+                  days = distributeTasksToDays(
+                    weeklyTasks,
+                    days,
+                    weekData?.distribution,
+                    calendarWeek.actualStartDayOfWeek,
+                    calendarWeek.actualEndDayOfWeek
+                  );
                 }
 
                 return {
@@ -511,6 +549,8 @@ export async function GET(request: NextRequest) {
                   calendarStartDate: calendarWeek.startDate,
                   calendarEndDate: calendarWeek.endDate,
                   actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
+                  actualEndDayOfWeek: calendarWeek.actualEndDayOfWeek,
+                  displayDaysCount: calendarWeek.displayDaysCount,
                   days,
                   // Client-facing summary fields
                   currentFocus: weekData?.currentFocus,
@@ -678,8 +718,10 @@ export async function GET(request: NextRequest) {
                   return startDate.toISOString().split('T')[0];
                 };
 
+                // For UI: use displayDaysCount if available (for partial weeks showing full week)
+                const daysToCreate = calendarWeek.displayDaysCount || (endDayIndex - startDayIndex + 1);
                 let days: ProgramInstanceDay[] = [];
-                for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
+                for (let i = 0; i < daysToCreate; i++) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
@@ -696,8 +738,15 @@ export async function GET(request: NextRequest) {
                 }));
 
                 // Distribute tasks to days based on dayTag and distribution setting
+                // Pass actualStartDayOfWeek/actualEndDayOfWeek for partial weeks
                 if (weeklyTasks.length > 0) {
-                  days = distributeTasksToDays(weeklyTasks, days, templateWeek?.distribution);
+                  days = distributeTasksToDays(
+                    weeklyTasks,
+                    days,
+                    templateWeek?.distribution,
+                    calendarWeek.actualStartDayOfWeek,
+                    calendarWeek.actualEndDayOfWeek
+                  );
                 }
 
                 return {
@@ -717,6 +766,8 @@ export async function GET(request: NextRequest) {
                   calendarStartDate: calendarWeek.startDate,
                   calendarEndDate: calendarWeek.endDate,
                   actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
+                  actualEndDayOfWeek: calendarWeek.actualEndDayOfWeek,
+                  displayDaysCount: calendarWeek.displayDaysCount,
                   days,
                   // Client-facing summary fields
                   currentFocus: templateWeek?.currentFocus,
@@ -773,8 +824,10 @@ export async function GET(request: NextRequest) {
                   return startDate.toISOString().split('T')[0];
                 };
 
+                // For UI: use displayDaysCount if available (for partial weeks showing full week)
+                const daysToCreate = calendarWeek.displayDaysCount || (endDayIndex - startDayIndex + 1);
                 let days: ProgramInstanceDay[] = [];
-                for (let i = 0; i <= endDayIndex - startDayIndex; i++) {
+                for (let i = 0; i < daysToCreate; i++) {
                   days.push({
                     dayIndex: i + 1,
                     globalDayIndex: startDayIndex + i,
@@ -791,8 +844,15 @@ export async function GET(request: NextRequest) {
                 }));
 
                 // Distribute tasks to days based on dayTag and distribution setting
+                // Pass actualStartDayOfWeek/actualEndDayOfWeek for partial weeks
                 if (weeklyTasks.length > 0) {
-                  days = distributeTasksToDays(weeklyTasks, days, weekData?.distribution);
+                  days = distributeTasksToDays(
+                    weeklyTasks,
+                    days,
+                    weekData?.distribution,
+                    calendarWeek.actualStartDayOfWeek,
+                    calendarWeek.actualEndDayOfWeek
+                  );
                 }
 
                 return {
@@ -812,6 +872,8 @@ export async function GET(request: NextRequest) {
                   calendarStartDate: calendarWeek.startDate,
                   calendarEndDate: calendarWeek.endDate,
                   actualStartDayOfWeek: calendarWeek.actualStartDayOfWeek,
+                  actualEndDayOfWeek: calendarWeek.actualEndDayOfWeek,
+                  displayDaysCount: calendarWeek.displayDaysCount,
                   days,
                   // Client-facing summary fields
                   currentFocus: weekData?.currentFocus,

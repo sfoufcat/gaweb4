@@ -427,6 +427,15 @@ export async function PATCH(
     const weekNumber = parseInt(weekNum, 10);
     const body = await request.json();
 
+    console.log(`[INSTANCE_WEEK_PATCH] Received body for week ${weekNumber}:`, {
+      hasDescription: body.description !== undefined,
+      description: body.description,
+      hasCurrentFocus: body.currentFocus !== undefined,
+      currentFocus: body.currentFocus,
+      hasTheme: body.theme !== undefined,
+      theme: body.theme,
+    });
+
     // Allow weekNumber: 0 (onboarding), 1+ (regular), -1 (closing)
     if (isNaN(weekNumber) || weekNumber < -1) {
       return NextResponse.json({ error: 'Invalid week number' }, { status: 400 });
@@ -542,6 +551,12 @@ export async function PATCH(
     updatedWeeks[weekIndex] = updatedWeek;
 
     // Save to Firestore
+    console.log(`[INSTANCE_WEEK_PATCH] Saving week ${weekNumber} with:`, {
+      description: updatedWeek.description,
+      currentFocus: updatedWeek.currentFocus,
+      theme: updatedWeek.theme,
+    });
+
     await adminDb.collection('program_instances').doc(instanceId).update({
       weeks: updatedWeeks,
       updatedAt: FieldValue.serverTimestamp(),

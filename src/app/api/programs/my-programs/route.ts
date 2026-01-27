@@ -22,6 +22,8 @@ import type {
   Program,
   ProgramEnrollment,
   ProgramCohort,
+  ProgramWeek,
+  ProgramModule,
   Squad,
   ClientCoachingData,
 } from '@/types';
@@ -55,6 +57,9 @@ interface EnrolledProgramWithDetails {
   program: Program & {
     coachName: string;
     coachImageUrl?: string;
+    // For upcoming programs: include weeks and modules for overview display
+    weeks?: ProgramWeek[];
+    modules?: ProgramModule[];
   };
   cohort?: ProgramCohort | null;
   squad?: Squad | null;
@@ -517,12 +522,102 @@ export async function GET() {
         coachingData = coachingResult.coachingData;
       }
 
+      // For upcoming enrollments, fetch weeks and modules for the overview display
+      let weeks: ProgramWeek[] | undefined;
+      let modules: ProgramModule[] | undefined;
+      if (enrollment.status === 'upcoming') {
+        // Get weeks from embedded array on program, or from program_weeks collection
+        if (program.weeks && program.weeks.length > 0) {
+          weeks = program.weeks;
+        } else {
+          // Fallback: fetch from program_weeks collection (legacy)
+          const weeksSnapshot = await adminDb
+            .collection('program_weeks')
+            .where('programId', '==', program.id)
+            .orderBy('weekNumber', 'asc')
+            .get();
+
+          if (!weeksSnapshot.empty) {
+            weeks = weeksSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as ProgramWeek));
+          }
+        }
+
+        // Enrich resourceAssignments with titles from courses collection
+        if (weeks && weeks.length > 0) {
+          // Collect all course IDs that need titles
+          const courseIdsNeedingTitles = new Set<string>();
+          for (const week of weeks) {
+            if (week.resourceAssignments) {
+              for (const assignment of week.resourceAssignments) {
+                if (assignment.resourceType === 'course' && !assignment.title) {
+                  courseIdsNeedingTitles.add(assignment.resourceId);
+                }
+              }
+            }
+          }
+
+          // Fetch course titles in batch
+          if (courseIdsNeedingTitles.size > 0) {
+            const courseTitles = new Map<string, string>();
+            const courseIds = Array.from(courseIdsNeedingTitles);
+
+            // Firestore 'in' queries are limited to 30 items
+            for (let i = 0; i < courseIds.length; i += 30) {
+              const batch = courseIds.slice(i, i + 30);
+              const coursesSnapshot = await adminDb
+                .collection('courses')
+                .where('__name__', 'in', batch)
+                .get();
+
+              coursesSnapshot.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.title) {
+                  courseTitles.set(doc.id, data.title);
+                }
+              });
+            }
+
+            // Update weeks with enriched resourceAssignments
+            weeks = weeks.map(week => {
+              if (!week.resourceAssignments) return week;
+              return {
+                ...week,
+                resourceAssignments: week.resourceAssignments.map(assignment => {
+                  if (assignment.resourceType === 'course' && !assignment.title) {
+                    const title = courseTitles.get(assignment.resourceId);
+                    if (title) {
+                      return { ...assignment, title };
+                    }
+                  }
+                  return assignment;
+                }),
+              };
+            });
+          }
+        }
+
+        // If program has modules, fetch them
+        if (program.hasModules) {
+          const modulesSnapshot = await adminDb
+            .collection('program_modules')
+            .where('programId', '==', program.id)
+            .orderBy('order', 'asc')
+            .get();
+
+          if (!modulesSnapshot.empty) {
+            modules = modulesSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as ProgramModule));
+          }
+        }
+      }
+
       enrolledPrograms.push({
         enrollment,
         program: {
           ...program,
           coachName,
           coachImageUrl,
+          weeks,
+          modules,
         },
         cohort,
         squad,

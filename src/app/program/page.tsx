@@ -18,7 +18,9 @@ import { ProgramDiscovery } from '@/components/program/ProgramDiscovery';
 import { PlatformEmptyState } from '@/components/program/PlatformEmptyState';
 import { ProgramListView } from '@/components/program/ProgramListView';
 import { ProgramDetailView } from '@/components/program/ProgramDetailView';
+import { UpcomingProgramView } from '@/components/program/UpcomingProgramView';
 import { SquadTabContent } from '@/components/program/SquadTabContent';
+import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 
 /**
  * Program Hub Page
@@ -165,6 +167,23 @@ export default function ProgramHubPage() {
     if (!selectedProgramId) return null;
     return enrollments.find(e => e.program.id === selectedProgramId) || null;
   }, [selectedProgramId, enrollments]);
+
+  // Helper to check if an enrollment is upcoming (program hasn't started yet)
+  // Check actual start date, not just the stored status (which may not be updated)
+  const isUpcomingEnrollment = (enrollment: EnrolledProgramWithDetails) => {
+    // Use cohort start date for group programs, enrollment startedAt otherwise
+    const startDateStr = enrollment.cohort?.startDate || enrollment.enrollment.startedAt;
+    if (!startDateStr) return false;
+
+    const startDate = new Date(startDateStr);
+    startDate.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Program is upcoming if start date is in the future (not today or past)
+    return startDate > today;
+  };
   
   // Loading state - return null for smooth page fade-in via PageTransition
   // In demo mode, skip waiting for Clerk user to load
@@ -233,12 +252,35 @@ export default function ProgramHubPage() {
 
   // If showing program details view (selected a specific program) - when user has both programs
   if (hasBothPrograms && selectedProgram) {
+    // Check if selected program is upcoming - show UpcomingProgramView instead
+    if (isUpcomingEnrollment(selectedProgram)) {
+      return (
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4 overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="upcoming-program"
+              initial={getInitialState('detail')}
+              animate="center"
+              exit="exitToRight"
+              variants={slideVariants}
+              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <UpcomingProgramView
+                program={selectedProgram}
+                onBack={handleBackFromDetails}
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      );
+    }
+
     const programShowSquadTab = getShowSquadTab(selectedProgram);
     // Get the squad ID for this program (community squad for individual, cohort squad for group)
     const programSquadId = selectedProgram.program.type === 'individual'
       ? selectedProgram.program.clientCommunitySquadId
       : selectedProgram.squad?.id; // squad ID from enrollment for group programs
-    
+
     return (
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4 overflow-hidden">
         <AnimatePresence mode="wait">
@@ -262,7 +304,7 @@ export default function ProgramHubPage() {
                 />
               </div>
             )}
-            
+
             {/* Tab content with fade-up animation */}
             <AnimatePresence mode="wait">
               {activeTab === 'program' || !programShowSquadTab ? (
@@ -274,7 +316,7 @@ export default function ProgramHubPage() {
                   exit="exit"
                   transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
                 >
-                  <ProgramDetailView 
+                  <ProgramDetailView
                     program={selectedProgram}
                     onBack={handleBackFromDetails}
                     onRefresh={refreshPrograms}
@@ -289,7 +331,7 @@ export default function ProgramHubPage() {
                   exit="exit"
                   transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
                 >
-                  <SquadTabContent 
+                  <SquadTabContent
                     programId={selectedProgram.program.id}
                     squadId={programSquadId || undefined}
                     programType={selectedProgram.program.type as 'group' | 'individual'}
@@ -328,11 +370,23 @@ export default function ProgramHubPage() {
   
   // If showing program details view (single program mode - selected from URL)
   if (selectedProgram) {
+    // Check if selected program is upcoming - show UpcomingProgramView instead
+    if (isUpcomingEnrollment(selectedProgram)) {
+      return (
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+          <UpcomingProgramView
+            program={selectedProgram}
+            onBack={handleBackFromDetails}
+          />
+        </div>
+      );
+    }
+
     const programShowSquadTab = getShowSquadTab(selectedProgram);
     const programSquadId = selectedProgram.program.type === 'individual'
       ? selectedProgram.program.clientCommunitySquadId
       : selectedProgram.squad?.id;
-    
+
     return (
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
         {programShowSquadTab && (
@@ -346,7 +400,7 @@ export default function ProgramHubPage() {
             />
           </div>
         )}
-        
+
         {/* Tab content with fade-up animation */}
         <AnimatePresence mode="wait">
           {activeTab === 'program' || !programShowSquadTab ? (
@@ -358,7 +412,7 @@ export default function ProgramHubPage() {
               exit="exit"
               transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <ProgramDetailView 
+              <ProgramDetailView
                 program={selectedProgram}
                 onBack={handleBackFromDetails}
                 onRefresh={refreshPrograms}
@@ -373,7 +427,7 @@ export default function ProgramHubPage() {
               exit="exit"
               transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <SquadTabContent 
+              <SquadTabContent
                 programId={selectedProgram.program.id}
                 squadId={programSquadId || undefined}
                 programType={selectedProgram.program.type as 'group' | 'individual'}
@@ -387,10 +441,23 @@ export default function ProgramHubPage() {
   
   // Single program view - show pill menu if has squad
   const singleProgram = groupProgram || individualProgram!;
+
+  // Check if single program is upcoming - show UpcomingProgramView instead
+  if (isUpcomingEnrollment(singleProgram)) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+        <UpcomingProgramView
+          program={singleProgram}
+          showBackButton={false}
+        />
+      </div>
+    );
+  }
+
   const singleProgramSquadId = singleProgram.program.type === 'individual'
     ? singleProgram.program.clientCommunitySquadId
     : singleProgram.squad?.id;
-    
+
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
       {/* Top Pill Switcher - Only if has squad */}
@@ -405,7 +472,7 @@ export default function ProgramHubPage() {
           />
         </div>
       )}
-      
+
       {/* Tab Content with fade-up animation */}
       <AnimatePresence mode="wait">
         {activeTab === 'program' || !showSquadTab ? (
@@ -417,7 +484,7 @@ export default function ProgramHubPage() {
             exit="exit"
             transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
           >
-            <ProgramDetailView 
+            <ProgramDetailView
               program={singleProgram}
               showBackButton={false}
               onRefresh={refreshPrograms}
@@ -432,7 +499,7 @@ export default function ProgramHubPage() {
             exit="exit"
             transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
           >
-            <SquadTabContent 
+            <SquadTabContent
               programId={singleProgram.program.id}
               squadId={singleProgramSquadId || undefined}
               programType={singleProgram.program.type as 'group' | 'individual'}

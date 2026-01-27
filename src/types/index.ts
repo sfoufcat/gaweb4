@@ -6265,6 +6265,19 @@ export interface ProgramInstanceWeek {
    * Only set for onboarding weeks; undefined for regular and closing weeks.
    */
   actualStartDayOfWeek?: number;
+  /**
+   * For closing week: which day of the week the program actually ends (1-based).
+   * 1 = Monday, 2 = Tuesday, ..., 5 = Friday (for weekdays-only programs)
+   * Days after this should be shown as blurred/disabled in the UI.
+   * Only set for partial closing weeks; undefined for full weeks.
+   */
+  actualEndDayOfWeek?: number;
+  /**
+   * Number of days to display in UI (always full week: 5 for weekdays-only).
+   * For partial weeks (onboarding/closing), this may differ from dayCount.
+   * Used for rendering Day Preview while dayCount tracks actual program days.
+   */
+  displayDaysCount?: number;
   // Content
   name?: string;                 // Week name/title
   theme?: string;

@@ -170,7 +170,15 @@ export function SignUpForm({ redirectUrl = '/', embedded = false, origin = '', h
       return;
     }
 
-    // Try localhost funnel flow first (pass sessionId for backup auth)
+    // When embedded (in funnel) but no origin (same-origin embed), don't use localhost redirect.
+    // Let the parent (SignupStep) detect isSignedIn via useEffect and call linkSessionAndContinue.
+    // This ensures currentStepIndex gets incremented properly so user sees success step + confetti.
+    if (embedded) {
+      handleRedirect(redirectUrl);
+      return;
+    }
+
+    // Try localhost funnel flow first (only for standalone SignUpForm, not embedded)
     const effectiveSessionId = sessionIdOverride || sessionId;
     const handled = await linkSessionAndRedirectForLocalhost(effectiveSessionId);
     if (!handled) {

@@ -931,6 +931,12 @@ export function WeekEditor({
   // formData until week prop matches this snapshot (meaning SWR refreshed)
   const savedFormDataSnapshot = useRef<{
     weeklyTasks: { id: string | undefined; label: string; isPrimary?: boolean; dayTag?: string | number }[];
+    currentFocus?: string[];
+    description?: string;
+    theme?: string;
+    weeklyPrompt?: string;
+    notes?: string[];
+    manualNotes?: string;
   } | null>(null);
   // Track last registered data fingerprint to prevent infinite re-registration loops
   const lastRegisteredFingerprint = useRef<string | null>(null);
@@ -1441,11 +1447,18 @@ export function WeekEditor({
 
       if (wasSave) {
         // SAVE: Store snapshot of what we saved - formData has the correct values
+        // Include ALL editable fields, not just tasks
         savedFormDataSnapshot.current = {
           weeklyTasks: normalizeTasks(formData.weeklyTasks),
+          currentFocus: formData.currentFocus,
+          description: formData.description,
+          theme: formData.theme,
+          weeklyPrompt: formData.weeklyPrompt,
+          notes: formData.notes,
+          manualNotes: formData.manualNotes,
         };
         console.log('[WeekEditor:resetEffect] SAVE - stored snapshot:',
-          savedFormDataSnapshot.current.weeklyTasks.map(t => `${t.label}:${t.isPrimary}`));
+          { tasks: savedFormDataSnapshot.current.weeklyTasks.length, goals: savedFormDataSnapshot.current.currentFocus?.length });
       } else {
         // DISCARD: Reset to original week data immediately, clear snapshot
         console.log('[WeekEditor:resetEffect] DISCARD - resetting form');
@@ -1480,10 +1493,27 @@ export function WeekEditor({
 
     // SECOND: If we have a saved snapshot, compare week prop against it
     if (savedFormDataSnapshot.current) {
-      const snapshotStr = JSON.stringify(savedFormDataSnapshot.current.weeklyTasks);
-      const weekStr = JSON.stringify(weekTasksNormalized);
+      // Compare ALL snapshot fields, not just tasks
+      const snapshotFingerprint = JSON.stringify({
+        tasks: savedFormDataSnapshot.current.weeklyTasks,
+        currentFocus: savedFormDataSnapshot.current.currentFocus || [],
+        description: savedFormDataSnapshot.current.description || '',
+        theme: savedFormDataSnapshot.current.theme || '',
+        weeklyPrompt: savedFormDataSnapshot.current.weeklyPrompt || '',
+        notes: savedFormDataSnapshot.current.notes || [],
+        manualNotes: savedFormDataSnapshot.current.manualNotes || '',
+      });
+      const weekFingerprint = JSON.stringify({
+        tasks: weekTasksNormalized,
+        currentFocus: week.currentFocus || [],
+        description: week.description || '',
+        theme: week.theme || '',
+        weeklyPrompt: week.weeklyPrompt || '',
+        notes: week.notes || [],
+        manualNotes: week.manualNotes || '',
+      });
 
-      if (weekStr === snapshotStr) {
+      if (weekFingerprint === snapshotFingerprint) {
         // Week caught up to saved state! Clear snapshot, formData is already correct
         console.log('[WeekEditor:resetEffect] Week caught up to saved state - clearing snapshot');
         savedFormDataSnapshot.current = null;
@@ -1555,12 +1585,28 @@ export function WeekEditor({
       setFormData(merged);
       setHasChanges(true);
     } else {
-      // Sync formData to week data
-      const formTasksStr = JSON.stringify(normalizeTasks(formData.weeklyTasks));
-      const weekTasksStr = JSON.stringify(weekTasksNormalized);
+      // Sync formData to week data - compare ALL fields, not just tasks
+      const formFingerprint = JSON.stringify({
+        tasks: normalizeTasks(formData.weeklyTasks),
+        currentFocus: formData.currentFocus,
+        description: formData.description,
+        theme: formData.theme,
+        weeklyPrompt: formData.weeklyPrompt,
+        notes: formData.notes,
+        manualNotes: formData.manualNotes,
+      });
+      const weekFingerprint = JSON.stringify({
+        tasks: weekTasksNormalized,
+        currentFocus: week.currentFocus || [],
+        description: week.description || '',
+        theme: week.theme || '',
+        weeklyPrompt: week.weeklyPrompt || '',
+        notes: week.notes || [],
+        manualNotes: week.manualNotes || '',
+      });
 
-      if (formTasksStr !== weekTasksStr) {
-        console.log('[WeekEditor:resetEffect] Syncing formData to week');
+      if (formFingerprint !== weekFingerprint) {
+        console.log('[WeekEditor:resetEffect] Syncing formData to week (fields differ)');
         setFormData({
           name: week.name || '',
           theme: week.theme || '',
@@ -2215,16 +2261,30 @@ export function WeekEditor({
     setFormData({ ...formData, weeklyTasks: [...formData.weeklyTasks, ...tasks] });
   };
 
-  // Calculate days in week based on actual week range (handles onboarding/closing weeks with fewer days)
-  const daysInWeek = week.endDayIndex && week.startDayIndex
+  // Calculate days in week for UI display
+  // For partial weeks (onboarding/closing), use displayDaysCount to show full week
+  const actualDayCount = week.endDayIndex && week.startDayIndex
     ? week.endDayIndex - week.startDayIndex + 1
     : (includeWeekends ? 7 : 5);
+  const displayDaysCount = (week as { displayDaysCount?: number }).displayDaysCount;
+  const daysInWeek = displayDaysCount || actualDayCount;
+
+  // Get partial week boundaries for task distribution
+  const actualStartDayOfWeek = (week as { actualStartDayOfWeek?: number }).actualStartDayOfWeek;
+  const actualEndDayOfWeek = (week as { actualEndDayOfWeek?: number }).actualEndDayOfWeek;
 
   // Compute preview days with distributed weekly tasks for Day Preview section
   // This mirrors the server-side distribution logic so the preview updates in real-time
   const previewDays = useMemo(() => {
     const numDays = daysInWeek;
     const distribution = formData.distribution || 'spread';
+
+    // Calculate active range (0-indexed) for partial weeks
+    // For onboarding: actualStartDayOfWeek=3 (Wed) → activeStartIdx=2, activeEndIdx=4
+    // For closing ending Wed: actualEndDayOfWeek=3 → activeEndIdx=2
+    const activeStartIdx = Math.max(0, (actualStartDayOfWeek || 1) - 1);
+    const activeEndIdx = Math.min(numDays - 1, (actualEndDayOfWeek || numDays) - 1);
+    const activeRange = activeEndIdx - activeStartIdx + 1;
 
     // Initialize days with existing tasks from props (day-level tasks)
     // and clear any previous week-sourced tasks
@@ -2276,17 +2336,17 @@ export function WeekEditor({
       }
     }
 
-    // Add daily tasks to ALL days
+    // Add daily tasks to ACTIVE days only (for partial weeks)
     for (const task of dailyTasks) {
-      for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+      for (let dayIdx = activeStartIdx; dayIdx <= activeEndIdx; dayIdx++) {
         computedDays[dayIdx].tasks.push({ ...task, source: 'week' as const });
       }
     }
 
-    // Add specific-day tasks to their designated day
+    // Add specific-day tasks to their designated day (only if within active range)
     for (const [dayNum, tasks] of specificDayTasks) {
       const dayIdx = dayNum - 1;
-      if (dayIdx >= 0 && dayIdx < numDays) {
+      if (dayIdx >= activeStartIdx && dayIdx <= activeEndIdx) {
         for (const task of tasks) {
           computedDays[dayIdx].tasks.push({ ...task, source: 'week' as const });
         }
@@ -2307,28 +2367,30 @@ export function WeekEditor({
       tasksToRepeat.push(...autoTasks);
     }
 
-    // Spread tasks evenly across the week
-    if (tasksToSpread.length > 0 && numDays > 0) {
+    // Spread tasks evenly across ACTIVE days only
+    if (tasksToSpread.length > 0 && activeRange > 0) {
       for (let taskIdx = 0; taskIdx < tasksToSpread.length; taskIdx++) {
         let targetDayIdx: number;
         if (tasksToSpread.length === 1) {
-          targetDayIdx = 0;
+          targetDayIdx = activeStartIdx;
         } else {
-          targetDayIdx = Math.round(taskIdx * (numDays - 1) / (tasksToSpread.length - 1));
+          // Spread within active range
+          const offset = Math.round(taskIdx * (activeRange - 1) / (tasksToSpread.length - 1));
+          targetDayIdx = activeStartIdx + offset;
         }
         computedDays[targetDayIdx].tasks.push({ ...tasksToSpread[taskIdx], source: 'week' as const });
       }
     }
 
-    // Add repeat tasks to all days
+    // Add repeat tasks to ACTIVE days only
     for (const task of tasksToRepeat) {
-      for (let dayIdx = 0; dayIdx < numDays; dayIdx++) {
+      for (let dayIdx = activeStartIdx; dayIdx <= activeEndIdx; dayIdx++) {
         computedDays[dayIdx].tasks.push({ ...task, source: 'week' as const });
       }
     }
 
     return computedDays;
-  }, [days, daysInWeek, formData.weeklyTasks, formData.distribution]);
+  }, [days, daysInWeek, formData.weeklyTasks, formData.distribution, actualStartDayOfWeek, actualEndDayOfWeek]);
 
   // Fetch members when task is expanded
   // Uses refs for taskMemberData/loadingTasks checks to avoid infinite loops
@@ -3068,11 +3130,13 @@ export function WeekEditor({
                     }
                   }
 
-                  // Check if this day is before the actual enrollment start (pre-enrollment blur)
+                  // Check if this day is outside the active range (pre-enrollment or post-program blur)
                   const isPreEnrollment = week.weekNumber === 0 && !!actualStartDayOfWeek && dayNum < actualStartDayOfWeek;
+                  const isPostProgram = week.weekNumber === -1 && !!actualEndDayOfWeek && dayNum > actualEndDayOfWeek;
+                  const isInactive = isPreEnrollment || isPostProgram;
 
                   // Status-based styles
-                  const statusBgClass = isPreEnrollment
+                  const statusBgClass = isInactive
                     ? 'bg-gray-100 dark:bg-[#15181f]'
                     : dayStatus === 'past'
                       ? 'bg-yellow-50/60 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/40'
@@ -3084,20 +3148,20 @@ export function WeekEditor({
                     <button
                       key={dayNum}
                       type="button"
-                      onClick={() => !isPreEnrollment && setPreviewDayNumber(dayNum)}
-                      disabled={isPreEnrollment}
+                      onClick={() => !isInactive && setPreviewDayNumber(dayNum)}
+                      disabled={isInactive}
                       className={cn(
                         'relative flex-1 flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all border',
                         statusBgClass,
-                        isPreEnrollment
+                        isInactive
                           ? 'opacity-30 cursor-not-allowed'
                           : 'hover:shadow-sm hover:border-brand-accent/40',
-                        isEmpty && !isPreEnrollment && 'opacity-60'
+                        isEmpty && !isInactive && 'opacity-60'
                       )}
                     >
                       <span className={cn(
                         'text-xs font-medium font-albert text-center',
-                        isPreEnrollment
+                        isInactive
                           ? 'text-[#a7a39e] dark:text-[#5a5e6a]'
                           : dayStatus === 'active'
                             ? 'text-green-700 dark:text-green-400'
@@ -3110,7 +3174,7 @@ export function WeekEditor({
                       {dateLabel && (
                         <span className={cn(
                           'text-[10px] font-albert text-center',
-                          isPreEnrollment
+                          isInactive
                             ? 'text-[#c4c0bb] dark:text-[#4a4f5c]'
                             : dayStatus === 'active'
                               ? 'text-green-600 dark:text-green-500'
@@ -3121,7 +3185,7 @@ export function WeekEditor({
                           {dateLabel}
                         </span>
                       )}
-                      {taskCount > 0 && !isPreEnrollment && (
+                      {taskCount > 0 && !isInactive && (
                         <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 text-[10px] font-medium bg-brand-accent text-white rounded-full flex items-center justify-center">
                           {taskCount}
                         </span>

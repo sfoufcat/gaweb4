@@ -331,6 +331,11 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
                 poster={lesson.videoThumbnailUrl}
                 preload="metadata"
                 onTimeUpdate={handleTimeUpdate}
+                onEnded={() => {
+                  if (!isCompleted) {
+                    handleMarkComplete();
+                  }
+                }}
               >
                 <source src={lesson.videoUrl} type="video/mp4" />
                 <source src={lesson.videoUrl} type="video/webm" />
@@ -360,36 +365,38 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
           )}
         </div>
 
-        {/* Mark Complete Button - shown for all lessons (with or without video) */}
-        <div className="flex items-center justify-end mt-3 gap-3">
-            {isCompleted ? (
-              <button
-                onClick={handleMarkComplete}
-                disabled={isMarkingComplete}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-earth-600 dark:text-brand-accent hover:bg-earth-100 dark:hover:bg-[#262b35] rounded-lg transition-colors"
-              >
-                {isMarkingComplete ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <RotateCcw className="w-4 h-4" />
-                )}
-                Watch Again
-              </button>
-            ) : (
-              <button
-                onClick={handleMarkComplete}
-                disabled={isMarkingComplete}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-earth-500 dark:bg-brand-accent text-white rounded-lg hover:bg-earth-600 dark:hover:bg-brand-accent/90 transition-colors disabled:opacity-50"
-              >
-                {isMarkingComplete ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="w-4 h-4" />
-                )}
-                Mark Complete
-              </button>
-            )}
-        </div>
+        {/* Mark Complete Button - only shown when NOT the last lesson (last lesson has it in nav section) */}
+        {nextLesson && (
+          <div className="flex items-center justify-end mt-3 gap-3">
+              {isCompleted ? (
+                <button
+                  onClick={handleMarkComplete}
+                  disabled={isMarkingComplete}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-earth-600 dark:text-brand-accent hover:bg-earth-100 dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                >
+                  {isMarkingComplete ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4" />
+                  )}
+                  Watch Again
+                </button>
+              ) : (
+                <button
+                  onClick={handleMarkComplete}
+                  disabled={isMarkingComplete}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-earth-500 dark:bg-brand-accent text-white rounded-lg hover:bg-earth-600 dark:hover:bg-brand-accent/90 transition-colors disabled:opacity-50"
+                >
+                  {isMarkingComplete ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  Mark Complete
+                </button>
+              )}
+          </div>
+        )}
       </section>
 
       {/* Lesson Content / Notes */}
@@ -424,7 +431,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
             <div />
           )}
 
-          {/* Next Lesson - Compact pill style */}
+          {/* Next Lesson - Compact pill style, or Mark Complete + Finish Course on last lesson */}
           {nextLesson ? (
             <button
               onClick={() => router.push(buildLessonUrl(nextLesson.id))}
@@ -436,15 +443,46 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
               </svg>
             </button>
           ) : (
-            <Link
-              href={`/discover/courses/${courseId}`}
-              className="flex items-center gap-2 px-5 py-2.5 bg-earth-500 dark:bg-brand-accent rounded-full hover:bg-earth-600 dark:hover:bg-brand-accent/90 transition-colors text-white group"
-            >
-              <span className="font-sans text-sm font-medium">Complete</span>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </Link>
+            <div className="flex items-center gap-3">
+              {/* Mark Complete - secondary outline style */}
+              {isCompleted ? (
+                <button
+                  onClick={handleMarkComplete}
+                  disabled={isMarkingComplete}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-earth-300 dark:border-[#3d424d] text-earth-600 dark:text-brand-accent bg-transparent hover:bg-earth-50 dark:hover:bg-[#262b35] rounded-full transition-colors"
+                >
+                  {isMarkingComplete ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4" />
+                  )}
+                  Watch Again
+                </button>
+              ) : (
+                <button
+                  onClick={handleMarkComplete}
+                  disabled={isMarkingComplete}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-earth-300 dark:border-[#3d424d] text-earth-600 dark:text-brand-accent bg-transparent hover:bg-earth-50 dark:hover:bg-[#262b35] rounded-full transition-colors disabled:opacity-50"
+                >
+                  {isMarkingComplete ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  Mark Complete
+                </button>
+              )}
+              {/* Finish Course - primary solid style */}
+              <Link
+                href={`/discover/courses/${courseId}`}
+                className="flex items-center gap-2 px-5 py-2.5 bg-earth-500 dark:bg-brand-accent rounded-full hover:bg-earth-600 dark:hover:bg-brand-accent/90 transition-colors text-white group"
+              >
+                <span className="font-sans text-sm font-medium">Finish Course</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </Link>
+            </div>
           )}
         </div>
       </section>

@@ -64,6 +64,7 @@ import { ClientSelector } from './ClientSelector';
 import { CohortSelector } from './CohortSelector';
 import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useUser } from '@clerk/nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -252,6 +253,7 @@ type ProgramType = 'group' | 'individual';
 export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', initialProgramId, onProgramSelect }: CoachProgramsTabProps) {
   const { isDemoMode, openSignupModal } = useDemoMode();
   const demoSession = useDemoSession();
+  const { user: currentUser } = useUser();
   
   const [programs, setPrograms] = useState<ProgramWithStats[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<ProgramWithStats | null>(null);
@@ -501,6 +503,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         calendarStartDate: calculatedCalendar?.startDate || week.calendarStartDate,
         calendarEndDate: calculatedCalendar?.endDate || week.calendarEndDate,
         actualStartDayOfWeek: calculatedCalendar?.actualStartDayOfWeek ?? week.actualStartDayOfWeek,
+        actualEndDayOfWeek: calculatedCalendar?.actualEndDayOfWeek ?? week.actualEndDayOfWeek,
+        displayDaysCount: calculatedCalendar?.displayDaysCount ?? week.displayDaysCount,
         moduleId: week.moduleId,
         // Use calculated calendar week indices (most accurate for 5-day onboarding)
         // Handle special weeks: 0 (onboarding), -1 (closing), 1+ (regular)
@@ -516,7 +520,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         ),
         createdAt: now,
         updatedAt: now,
-      } as ClientProgramWeek & { actualStartDayOfWeek?: number };
+      } as ClientProgramWeek & { actualStartDayOfWeek?: number; actualEndDayOfWeek?: number; displayDaysCount?: number };
     });
   }, [instance, selectedProgram?.includeWeekends, selectedProgram?.lengthDays]);
 
@@ -638,6 +642,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       endDayIndex: instanceWeek?.endDayIndex,
       calendarStartDate: instanceWeek?.calendarStartDate,
       actualStartDayOfWeek: instanceWeek?.actualStartDayOfWeek,
+      actualEndDayOfWeek: instanceWeek?.actualEndDayOfWeek,
+      displayDaysCount: instanceWeek?.displayDaysCount,
       // Raw instance week fields
       linkedArticleIds: rawInstanceWeek?.linkedArticleIds,
       linkedDownloadIds: rawInstanceWeek?.linkedDownloadIds,
@@ -710,7 +716,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     const instanceDataAvailable = useNewSystem && currentInstance && !instanceLoading;
 
     // Build selectedWeek object
-    const selectedWeek: ProgramWeek & { calendarStartDate?: string; actualStartDayOfWeek?: number } = useNewSystem ? {
+    const selectedWeek: ProgramWeek & { calendarStartDate?: string; actualStartDayOfWeek?: number; actualEndDayOfWeek?: number; displayDaysCount?: number } = useNewSystem ? {
       id: templateWeek?.id || `instance-week-${weekNumber}`,
       programId: templateWeek?.programId || selectedProgram?.id || '',
       organizationId: templateWeek?.organizationId || selectedProgram?.organizationId || '',
@@ -723,6 +729,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       fillSource: templateWeek?.fillSource,
       calendarStartDate: instanceWeek?.calendarStartDate,
       actualStartDayOfWeek: instanceWeek?.actualStartDayOfWeek,
+      actualEndDayOfWeek: instanceWeek?.actualEndDayOfWeek,
+      displayDaysCount: instanceWeek?.displayDaysCount,
       moduleId: instanceDataAvailable
         ? (instanceWeek?.moduleId ?? '')
         : (instanceWeek?.moduleId ?? templateWeek?.moduleId ?? ''),
@@ -1015,6 +1023,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [loadingCoaches, setLoadingCoaches] = useState(false);
   
   // Cohort form
+  const [cohortDatePickerOpen, setCohortDatePickerOpen] = useState(false);
   const [cohortFormData, setCohortFormData] = useState<{
     name: string;
     startDate: string;
@@ -1380,11 +1389,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     });
   }, [sortedCohorts, membersSearch, enrollmentsByCohort]);
 
-  // Enrollments to display in the members panel
+  // Enrollments to display in the members panel (excluding current coach)
   const displayedMembersEnrollments = useMemo(() => {
-    const list = selectedMembersCohortId
+    let list = selectedMembersCohortId
       ? (enrollmentsByCohort[selectedMembersCohortId] || [])
       : programEnrollments;
+
+    // Filter out the current user (coach viewing the dashboard)
+    if (currentUser?.id) {
+      list = list.filter(e => e.userId !== currentUser.id);
+    }
+
     if (!membersSearch.trim()) return list;
     const q = membersSearch.toLowerCase().trim();
     return list.filter(e =>
@@ -1392,7 +1407,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       e.user?.lastName?.toLowerCase().includes(q) ||
       e.user?.email?.toLowerCase().includes(q)
     );
-  }, [selectedMembersCohortId, enrollmentsByCohort, programEnrollments, membersSearch]);
+  }, [selectedMembersCohortId, enrollmentsByCohort, programEnrollments, membersSearch, currentUser?.id]);
 
   // Get selected cohort details
   const selectedMembersCohort = useMemo(() => {
@@ -5683,6 +5698,58 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             }}
                             className="space-y-1"
                           >
+                            {/* Coach row - show current user as coach */}
+                            {currentUser && (
+                              <motion.div
+                                variants={{
+                                  hidden: { opacity: 0, y: 5 },
+                                  show: { opacity: 1, y: 0 }
+                                }}
+                                className="flex items-center gap-3 p-2.5 rounded-lg"
+                              >
+                                <div className="relative flex-shrink-0">
+                                  {currentUser.imageUrl ? (
+                                    <Image
+                                      src={currentUser.imageUrl}
+                                      alt={`${currentUser.firstName} ${currentUser.lastName}`}
+                                      width={36}
+                                      height={36}
+                                      className="w-9 h-9 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-9 h-9 rounded-full bg-brand-accent/10 flex items-center justify-center">
+                                      <User className="w-4 h-4 text-brand-accent" />
+                                    </div>
+                                  )}
+                                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center shadow-sm">
+                                    <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                                      {`${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'You'}
+                                    </p>
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-brand-accent text-white">
+                                      Coach
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                                    {currentUser.primaryEmailAddress?.emailAddress}
+                                  </p>
+                                </div>
+                              </motion.div>
+                            )}
+
+                            {/* Members divider */}
+                            {displayedMembersEnrollments.length > 0 && currentUser && (
+                              <div className="flex items-center gap-2 py-1.5 px-1">
+                                <div className="flex-1 h-px bg-[#e1ddd8]/30 dark:bg-[#262b35]/30" />
+                              </div>
+                            )}
+
                             {displayedMembersEnrollments.map((enrollment) => (
                               <motion.div
                                 key={enrollment.id}
@@ -5725,7 +5792,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 </span>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setRemoveConfirmEnrollment(enrollment); }}
-                                  className="p-1.5 text-[#a7a39e] hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 opacity-0 group-hover:opacity-100 transition-all"
+                                  className="p-1.5 text-[#a7a39e] hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-all"
                                   title="Remove from cohort"
                                 >
                                   <UserMinus className="w-4 h-4" />
@@ -5789,7 +5856,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         <div className="flex items-center gap-2 mt-3">
                           <button
                             onClick={() => { setMobileMembersDrawerOpen(false); handleOpenCohortModal(selectedMembersCohort); }}
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-sm text-[#5f5a55] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] active:scale-[0.98] transition-all"
                           >
                             <Edit2 className="w-4 h-4" />
                             Edit
@@ -5797,7 +5864,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           <button
                             onClick={() => handleDuplicateCohort(selectedMembersCohort)}
                             disabled={duplicatingCohort === selectedMembersCohort.id}
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-sm text-[#5f5a55] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors disabled:opacity-50"
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] active:scale-[0.98] transition-all disabled:opacity-50"
                           >
                             {duplicatingCohort === selectedMembersCohort.id ? (
                               <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
@@ -5808,7 +5875,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           </button>
                           <button
                             onClick={() => { setMobileMembersDrawerOpen(false); setDeleteConfirmCohort(selectedMembersCohort); }}
-                            className="px-3 py-2 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            className="px-3 py-2.5 bg-red-50 dark:bg-red-900/20 rounded-xl text-sm text-red-500 active:scale-[0.98] transition-all"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -5847,12 +5914,55 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             </button>
                           </div>
                         ) : (
-                          <div className="space-y-2">
-                            {displayedMembersEnrollments.map((enrollment) => (
+                          <div className="bg-[#f3f1ef] dark:bg-[#1e222a] rounded-2xl overflow-hidden">
+                            {/* Coach row - show current user as coach */}
+                            {currentUser && (
+                              <div className="flex items-center gap-3 p-3.5 bg-white dark:bg-[#171b22]">
+                                <div className="relative flex-shrink-0">
+                                  {currentUser.imageUrl ? (
+                                    <Image
+                                      src={currentUser.imageUrl}
+                                      alt={`${currentUser.firstName} ${currentUser.lastName}`}
+                                      width={44}
+                                      height={44}
+                                      className="w-11 h-11 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-11 h-11 rounded-full bg-brand-accent/10 flex items-center justify-center">
+                                      <User className="w-5 h-5 text-brand-accent" />
+                                    </div>
+                                  )}
+                                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center shadow-sm">
+                                    <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                                      {`${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'You'}
+                                    </p>
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-brand-accent text-white">
+                                      Coach
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                                    {currentUser.primaryEmailAddress?.emailAddress}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Members */}
+                            {displayedMembersEnrollments.map((enrollment, index) => (
                               <div
                                 key={enrollment.id}
                                 onClick={() => { setMobileMembersDrawerOpen(false); setSelectedClient(enrollment); }}
-                                className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] active:scale-[0.98] transition-transform"
+                                className={cn(
+                                  "flex items-center gap-3 p-3.5 bg-white dark:bg-[#171b22] active:bg-[#f8f6f4] dark:active:bg-[#1e222a] transition-colors",
+                                  index > 0 || currentUser ? "border-t border-[#f0ede9] dark:border-[#262b35]" : ""
+                                )}
                               >
                                 {enrollment.user?.imageUrl ? (
                                   <Image
@@ -5860,7 +5970,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                     alt={`${enrollment.user.firstName} ${enrollment.user.lastName}`}
                                     width={44}
                                     height={44}
-                                    className="rounded-full object-cover flex-shrink-0"
+                                    className="w-11 h-11 rounded-full object-cover flex-shrink-0"
                                   />
                                 ) : (
                                   <div className="w-11 h-11 rounded-full bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
@@ -5875,17 +5985,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                     {enrollment.user?.email}
                                   </p>
                                 </div>
-                                <div className="flex flex-col items-end gap-1">
+                                <div className="flex items-center gap-2">
                                   <span className={cn(
-                                    "px-2 py-0.5 rounded-full text-xs",
-                                    enrollment.status === 'active' && "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
-                                    enrollment.status === 'upcoming' && "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-                                    enrollment.status === 'completed' && "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-                                    enrollment.status === 'stopped' && "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400"
+                                    "px-2.5 py-1 rounded-full text-xs font-medium",
+                                    enrollment.status === 'active' && "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
+                                    enrollment.status === 'upcoming' && "bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400",
+                                    enrollment.status === 'completed' && "bg-[#f5f4f2] text-[#7a7570] dark:bg-[#2a303c] dark:text-[#7a8290]",
+                                    enrollment.status === 'stopped' && "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-400"
                                   )}>
                                     {enrollment.status}
                                   </span>
-                                  <ChevronRight className="w-4 h-4 text-[#a7a39e]" />
+                                  <ChevronRight className="w-4 h-4 text-[#c4c0bb] dark:text-[#4a5160]" />
                                 </div>
                               </div>
                             ))}
@@ -7117,7 +7227,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                       Start Date
                     </label>
-                    <Popover>
+                    <Popover open={cohortDatePickerOpen} onOpenChange={setCohortDatePickerOpen}>
                       <PopoverTrigger asChild>
                         <button
                           type="button"
@@ -7148,6 +7258,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 startDate: startDateStr,
                                 endDate: endDate.toISOString().split('T')[0],
                               });
+                              setCohortDatePickerOpen(false);
                             }
                           }}
                           showTodayButton
@@ -7161,6 +7272,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               startDate: startDateStr,
                               endDate: endDate.toISOString().split('T')[0],
                             });
+                            setCohortDatePickerOpen(false);
                           }}
                           initialFocus
                         />

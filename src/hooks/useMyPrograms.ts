@@ -3,10 +3,12 @@
 import useSWR from 'swr';
 import { useUser } from '@clerk/nextjs';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import type { 
-  Program, 
-  ProgramEnrollment, 
+import type {
+  Program,
+  ProgramEnrollment,
   ProgramCohort,
+  ProgramWeek,
+  ProgramModule,
   Squad,
 } from '@/types';
 
@@ -42,6 +44,9 @@ export interface EnrolledProgramWithDetails {
   program: Program & {
     coachName: string;
     coachImageUrl?: string;
+    // For upcoming programs: include weeks and modules for overview display
+    weeks?: ProgramWeek[];
+    modules?: ProgramModule[];
   };
   cohort?: ProgramCohort | null;
   squad?: Squad | null;

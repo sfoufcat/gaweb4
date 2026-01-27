@@ -2,94 +2,191 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday, isBefore, isAfter, startOfDay } from "date-fns"
 
 import { cn } from "@/lib/utils"
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
-  onTodayClick?: () => void;
-  showTodayButton?: boolean;
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+export type CalendarProps = {
+  mode?: "single"
+  selected?: Date
+  onSelect?: (date: Date | undefined) => void
+  onTodayClick?: () => void
+  showTodayButton?: boolean
+  disabled?: (date: Date) => boolean
+  fromDate?: Date
+  toDate?: Date
+  initialFocus?: boolean
+  className?: string
 }
 
 function Calendar({
   className,
-  classNames,
-  showOutsideDays = true,
+  selected,
+  onSelect,
   onTodayClick,
   showTodayButton = false,
-  ...props
+  disabled,
+  fromDate,
+  toDate,
 }: CalendarProps) {
+  const [currentMonth, setCurrentMonth] = React.useState(() => {
+    if (selected) {
+      return selected
+    }
+    return new Date()
+  })
+
+  // Update current month when selected changes
+  React.useEffect(() => {
+    if (selected) {
+      setCurrentMonth(selected)
+    }
+  }, [selected])
+
+  // Get all days for the calendar grid
+  const calendarDays = React.useMemo(() => {
+    const start = startOfMonth(currentMonth)
+    const end = endOfMonth(currentMonth)
+    const days = eachDayOfInterval({ start, end })
+
+    // Add padding days from previous month
+    const startDay = start.getDay()
+    const paddingBefore: (Date | null)[] = Array(startDay).fill(null)
+
+    // Add padding days after to complete the grid
+    const totalCells = Math.ceil((days.length + startDay) / 7) * 7
+    const paddingAfter: (Date | null)[] = Array(totalCells - days.length - startDay).fill(null)
+
+    return [...paddingBefore, ...days, ...paddingAfter]
+  }, [currentMonth])
+
+  // Check if a date is disabled
+  const isDateDisabled = (date: Date) => {
+    if (disabled && disabled(date)) return true
+    if (fromDate && isBefore(startOfDay(date), startOfDay(fromDate))) return true
+    if (toDate && isAfter(startOfDay(date), startOfDay(toDate))) return true
+    return false
+  }
+
+  // Handle date selection
+  const handleSelect = (date: Date) => {
+    if (isDateDisabled(date)) return
+    if (onSelect) {
+      onSelect(date)
+    }
+  }
+
+  // Navigate months
+  const goToPreviousMonth = () => setCurrentMonth(prev => subMonths(prev, 1))
+  const goToNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1))
+
   return (
-    <div className="flex flex-col">
-      <DayPicker
-        showOutsideDays={showOutsideDays}
-        className={cn("p-4", className)}
-        classNames={{
-          months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-          month: "space-y-4",
-          caption: "flex justify-center pt-1 relative items-center px-8",
-          caption_label: "text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert",
-          nav: "space-x-1 flex items-center",
-          nav_button: cn(
-            "h-8 w-8 bg-transparent p-0 rounded-lg border border-[#e1ddd8] dark:border-[#3a4150] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f5f3f0] dark:hover:bg-[#1f242d] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors flex items-center justify-center"
-          ),
-          nav_button_previous: "absolute left-1",
-          nav_button_next: "absolute right-1",
-          table: "w-full border-collapse",
-          head_row: "flex",
-          head_cell:
-            "text-[#8a8580] dark:text-[#6b7280] rounded-md w-10 font-medium text-xs uppercase tracking-wide",
-          row: "flex w-full mt-1",
-          cell: cn(
-            "h-10 w-10 text-center text-sm p-0 relative",
-            "[&:has([aria-selected].day-range-end)]:rounded-r-xl",
-            "[&:has([aria-selected].day-outside)]:bg-brand-accent/10",
-            "[&:has([aria-selected])]:bg-brand-accent/10",
-            "first:[&:has([aria-selected])]:rounded-l-xl",
-            "last:[&:has([aria-selected])]:rounded-r-xl",
-            "focus-within:relative focus-within:z-20"
-          ),
-          day: cn(
-            "h-10 w-10 p-0 font-normal rounded-xl transition-all duration-150",
-            "text-[#1a1a1a] dark:text-[#f5f5f8]",
-            "hover:bg-[#f5f3f0] dark:hover:bg-[#1f242d]",
-            "focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-2 dark:focus:ring-offset-[#11141b]",
-            "aria-selected:opacity-100"
-          ),
-          day_range_end: "day-range-end",
-          day_selected: cn(
-            "bg-brand-accent text-white",
-            "hover:bg-brand-accent hover:text-white",
-            "focus:bg-brand-accent focus:text-white",
-            "font-semibold"
-          ),
-          day_today: cn(
-            "bg-[#f5f3f0] dark:bg-[#1f242d]",
-            "text-brand-accent font-semibold",
-            "ring-1 ring-brand-accent/30"
-          ),
-          day_outside: cn(
-            "day-outside text-[#c4c0bb] dark:text-[#4a5162]",
-            "aria-selected:bg-brand-accent/30 aria-selected:text-white/70"
-          ),
-          day_disabled: "text-[#d1cdc8] dark:text-[#3a4150] cursor-not-allowed",
-          day_range_middle:
-            "aria-selected:bg-brand-accent/10 aria-selected:text-[#1a1a1a] dark:aria-selected:text-[#f5f5f8]",
-          day_hidden: "invisible",
-          ...classNames,
-        }}
-        components={{
-          IconLeft: () => <ChevronLeft className="h-4 w-4" />,
-          IconRight: () => <ChevronRight className="h-4 w-4" />,
-        } as Record<string, unknown>}
-        {...props}
-      />
+    <div className={cn("flex flex-col w-[320px]", className)}>
+      {/* Header with month/year and navigation */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
+        <button
+          type="button"
+          onClick={goToPreviousMonth}
+          className="p-2.5 rounded-xl hover:bg-[#f5f3f0] dark:hover:bg-[#1f242d] transition-colors"
+          aria-label="Previous month"
+        >
+          <ChevronLeft className="h-5 w-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+        </button>
+
+        <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          {format(currentMonth, "MMMM yyyy")}
+        </h2>
+
+        <button
+          type="button"
+          onClick={goToNextMonth}
+          className="p-2.5 rounded-xl hover:bg-[#f5f3f0] dark:hover:bg-[#1f242d] transition-colors"
+          aria-label="Next month"
+        >
+          <ChevronRight className="h-5 w-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+        </button>
+      </div>
+
+      {/* Calendar Grid */}
+      <div className="p-4">
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 mb-2">
+          {WEEKDAYS.map((day) => (
+            <div
+              key={day}
+              className="h-10 flex items-center justify-center text-xs font-medium text-[#8a8580] dark:text-[#6b7280] tracking-wide"
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* Days grid */}
+        <div className="grid grid-cols-7 gap-1">
+          {calendarDays.map((day, index) => {
+            if (!day) {
+              return <div key={`empty-${index}`} className="h-10 w-10" />
+            }
+
+            const isSelected = selected && isSameDay(day, selected)
+            const isCurrentDay = isToday(day)
+            const isDisabledDay = isDateDisabled(day)
+            const isCurrentMonth = isSameMonth(day, currentMonth)
+
+            return (
+              <button
+                key={day.toISOString()}
+                type="button"
+                onClick={() => handleSelect(day)}
+                disabled={isDisabledDay}
+                className={cn(
+                  "h-10 w-10 rounded-full text-sm font-medium transition-all duration-150 flex items-center justify-center mx-auto",
+                  "focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-2 dark:focus:ring-offset-[#171b22]",
+                  // Base state
+                  !isSelected && !isCurrentDay && isCurrentMonth && !isDisabledDay && [
+                    "text-[#1a1a1a] dark:text-[#f5f5f8]",
+                    "hover:bg-[#f5f3f0] dark:hover:bg-[#1f242d]",
+                  ],
+                  // Outside current month (shouldn't happen but safety)
+                  !isCurrentMonth && "text-[#d1cdc8] dark:text-[#3a4150]",
+                  // Today (not selected)
+                  isCurrentDay && !isSelected && [
+                    "bg-[#f5f3f0] dark:bg-[#1f242d]",
+                    "text-brand-accent font-semibold",
+                    "ring-2 ring-inset ring-brand-accent/40",
+                  ],
+                  // Selected
+                  isSelected && [
+                    "bg-brand-accent text-white font-semibold",
+                    "hover:bg-brand-accent/90",
+                    "shadow-lg shadow-brand-accent/30",
+                  ],
+                  // Disabled
+                  isDisabledDay && "text-[#d1cdc8] dark:text-[#3a4150] cursor-not-allowed hover:bg-transparent"
+                )}
+              >
+                {format(day, "d")}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Today button */}
       {showTodayButton && (
-        <div className="px-4 pb-3 pt-1 border-t border-[#e1ddd8] dark:border-[#262b35]">
+        <div className="px-4 pb-4 pt-2 border-t border-[#e8e4df] dark:border-[#262b35]">
           <button
             type="button"
             onClick={onTodayClick}
-            className="w-full py-2 text-sm font-medium text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors font-albert"
+            className={cn(
+              "w-full py-3 rounded-xl text-sm font-semibold transition-all duration-200 font-albert",
+              "text-brand-accent",
+              "hover:bg-brand-accent/10",
+              "active:bg-brand-accent/20",
+              "focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-2"
+            )}
           >
             Today
           </button>
@@ -101,4 +198,3 @@ function Calendar({
 Calendar.displayName = "Calendar"
 
 export { Calendar }
-

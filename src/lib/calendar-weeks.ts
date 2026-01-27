@@ -67,12 +67,25 @@ export interface CalendarWeek {
   /** Number of active program days in this week (1-5 for weekdays-only, 1-7 with weekends) */
   dayCount: number;
   /**
+   * Number of days to display in UI (always full week: 5 for weekdays-only, 7 with weekends).
+   * For partial weeks (onboarding/closing), this may differ from dayCount.
+   * Used for rendering Day Preview while dayCount tracks actual program days.
+   */
+  displayDaysCount?: number;
+  /**
    * For onboarding week: which day of the week the enrollment actually starts (1-based).
    * 1 = Monday, 2 = Tuesday, ..., 5 = Friday (for weekdays-only programs)
    * Days before this should be shown as blurred/disabled in the UI.
    * Only set for onboarding weeks; undefined for regular and closing weeks.
    */
   actualStartDayOfWeek?: number;
+  /**
+   * For closing week: which day of the week the program actually ends (1-based).
+   * 1 = Monday, 2 = Tuesday, ..., 5 = Friday (for weekdays-only programs)
+   * Days after this should be shown as blurred/disabled in the UI.
+   * Only set for partial closing weeks; undefined for full weeks.
+   */
+  actualEndDayOfWeek?: number;
 }
 
 // ============================================================================
@@ -219,12 +232,18 @@ export function calculateCalendarWeeks(
   // Convert from JS day (0=Sun, 1=Mon, ..., 6=Sat) to 1-based weekday (1=Mon, 2=Tue, ..., 5=Fri)
   const actualStartDayOfWeek = effectiveDayOfWeek === 0 ? 1 : effectiveDayOfWeek; // Sunday → Monday
 
-  // ALWAYS show full week for onboarding (5 days for weekdays-only, 7 with weekends)
-  // Days before actualStartDayOfWeek will be shown as blurred/disabled in UI
-  const daysInFirstWeek = daysPerWeek;
+  // Calculate ACTIVE days in onboarding (not blurred days)
+  // e.g., Wed enrollment (actualStartDayOfWeek=3): 5 - 3 + 1 = 3 active days (Wed, Thu, Fri)
+  // For UI: we still show full week (5 days) with blur, but only count active days for program timeline
+  const activeDaysInOnboarding = includeWeekends
+    ? daysPerWeek  // All 7 days active for weekend-inclusive programs
+    : (daysPerWeek - actualStartDayOfWeek + 1);  // Only days from enrollment to Friday
 
   // Cap first week days to program length
-  const onboardingDays = Math.min(daysInFirstWeek, programLengthDays);
+  const onboardingDays = Math.min(activeDaysInOnboarding, programLengthDays);
+
+  // For UI display: always show full week (5 for weekdays, 7 with weekends)
+  const displayDaysInOnboarding = daysPerWeek;
 
   // Calculate the Monday of the enrollment week (start of onboarding)
   let onboardingStartDate: Date;
@@ -258,8 +277,10 @@ export function calculateCalendarWeeks(
     actualOnboardingEndDate = addDays(onboardingStartDate, onboardingDays - 1);
   }
 
-  // Onboarding Week (always exists, always full week)
-  // actualStartDayOfWeek indicates which day enrollment actually starts (for blur logic)
+  // Onboarding Week (always exists)
+  // - dayCount: active program days (e.g., 3 for Wed enrollment)
+  // - displayDaysCount: days to show in UI (always full week, e.g., 5)
+  // - actualStartDayOfWeek: which day enrollment starts (for blur logic)
   weeks.push({
     type: 'onboarding',
     label: 'Onboarding',
@@ -269,6 +290,7 @@ export function calculateCalendarWeeks(
     startDayIndex: 1,
     endDayIndex: onboardingDays,
     dayCount: onboardingDays,
+    displayDaysCount: displayDaysInOnboarding, // For UI: show full week
     actualStartDayOfWeek: includeWeekends ? undefined : actualStartDayOfWeek, // Only relevant for weekdays-only
   });
 
@@ -310,6 +332,12 @@ export function calculateCalendarWeeks(
       weekEndDate = addDays(currentMonday, daysInThisWeek - 1);
     }
 
+    // For closing weeks, calculate actualEndDayOfWeek (which weekday the program ends)
+    // e.g., if program ends on Wednesday, actualEndDayOfWeek = 3
+    const actualEndDayOfWeek = isClosingWeek && daysInThisWeek < daysPerWeek
+      ? daysInThisWeek  // 1=Mon, 2=Tue, ..., 5=Fri
+      : undefined;
+
     weeks.push({
       type: isClosingWeek ? 'closing' : 'regular',
       label: isClosingWeek ? 'Closing' : `Week ${weekNumber}`,
@@ -319,6 +347,9 @@ export function calculateCalendarWeeks(
       startDayIndex: currentDayIndex,
       endDayIndex: Math.min(currentDayIndex + daysInThisWeek - 1, programLengthDays),
       dayCount: daysInThisWeek,
+      // For closing week: show full week in UI, active days = daysInThisWeek
+      displayDaysCount: isClosingWeek ? daysPerWeek : undefined,
+      actualEndDayOfWeek,
     });
 
     currentDayIndex += daysInThisWeek;

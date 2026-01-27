@@ -1,9 +1,9 @@
 /**
  * Coach API: Manage Single Program Enrollment
- * 
+ *
  * GET /api/coach/org-programs/[programId]/enrollments/[enrollmentId] - Get enrollment details
  * DELETE /api/coach/org-programs/[programId]/enrollments/[enrollmentId] - Remove user from program
- * 
+ *
  * When a coach removes a user:
  * 1. Enrollment status is set to 'stopped'
  * 2. User is removed from squad memberIds
