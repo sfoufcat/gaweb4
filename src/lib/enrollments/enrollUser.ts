@@ -18,10 +18,93 @@ import type {
   Squad,
   Program,
   ProgramCohort,
+  ProgramInstance,
+  ProgramInstanceModule,
+  ProgramHabitTemplate,
+  FrequencyType,
 } from '@/types';
 
 // Re-export the type for convenience
 export type { UpsellProductType };
+
+/**
+ * Map program habit frequency to Habit format
+ */
+function mapHabitFrequency(template: ProgramHabitTemplate): {
+  frequencyType: FrequencyType;
+  frequencyValue: number | number[];
+} {
+  if (template.frequency === 'daily') {
+    return { frequencyType: 'daily', frequencyValue: 1 };
+  } else if (template.frequency === 'weekday') {
+    return { frequencyType: 'weekly_specific_days', frequencyValue: [0, 1, 2, 3, 4] };
+  } else {
+    const days = template.customDays && template.customDays.length > 0
+      ? template.customDays
+      : [0, 2, 4];
+    return { frequencyType: 'weekly_specific_days', frequencyValue: days };
+  }
+}
+
+/**
+ * Sync initial habits for a newly enrolled user
+ * Uses the first module's habits (day 1 = first module)
+ */
+async function syncInitialHabitsForEnrollment(
+  userId: string,
+  organizationId: string,
+  programId: string,
+  instance: ProgramInstance
+): Promise<{ created: number }> {
+  const now = new Date().toISOString();
+  let created = 0;
+
+  const instanceModules = instance.modules || [];
+  if (instanceModules.length === 0) {
+    return { created };
+  }
+
+  // New enrollment starts at day 1 -> use first module
+  const sortedModules = [...instanceModules].sort((a, b) => a.order - b.order);
+  const firstModule = sortedModules[0];
+  if (!firstModule) {
+    return { created };
+  }
+
+  const habitsToSync = firstModule.habits || [];
+  const moduleId = firstModule.templateModuleId;
+
+  // Create habits (max 3)
+  let count = 0;
+  for (const template of habitsToSync) {
+    if (count >= 3) break;
+
+    const { frequencyType, frequencyValue } = mapHabitFrequency(template);
+
+    await adminDb.collection('habits').add({
+      userId,
+      organizationId,
+      text: template.title,
+      linkedRoutine: template.description || null,
+      frequencyType,
+      frequencyValue,
+      reminder: null,
+      targetRepetitions: null,
+      progress: { currentCount: 0, lastCompletedDate: null, completionDates: [], skipDates: [] },
+      archived: false,
+      status: 'active',
+      source: 'module_default',
+      programId,
+      moduleId,
+      createdAt: now,
+      updatedAt: now,
+    });
+    created++;
+    count++;
+  }
+
+  return { created };
+}
 
 interface ClerkUserInfo {
   firstName?: string | null;
@@ -265,6 +348,41 @@ async function enrollInProgram(
           daysProcessed: syncResult.daysProcessed,
           totalDays: syncResult.totalDays,
         });
+
+        // Also sync initial habits from first module
+        try {
+          // Get the instance that was just created
+          let instanceSnapshot;
+          if (cohortId) {
+            instanceSnapshot = await adminDb
+              .collection('program_instances')
+              .where('cohortId', '==', cohortId)
+              .limit(1)
+              .get();
+          } else {
+            instanceSnapshot = await adminDb
+              .collection('program_instances')
+              .where('enrollmentId', '==', enrollmentRef.id)
+              .limit(1)
+              .get();
+          }
+
+          if (!instanceSnapshot.empty) {
+            const instance = { id: instanceSnapshot.docs[0].id, ...instanceSnapshot.docs[0].data() } as ProgramInstance;
+            if (instance.modules && instance.modules.length > 0) {
+              const habitResult = await syncInitialHabitsForEnrollment(
+                userId,
+                program.organizationId,
+                programId,
+                instance
+              );
+              console.log(`[ENROLL_USER] Initial habits sync: ${habitResult.created} habits created`);
+            }
+          }
+        } catch (habitSyncError) {
+          console.error(`[ENROLL_USER] Habit sync failed for enrollment ${enrollmentRef.id}:`, habitSyncError);
+          // Non-fatal - tasks are more important
+        }
       } catch (syncError) {
         console.error(`[ENROLL_USER] Background sync failed for enrollment ${enrollmentRef.id}:`, syncError);
       }

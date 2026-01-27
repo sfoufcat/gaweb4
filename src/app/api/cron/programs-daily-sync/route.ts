@@ -20,10 +20,181 @@
 
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { ProgramInstance, ProgramInstanceDay, ProgramInstanceTask } from '@/types';
+import type { ProgramInstance, ProgramInstanceDay, ProgramInstanceTask, ProgramInstanceModule, ProgramHabitTemplate, FrequencyType, Program } from '@/types';
 
 // Vercel cron job secret (set in environment)
 const CRON_SECRET = process.env.CRON_SECRET;
+
+/**
+ * Map program habit frequency to Habit format
+ */
+function mapHabitFrequency(template: ProgramHabitTemplate): {
+  frequencyType: FrequencyType;
+  frequencyValue: number | number[];
+} {
+  if (template.frequency === 'daily') {
+    return { frequencyType: 'daily', frequencyValue: 1 };
+  } else if (template.frequency === 'weekday') {
+    return { frequencyType: 'weekly_specific_days', frequencyValue: [0, 1, 2, 3, 4] };
+  } else {
+    const days = template.customDays && template.customDays.length > 0
+      ? template.customDays
+      : [0, 2, 4];
+    return { frequencyType: 'weekly_specific_days', frequencyValue: days };
+  }
+}
+
+/**
+ * Calculate user's current day index based on enrollment start date
+ */
+function calculateCurrentDayIndex(startedAt: string, includeWeekends: boolean = false): number {
+  const startDate = new Date(startedAt);
+  const today = new Date();
+  startDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  if (includeWeekends) {
+    const diffMs = today.getTime() - startDate.getTime();
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+  } else {
+    let dayIndex = 0;
+    const current = new Date(startDate);
+    while (current <= today) {
+      const dayOfWeek = current.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        dayIndex++;
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return Math.max(1, dayIndex);
+  }
+}
+
+/**
+ * Find the module a user should be in based on their current day index
+ */
+function getCurrentModule(
+  modules: ProgramInstanceModule[],
+  currentDayIndex: number
+): ProgramInstanceModule | null {
+  const sortedModules = [...modules].sort((a, b) => a.order - b.order);
+  for (const module of sortedModules) {
+    if (currentDayIndex >= module.startDayIndex && currentDayIndex <= module.endDayIndex) {
+      return module;
+    }
+  }
+  if (sortedModules.length > 0 && currentDayIndex > sortedModules[sortedModules.length - 1].endDayIndex) {
+    return sortedModules[sortedModules.length - 1];
+  }
+  if (sortedModules.length > 0 && currentDayIndex < sortedModules[0].startDayIndex) {
+    return sortedModules[0];
+  }
+  return null;
+}
+
+/**
+ * Sync habits for a user based on their current module
+ */
+async function syncHabitsForUser(
+  userId: string,
+  organizationId: string,
+  programId: string,
+  instance: ProgramInstance,
+  startedAt: string,
+  includeWeekends: boolean
+): Promise<{ created: number; updated: number; archived: number }> {
+  const now = new Date().toISOString();
+  let created = 0, updated = 0, archived = 0;
+
+  const currentDayIndex = calculateCurrentDayIndex(startedAt, includeWeekends);
+  const instanceModules = instance.modules || [];
+  
+  if (instanceModules.length === 0) {
+    return { created, updated, archived };
+  }
+
+  const currentModule = getCurrentModule(instanceModules, currentDayIndex);
+  if (!currentModule) {
+    return { created, updated, archived };
+  }
+
+  const habitsToSync = currentModule.habits || [];
+  const currentModuleId = currentModule.templateModuleId;
+
+  // Get existing habits
+  const existingHabitsSnapshot = await adminDb
+    .collection('habits')
+    .where('userId', '==', userId)
+    .where('organizationId', '==', organizationId)
+    .where('programId', '==', programId)
+    .where('source', 'in', ['module_default', 'program_default'])
+    .get();
+
+  const existingByTitle = new Map<string, { id: string; archived?: boolean; moduleId?: string }>();
+  existingHabitsSnapshot.docs.forEach(doc => {
+    const data = doc.data();
+    existingByTitle.set(data.text, { id: doc.id, archived: data.archived, moduleId: data.moduleId });
+  });
+
+  // Archive habits not in current module
+  const syncingTitles = new Set(habitsToSync.map(h => h.title));
+  for (const [title, habit] of Array.from(existingByTitle.entries())) {
+    if (!syncingTitles.has(title) && !habit.archived) {
+      await adminDb.collection('habits').doc(habit.id).update({
+        archived: true,
+        status: 'archived',
+        updatedAt: now,
+      });
+      archived++;
+    }
+  }
+
+  // Create or update habits (max 3)
+  let count = 0;
+  for (const template of habitsToSync) {
+    if (count >= 3) break;
+
+    const existing = existingByTitle.get(template.title);
+    const { frequencyType, frequencyValue } = mapHabitFrequency(template);
+
+    if (existing) {
+      await adminDb.collection('habits').doc(existing.id).update({
+        linkedRoutine: template.description || null,
+        frequencyType,
+        frequencyValue,
+        moduleId: currentModuleId,
+        source: 'module_default',
+        archived: false,
+        status: 'active',
+        updatedAt: now,
+      });
+      updated++;
+    } else {
+      await adminDb.collection('habits').add({
+        userId,
+        organizationId,
+        text: template.title,
+        linkedRoutine: template.description || null,
+        frequencyType,
+        frequencyValue,
+        reminder: null,
+        targetRepetitions: null,
+        progress: { currentCount: 0, lastCompletedDate: null, completionDates: [], skipDates: [] },
+        archived: false,
+        status: 'active',
+        source: 'module_default',
+        programId,
+        moduleId: currentModuleId,
+        createdAt: now,
+        updatedAt: now,
+      });
+      created++;
+    }
+    count++;
+  }
+
+  return { created, updated, archived };
+}
 
 // Batch size for processing enrollments
 const BATCH_SIZE = 50;
@@ -232,7 +403,8 @@ export async function GET(request: Request) {
       userId: string;
       programId: string;
       cohortId?: string;
-      organizationId?: string; // CRITICAL: Include for multi-tenant filtering
+      organizationId?: string;
+      startedAt?: string; // For habit sync
     }>;
 
     console.log(`[CRON_PROGRAMS_SYNC] Found ${enrollments.length} active enrollments`);
@@ -263,6 +435,14 @@ export async function GET(request: Request) {
     let noInstanceCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
+    
+    // Habit sync stats
+    let habitsCreated = 0;
+    let habitsUpdated = 0;
+    let habitsArchived = 0;
+    
+    // Fetch programs for includeWeekends setting (cache)
+    const programCache = new Map<string, Program>();
 
     // Process enrollments in batches to avoid overwhelming Firestore
     for (let i = 0; i < enrollments.length; i += BATCH_SIZE) {
@@ -353,6 +533,32 @@ export async function GET(request: Request) {
               }
             }
           }
+
+          // HABIT SYNC: Sync habits based on current module
+          if (enrollment.organizationId && enrollment.startedAt && instance.modules && instance.modules.length > 0) {
+            // Get program's includeWeekends setting (cached)
+            let program = programCache.get(enrollment.programId);
+            if (!program) {
+              const programDoc = await adminDb.collection('programs').doc(enrollment.programId).get();
+              if (programDoc.exists) {
+                program = { id: programDoc.id, ...programDoc.data() } as Program;
+                programCache.set(enrollment.programId, program);
+              }
+            }
+            const includeWeekends = program?.includeWeekends !== false;
+
+            const habitResult = await syncHabitsForUser(
+              enrollment.userId,
+              enrollment.organizationId,
+              enrollment.programId,
+              instance,
+              enrollment.startedAt,
+              includeWeekends
+            );
+            habitsCreated += habitResult.created;
+            habitsUpdated += habitResult.updated;
+            habitsArchived += habitResult.archived;
+          }
         } catch (err) {
           errorCount++;
           const errorMsg = err instanceof Error ? err.message : String(err);
@@ -372,7 +578,8 @@ export async function GET(request: Request) {
     console.log(
       `[CRON_PROGRAMS_SYNC] Completed in ${duration}ms: ` +
       `${syncedToday} synced today, ${syncedTomorrow} synced tomorrow, ` +
-      `${skippedCount} skipped, ${noInstanceCount} no instance, ${errorCount} errors`
+      `${skippedCount} skipped, ${noInstanceCount} no instance, ${errorCount} errors. ` +
+      `Habits: ${habitsCreated} created, ${habitsUpdated} updated, ${habitsArchived} archived`
     );
 
     return NextResponse.json({
@@ -384,6 +591,11 @@ export async function GET(request: Request) {
         skipped: skippedCount,
         noInstance: noInstanceCount,
         errors: errorCount,
+        habits: {
+          created: habitsCreated,
+          updated: habitsUpdated,
+          archived: habitsArchived,
+        },
       },
       dates: {
         today: todayStr,

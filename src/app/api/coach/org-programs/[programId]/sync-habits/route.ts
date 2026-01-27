@@ -189,13 +189,28 @@ export async function POST(
       let currentModuleId: string | null = null;
 
       // Check if there's a program instance for this enrollment (instance modules take priority)
-      const instanceSnapshot = await adminDb
-        .collection('program_instances')
-        .where('enrollmentId', '==', enrollment.id)
-        .limit(1)
-        .get();
+      // For cohort enrollments, look up by cohortId; for individual enrollments, look up by enrollmentId
+      let instanceSnapshot;
+      if (enrollment.cohortId) {
+        // Cohort enrollment - find the cohort's shared instance
+        instanceSnapshot = await adminDb
+          .collection('program_instances')
+          .where('cohortId', '==', enrollment.cohortId)
+          .limit(1)
+          .get();
+        if (instanceSnapshot.empty) {
+          console.log(`[SYNC_HABITS] User ${userId}: no cohort instance found for cohort ${enrollment.cohortId}`);
+        }
+      } else {
+        // Individual enrollment - find the enrollment's instance
+        instanceSnapshot = await adminDb
+          .collection('program_instances')
+          .where('enrollmentId', '==', enrollment.id)
+          .limit(1)
+          .get();
+      }
 
-      const instance = instanceSnapshot.docs[0]?.data() as ProgramInstance | undefined;
+      const instance = instanceSnapshot?.docs[0]?.data() as ProgramInstance | undefined;
       const instanceModules: ProgramInstanceModule[] = instance?.modules || [];
 
       if (instanceModules.length > 0) {

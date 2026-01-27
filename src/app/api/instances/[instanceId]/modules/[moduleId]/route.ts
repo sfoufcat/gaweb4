@@ -124,6 +124,178 @@ export async function PATCH(
 
     console.log(`[INSTANCE_MODULE_PATCH] Updated module ${moduleId} in instance ${instanceId}`);
 
+    // Auto-sync habits to enrolled users if habits were updated
+    if (body.habits !== undefined) {
+      try {
+        // Get the program ID from the instance
+        const programId = instance.programId;
+
+        // Determine which enrollments to sync based on instance type
+        let enrollmentsToSync: string[] = [];
+
+        if (instance.type === 'cohort' && instance.cohortId) {
+          // For cohort instances, get all enrollments in this cohort
+          const enrollmentsSnapshot = await adminDb
+            .collection('program_enrollments')
+            .where('cohortId', '==', instance.cohortId)
+            .where('status', 'in', ['active', 'upcoming'])
+            .get();
+          enrollmentsToSync = enrollmentsSnapshot.docs.map(d => d.id);
+          console.log(`[INSTANCE_MODULE_PATCH] Found ${enrollmentsToSync.length} cohort enrollments to sync habits`);
+        } else if (instance.type === 'individual' && instance.enrollmentId) {
+          // For individual instances, just sync this enrollment
+          enrollmentsToSync = [instance.enrollmentId];
+        }
+
+        // Sync habits for each enrollment
+        // Import sync logic inline to avoid circular dependencies
+        if (enrollmentsToSync.length > 0 && programId) {
+          // Fetch program for includeWeekends setting
+          const programDoc = await adminDb.collection('programs').doc(programId).get();
+          const program = programDoc.data();
+          const includeWeekends = program?.includeWeekends !== false;
+
+          // Fetch template modules for fallback
+          const modulesSnapshot = await adminDb
+            .collection('program_modules')
+            .where('programId', '==', programId)
+            .orderBy('order', 'asc')
+            .get();
+          const templateModules = modulesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          for (const enrollmentId of enrollmentsToSync) {
+            const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+            if (!enrollmentDoc.exists) continue;
+
+            const enrollment = enrollmentDoc.data();
+            const userId = enrollment?.userId;
+            if (!userId || !enrollment?.startedAt) continue;
+
+            // Calculate current day index
+            const startDate = new Date(enrollment.startedAt);
+            const today = new Date();
+            startDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+
+            let currentDayIndex = 1;
+            if (includeWeekends) {
+              currentDayIndex = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+            } else {
+              const current = new Date(startDate);
+              while (current <= today) {
+                const dayOfWeek = current.getDay();
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) currentDayIndex++;
+                current.setDate(current.getDate() + 1);
+              }
+              currentDayIndex = Math.max(1, currentDayIndex);
+            }
+
+            // Find the current module (from instance modules)
+            const instanceModules = updatedModules;
+            const sortedModules = [...instanceModules].sort((a, b) => a.order - b.order);
+            let currentModule = sortedModules.find(
+              m => currentDayIndex >= m.startDayIndex && currentDayIndex <= m.endDayIndex
+            );
+
+            // Fallback to last module if past all modules
+            if (!currentModule && sortedModules.length > 0) {
+              const lastModule = sortedModules[sortedModules.length - 1];
+              if (currentDayIndex > lastModule.endDayIndex) {
+                currentModule = lastModule;
+              } else if (currentDayIndex < sortedModules[0].startDayIndex) {
+                currentModule = sortedModules[0];
+              }
+            }
+
+            if (!currentModule) {
+              console.log(`[INSTANCE_MODULE_PATCH] No current module for user ${userId} at day ${currentDayIndex}`);
+              continue;
+            }
+
+            const habitsToSync = currentModule.habits || [];
+            console.log(`[INSTANCE_MODULE_PATCH] Syncing ${habitsToSync.length} habits to user ${userId} (day ${currentDayIndex}, module ${currentModule.name})`);
+
+            // Get existing habits for this user/program
+            const existingHabitsSnapshot = await adminDb
+              .collection('habits')
+              .where('userId', '==', userId)
+              .where('organizationId', '==', organizationId)
+              .where('programId', '==', programId)
+              .where('source', 'in', ['module_default', 'program_default'])
+              .get();
+
+            const existingByTitle = new Map<string, { id: string; archived?: boolean; moduleId?: string }>();
+            existingHabitsSnapshot.docs.forEach(doc => {
+              const data = doc.data();
+              existingByTitle.set(data.text, { id: doc.id, archived: data.archived, moduleId: data.moduleId });
+            });
+
+            // Archive habits not in current module
+            const syncingTitles = new Set(habitsToSync.map(h => h.title));
+            for (const [title, habit] of Array.from(existingByTitle.entries())) {
+              if (!syncingTitles.has(title) && !habit.archived) {
+                await adminDb.collection('habits').doc(habit.id).update({
+                  archived: true,
+                  status: 'archived',
+                  updatedAt: now,
+                });
+              }
+            }
+
+            // Create or update habits (max 3)
+            let count = 0;
+            for (const template of habitsToSync) {
+              if (count >= 3) break;
+
+              const existing = existingByTitle.get(template.title);
+              const frequencyType = template.frequency === 'daily' ? 'daily' : 'weekly_specific_days';
+              const frequencyValue = template.frequency === 'daily' ? 1 :
+                (template.frequency === 'weekday' ? [0, 1, 2, 3, 4] : (template.customDays || [0, 2, 4]));
+
+              if (existing) {
+                // Update existing
+                await adminDb.collection('habits').doc(existing.id).update({
+                  linkedRoutine: template.description || null,
+                  frequencyType,
+                  frequencyValue,
+                  moduleId: currentModule.templateModuleId,
+                  source: 'module_default',
+                  archived: false,
+                  status: 'active',
+                  updatedAt: now,
+                });
+              } else {
+                // Create new
+                await adminDb.collection('habits').add({
+                  userId,
+                  organizationId,
+                  text: template.title,
+                  linkedRoutine: template.description || null,
+                  frequencyType,
+                  frequencyValue,
+                  reminder: null,
+                  targetRepetitions: null,
+                  progress: { currentCount: 0, lastCompletedDate: null, completionDates: [], skipDates: [] },
+                  archived: false,
+                  status: 'active',
+                  source: 'module_default',
+                  programId,
+                  moduleId: currentModule.templateModuleId,
+                  createdAt: now,
+                  updatedAt: now,
+                });
+              }
+              count++;
+            }
+          }
+          console.log(`[INSTANCE_MODULE_PATCH] Habit sync completed for ${enrollmentsToSync.length} enrollments`);
+        }
+      } catch (syncError) {
+        // Log but don't fail the request - habit sync is secondary
+        console.error('[INSTANCE_MODULE_PATCH] Error syncing habits:', syncError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       module: updatedModule,

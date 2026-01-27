@@ -596,6 +596,25 @@ export function SyncTemplateDialog({
       }
 
       const weekLabel = weekNumber ? `Week ${weekNumber}` : 'all weeks';
+
+      // If habits were synced, also push them to users' habits collection
+      if (syncFields.syncHabits && successCount > 0) {
+        try {
+          const habitsRes = await fetch(`/api/coach/org-programs/${programId}/sync-habits`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (habitsRes.ok) {
+            const habitsData = await habitsRes.json();
+            console.log('[SyncTemplateDialog] Synced habits to users:', habitsData.summary);
+          } else {
+            console.warn('[SyncTemplateDialog] Failed to sync habits to users');
+          }
+        } catch (habitsErr) {
+          console.error('[SyncTemplateDialog] Error syncing habits to users:', habitsErr);
+        }
+      }
+
       if (successCount > 0 && errorCount === 0) {
         setSuccess(`Synced ${weekLabel} successfully`);
       } else if (successCount > 0) {

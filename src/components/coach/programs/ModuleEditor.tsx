@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { ProgramModule, ProgramWeek, ProgramHabitTemplate, ProgramEnrollment, ProgramCohort } from '@/types';
-import { Calendar, AlertTriangle, Info, Plus, X, Users } from 'lucide-react';
+import type { ProgramModule, ProgramInstanceModule, ProgramWeek, ProgramHabitTemplate, ProgramEnrollment, ProgramCohort } from '@/types';
+import { Calendar, AlertTriangle, Info, Plus, X, Users, Save, Loader2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,7 +21,7 @@ interface EnrollmentWithUser extends ProgramEnrollment {
 }
 
 interface ModuleEditorProps {
-  module: ProgramModule;
+  module: ProgramModule | ProgramInstanceModule;
   weeks: ProgramWeek[];
   /** @deprecated Use ProgramEditorContext instead */
   onSave?: (updates: Partial<ProgramModule>) => Promise<void>;
@@ -29,10 +30,14 @@ interface ModuleEditorProps {
   readOnly?: boolean;
   /** Program ID for context registration */
   programId?: string;
+  /** Instance ID when editing instance-level module */
+  instanceId?: string | null;
   /** Whether to show sync button (requires programId) */
   showSyncHabits?: boolean;
   /** View context: 'template' | 'client' | 'cohort' */
   viewContext?: 'template' | 'client' | 'cohort';
+  /** Client context ID (enrollmentId or cohortId) for tracking */
+  clientContextId?: string;
   /** Program type for showing appropriate sync button */
   programType?: 'individual' | 'group';
   /** Enrollments for sync dialog (individual programs) */
@@ -53,8 +58,10 @@ export function ModuleEditor({
   isSaving = false,
   readOnly = false,
   programId,
+  instanceId,
   showSyncHabits = false,
   viewContext = 'template',
+  clientContextId,
   programType,
   enrollments,
   cohorts,
@@ -62,11 +69,24 @@ export function ModuleEditor({
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();
 
+  // Determine if we're in instance mode
+  const isInstanceMode = !!instanceId && viewContext !== 'template';
+  const entityType = isInstanceMode ? 'instanceModule' : 'module';
+
   // Check for pending data from context
-  const pendingData = editorContext?.getPendingData('module', module.id);
+  const pendingData = editorContext?.getPendingData(entityType, module.id);
 
   // Track last reset version to detect discard/save
   const lastResetVersion = React.useRef(editorContext?.resetVersion ?? 0);
+
+  // Track if we were saving when reset version changes (to distinguish save vs discard)
+  const wasSavingWhenResetVersionChanged = React.useRef(false);
+
+  // Track isSaving changes to know if we WERE saving when resetVersion changes
+  // This runs synchronously before the main effect
+  if (editorContext?.isSaving && !wasSavingWhenResetVersionChanged.current) {
+    wasSavingWhenResetVersionChanged.current = true;
+  }
 
   // Form data type
   type ModuleFormData = {
@@ -92,36 +112,68 @@ export function ModuleEditor({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
 
-  // Build API endpoint
+  // Build API endpoint - instance vs template
   const getApiEndpoint = useCallback(() => {
+    if (isInstanceMode && instanceId) {
+      // Instance-level module endpoint
+      return `/api/instances/${instanceId}/modules/${module.id}`;
+    }
     if (!programId) return '';
+    // Template-level module endpoint
     return `/api/coach/org-programs/${programId}/modules/${module.id}`;
-  }, [programId, module.id]);
+  }, [programId, module.id, instanceId, isInstanceMode]);
 
-  // Reset form when module changes - but check for pending data first
+  // Reset form when module changes - but check for pending data or saved state first
   useEffect(() => {
-    const contextPendingData = editorContext?.getPendingData('module', module.id);
+    const contextPendingData = editorContext?.getPendingData(entityType, module.id);
+    const contextSavedState = editorContext?.getSavedState?.(entityType, module.id);
 
-    if (contextPendingData) {
-      setFormData(contextPendingData as ModuleFormData);
-      setHasChanges(true);
+    // Restore from pending data (unsaved edits) or saved state (just saved, awaiting API refresh)
+    const dataToRestore = contextPendingData || contextSavedState;
+
+    if (dataToRestore) {
+      setFormData({
+        name: (dataToRestore.name as string) || module.name,
+        description: (dataToRestore.description as string) || module.description || '',
+        habits: (dataToRestore.habits as ProgramHabitTemplate[]) || module.habits || [],
+      });
+      setHasChanges(!!contextPendingData); // Only mark changes if pending (not saved)
     } else {
       setFormData(getDefaultFormData());
       setHasChanges(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [module.id]);
+  }, [module.id, entityType]);
 
   // Watch for reset version changes (discard/save from global buttons)
   useEffect(() => {
     if (editorContext && editorContext.resetVersion !== lastResetVersion.current) {
+      const wasSave = wasSavingWhenResetVersionChanged.current;
+
       lastResetVersion.current = editorContext.resetVersion;
-      // Reset to original module data
-      setFormData(getDefaultFormData());
-      setHasChanges(false);
+      wasSavingWhenResetVersionChanged.current = false; // Reset for next time
+
+      if (wasSave) {
+        // SAVE: Keep current formData - it already has the saved values
+        // Just clear hasChanges since we saved successfully
+        setHasChanges(false);
+      } else {
+        // DISCARD: Reset to saved state from context or fall back to module prop
+        const savedState = editorContext.getSavedState?.(entityType, module.id);
+        if (savedState) {
+          setFormData({
+            name: (savedState.name as string) || module.name,
+            description: (savedState.description as string) || module.description || '',
+            habits: (savedState.habits as ProgramHabitTemplate[]) || module.habits || [],
+          });
+        } else {
+          setFormData(getDefaultFormData());
+        }
+        setHasChanges(false);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editorContext?.resetVersion]);
+  }, [editorContext?.resetVersion, entityType, module.id]);
 
   // Extract stable context functions to avoid infinite loops
   // (context object changes on every pendingChanges update)
@@ -139,11 +191,19 @@ export function ModuleEditor({
     setHasChanges(changed);
 
     // Register changes with context if available
+    // Always require programId, then guard instance mode separately (matches WeekEditor pattern)
     if (registerChange && changed && programId) {
+      // Guard for instance mode: must have instanceId
+      if (isInstanceMode && !instanceId) {
+        console.warn('[ModuleEditor] Instance mode but no instanceId - cannot register');
+        return;
+      }
       registerChange({
-        entityType: 'module',
+        entityType,
         entityId: module.id,
-        viewContext: 'template', // Modules are always template-level
+        viewContext,
+        clientContextId,
+        instanceId: instanceId || undefined,
         originalData: {
           name: module.name,
           description: module.description,
@@ -155,10 +215,10 @@ export function ModuleEditor({
       });
     } else if (discardChange && getChangeKey && !changed) {
       // Remove from pending changes if no longer changed
-      const changeKey = getChangeKey('module', module.id);
+      const changeKey = getChangeKey(entityType, module.id, clientContextId);
       discardChange(changeKey);
     }
-  }, [formData, module, registerChange, discardChange, getChangeKey, programId, getApiEndpoint]);
+  }, [formData, module, registerChange, discardChange, getChangeKey, programId, getApiEndpoint, entityType, viewContext, clientContextId, instanceId, isInstanceMode]);
 
   // handleSave is kept for backwards compatibility but rarely used now
   const handleSave = async () => {
@@ -175,7 +235,7 @@ export function ModuleEditor({
 
     // Clear from context after successful save
     if (editorContext) {
-      const changeKey = editorContext.getChangeKey('module', module.id);
+      const changeKey = editorContext.getChangeKey(entityType, module.id);
       editorContext.discardChange(changeKey);
     }
   };
@@ -216,9 +276,6 @@ export function ModuleEditor({
   // Get weeks in this module
   const moduleWeeks = weeks.filter(w => w.moduleId === module.id).sort((a, b) => a.order - b.order);
 
-  // Determine if we're in instance mode (cohort or client)
-  const isInstanceMode = viewContext === 'cohort' || viewContext === 'client';
-
   return (
     <div className="space-y-6">
       {/* Instance mode warning banner */}
@@ -247,6 +304,41 @@ export function ModuleEditor({
           {module.name || `Module ${module.order}`}
         </h3>
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Save/Discard buttons - show when there are unsaved changes */}
+          <AnimatePresence>
+            {editorContext?.hasUnsavedChanges && (
+              <motion.div
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center gap-2"
+              >
+                <button
+                  onClick={() => editorContext.discardAllChanges()}
+                  disabled={editorContext.isSaving}
+                  className="flex items-center justify-center h-8 sm:h-9 w-8 sm:w-auto sm:px-3 text-xs sm:text-sm text-[#5f5a55] hover:text-red-500 dark:text-[#b2b6c2] dark:hover:text-red-400 transition-colors disabled:opacity-50 rounded-xl bg-[#f3f1ef] hover:bg-red-50 dark:bg-[#262b35] dark:hover:bg-red-900/20"
+                  title="Discard all changes"
+                >
+                  <X className="w-4 h-4 sm:hidden" />
+                  <span className="hidden sm:inline">Discard</span>
+                </button>
+                <Button
+                  onClick={() => editorContext.saveAllChanges()}
+                  disabled={editorContext.isSaving}
+                  className="flex items-center gap-1.5 h-8 sm:h-9 px-4 sm:px-6 bg-brand-accent hover:bg-brand-accent/90 text-white text-xs sm:text-sm font-medium"
+                >
+                  {editorContext.isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span>Save</span>
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Sync Button - only in template mode */}
           {!readOnly && showSyncHabits && programId && !isInstanceMode && (
             <Button
