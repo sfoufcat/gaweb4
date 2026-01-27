@@ -44,25 +44,43 @@ function isSubscriptionActive(
 
 interface FunnelPageProps {
   params: Promise<{ programSlug: string; funnelSlug: string }>;
-  searchParams: Promise<{ invite?: string; ref?: string }>;
+  searchParams: Promise<{ invite?: string; ref?: string; tenant?: string }>;
 }
 
 export default async function FunnelPage({ params, searchParams }: FunnelPageProps) {
   const { programSlug, funnelSlug } = await params;
-  const { invite: inviteCode, ref: referrerId } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { invite: inviteCode, ref: referrerId, tenant: tenantOverride } = resolvedSearchParams;
 
   // Get hostname for tenant resolution and branding
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
 
-  // Resolve tenant (organization) from hostname
-  const tenantResult = await resolveTenant(hostname, null, null);
+  // Build URLSearchParams for dev tenant override
+  const urlSearchParams = tenantOverride ? new URLSearchParams({ tenant: tenantOverride }) : null;
+
+  // Resolve tenant (organization) from hostname (or ?tenant= override in dev)
+  const tenantResult = await resolveTenant(hostname, urlSearchParams, null);
   const organizationId = tenantResult.type === 'tenant' ? tenantResult.tenant.organizationId : null;
   // Extract subdomain for custom domain auth iframe (needed by SignupStep)
-  const tenantSubdomain = tenantResult.type === 'tenant' ? tenantResult.tenant.subdomain : null;
+  let tenantSubdomain = tenantResult.type === 'tenant' ? tenantResult.tenant.subdomain : null;
 
-  // Get branding
-  const branding = await getBrandingForDomain(hostname);
+  // Get branding - if we resolved a tenant (including via ?tenant= override), use that org's branding
+  let branding = await getBrandingForDomain(hostname);
+  if (organizationId && tenantOverride) {
+    // For dev override, fetch branding directly from the resolved org
+    const brandingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
+    if (brandingDoc.exists) {
+      const orgBranding = brandingDoc.data() as { logoUrl?: string; horizontalLogoUrl?: string; appTitle?: string; colors?: { accentLight?: string } };
+      branding = {
+        logoUrl: orgBranding.logoUrl || branding.logoUrl,
+        horizontalLogoUrl: orgBranding.horizontalLogoUrl || null,
+        appTitle: orgBranding.appTitle || branding.appTitle,
+        primaryColor: orgBranding.colors?.accentLight || branding.primaryColor,
+        organizationId,
+      };
+    }
+  }
   const logoUrl = getBestLogoUrl(branding);
   const appTitle = branding.appTitle;
   const primaryColor = branding.primaryColor;
@@ -82,6 +100,18 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
 
   const programDoc = programsSnapshot.docs[0];
   const program = { id: programDoc.id, ...programDoc.data() } as Program;
+
+  // If we didn't resolve a tenant subdomain but have the program's org, look up subdomain from org_domains
+  if (!tenantSubdomain && program.organizationId) {
+    const orgDomainDoc = await adminDb
+      .collection('org_domains')
+      .where('organizationId', '==', program.organizationId)
+      .limit(1)
+      .get();
+    if (!orgDomainDoc.empty) {
+      tenantSubdomain = orgDomainDoc.docs[0].data().subdomain || null;
+    }
+  }
 
   // Check for existing enrollment (for authenticated users)
   // This provides immediate feedback if user already owns the program

@@ -702,68 +702,18 @@ export function DashboardPage() {
             // BUT: If they have active billing, don't redirect to plan page (would cause loop)
             // Also check if the organization has enabled onboarding for users
             else if (!hasCompletedOnboarding) {
-              // Check if org has onboarding enabled - if not, skip to dashboard
+              // Check if org has onboarding enabled with a custom flow
               const orgOnboardingEnabled = data.orgOnboardingEnabled;
-              
-              if (!orgOnboardingEnabled) {
-                console.log('[DASHBOARD] Org onboarding is disabled, skipping onboarding redirects');
-                // Don't redirect - let user stay on dashboard
+              const orgOnboardingFlowId = data.orgOnboardingFlowId;
+
+              if (orgOnboardingEnabled && orgOnboardingFlowId) {
+                // Redirect to the coach's custom onboarding flow
+                console.log('[DASHBOARD] Org onboarding is enabled, redirecting to flow:', orgOnboardingFlowId);
+                router.push(`/onboarding/flow/${orgOnboardingFlowId}`);
+                return;
               }
-              else if (!onboardingStatus || onboardingStatus === 'welcome') {
-                router.push('/onboarding/welcome');
-                return;
-              } else if (onboardingStatus === 'workday') {
-                router.push('/onboarding/workday');
-                return;
-              } else if (onboardingStatus === 'obstacles') {
-                router.push('/onboarding/obstacles');
-                return;
-              } else if (onboardingStatus === 'business_stage') {
-                router.push('/onboarding/business-stage');
-                return;
-              } else if (onboardingStatus === 'goal_impact') {
-                // goal_impact step removed - redirect to support_needs
-                router.push('/onboarding/support-needs');
-                return;
-              } else if (onboardingStatus === 'support_needs') {
-                router.push('/onboarding/support-needs');
-                return;
-              } else if (onboardingStatus === 'create_profile_intro') {
-                router.push('/onboarding/create-profile-intro');
-                return;
-              } else if (onboardingStatus === 'edit_profile') {
-                router.push('/profile?edit=true&fromOnboarding=true');
-                return;
-              } else if (onboardingStatus === 'mission') {
-                router.push('/onboarding');
-                return;
-              } else if (onboardingStatus === 'goal') {
-                router.push('/onboarding/goal');
-                return;
-              } else if (onboardingStatus === 'transformation') {
-                // transformation step removed - go to plan or stay on dashboard
-                if (!hasActiveBilling) {
-                  router.push('/onboarding/plan');
-                  return;
-                }
-              } else if (onboardingStatus === 'plan' || onboardingStatus === 'completed') {
-                // User at plan step - BUT if already billed, stay on dashboard
-                // This prevents redirect loop: home -> plan -> home -> plan...
-                if (!hasActiveBilling) {
-                  router.push('/onboarding/plan');
-                  return;
-                }
-                // If billed but Firebase says not completed, just stay on dashboard
-                // The billing sync should eventually fix Firebase
-                console.log('[DASHBOARD] User has billing but hasCompletedOnboarding=false, staying on dashboard');
-              } else {
-                // Unknown status - only send to plan if not billed
-                if (!hasActiveBilling) {
-                  router.push('/onboarding/plan');
-                  return;
-                }
-                console.log('[DASHBOARD] Unknown onboarding status but user is billed, staying on dashboard');
-              }
+              // Org onboarding not enabled - stay on dashboard
+              console.log('[DASHBOARD] Org onboarding is disabled or no flow configured, staying on dashboard');
             }
             // If hasCompletedOnboarding is true, user has paid and can use the app
             // Middleware would have blocked them if billing was invalid
@@ -778,9 +728,16 @@ export function DashboardPage() {
               // The link-account process will create the document shortly
               return;
             }
-            // No billing = truly new user, start onboarding
-            router.push('/onboarding/welcome');
-            return;
+            // New user - only redirect to onboarding if org has a custom flow enabled
+            const orgOnboardingEnabled = data.orgOnboardingEnabled;
+            const orgOnboardingFlowId = data.orgOnboardingFlowId;
+            if (orgOnboardingEnabled && orgOnboardingFlowId) {
+              console.log('[DASHBOARD] New user and org onboarding is enabled, redirecting to flow:', orgOnboardingFlowId);
+              router.push(`/onboarding/flow/${orgOnboardingFlowId}`);
+              return;
+            }
+            // Org onboarding disabled or no flow - stay on dashboard
+            console.log('[DASHBOARD] New user but org onboarding not configured, staying on dashboard');
           }
           
           setUserMission(data.user?.identity || null);

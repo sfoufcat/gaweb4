@@ -116,7 +116,8 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
         const tokenPromise = fetch('/api/stream-token').then(async (response) => {
           if (!response.ok) throw new Error('Failed to fetch Stream token');
           const data = await response.json();
-          if (!data.token) throw new Error('Invalid token response');
+          // Token may be null during auth transitions - return null instead of throwing
+          if (!data.token) return null;
           return data.token as string;
         });
 
@@ -149,6 +150,13 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
 
           // Wait for token (already fetching in parallel)
           const token = await tokenPromise;
+
+          // If token is null (auth transition), abort connection attempt
+          if (!token) {
+            globalConnectionPromise = null;
+            globalConnectedUserId = null;
+            return null;
+          }
 
           // Connect user with profile data
           // The connectUser call sends our profile data to Stream

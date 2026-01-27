@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSignUp } from '@clerk/nextjs';
+import { useState, useEffect, useCallback } from 'react';
+import { useSignUp, useAuth, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { AuthInput } from './AuthInput';
@@ -18,13 +18,20 @@ interface SignUpFormProps {
   lockedEmails?: string[]; // Multiple allowed emails (batch invites) - validated after signup
 }
 
-export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = false, origin = '', hideOAuth = false, signInUrl, lockedEmail, lockedEmails }: SignUpFormProps) {
+export function SignUpForm({ redirectUrl = '/', embedded = false, origin = '', hideOAuth = false, signInUrl, lockedEmail, lockedEmails }: SignUpFormProps) {
   const { signUp, isLoaded, setActive } = useSignUp();
+  // Use treatPendingAsSignedOut: false to recognize users with pending session tasks
+  // (e.g., choose-organization). This prevents the form from showing when user is
+  // authenticated but has incomplete tasks.
+  const { isSignedIn, sessionId } = useAuth({ treatPendingAsSignedOut: false });
+  const { signOut } = useClerk();
   const router = useRouter();
   
   // Capture the current hostname for auto-enrollment
   const [signupDomain, setSignupDomain] = useState<string>('');
-  
+  // Track if we've already triggered a redirect to prevent loops
+  const [hasTriggeredRedirect, setHasTriggeredRedirect] = useState(false);
+
   useEffect(() => {
     // Capture the domain on mount (client-side only)
     if (typeof window !== 'undefined') {
@@ -32,28 +39,170 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
     }
   }, []);
 
+  // Helper to handle redirects - use client-side navigation when possible
+  // to avoid server-side auth timing issues after sign-up
+  const handleRedirect = useCallback((url: string) => {
+    // In development, preserve the ?tenant= param from current URL
+    // This ensures the dev-tenant cookie is set on the redirected page
+    let finalUrl = url;
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+      const currentParams = new URLSearchParams(window.location.search);
+      const tenantParam = currentParams.get('tenant');
+      if (tenantParam && !url.includes('tenant=')) {
+        // Add tenant param to redirect URL
+        const separator = url.includes('?') ? '&' : '?';
+        finalUrl = `${url}${separator}tenant=${tenantParam}`;
+      }
+    }
+
+    // For full URLs, check if it's the same origin and extract pathname
+    if (finalUrl.startsWith('http://') || finalUrl.startsWith('https://')) {
+      try {
+        const parsedUrl = new URL(finalUrl);
+        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+
+        // If same origin, use client-side navigation to avoid server-side auth race
+        if (parsedUrl.origin === currentOrigin) {
+          const relativePath = parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
+          router.push(relativePath);
+          return;
+        }
+      } catch {
+        // Invalid URL, fall through to window.location
+      }
+      window.location.href = finalUrl;
+    } else {
+      router.push(finalUrl);
+    }
+  }, [router]);
+
+  // Helper to link session and redirect for localhost funnel flows
+  // This avoids the cookie propagation issue by making API calls while session is still active
+  const linkSessionAndRedirectForLocalhost = useCallback(async (clerkSessionId?: string | null): Promise<boolean> => {
+    const isLocalhost = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ||
+       window.location.hostname.endsWith('.localhost')); // Also support subdomain.localhost
+
+    if (!isLocalhost || !redirectUrl.includes('/join/callback') || !redirectUrl.includes('flowSessionId=')) {
+      return false; // Not a localhost funnel flow
+    }
+
+    console.log('[SignUpForm] Localhost funnel detected, linking session directly...');
+
+    // Extract flowSessionId from redirectUrl
+    const url = new URL(redirectUrl, window.location.origin);
+    const flowSessionId = url.searchParams.get('flowSessionId');
+
+    if (!flowSessionId) {
+      return false;
+    }
+
+    try {
+      // Wait for Clerk to initialize and propagate the session
+      // 1000ms gives more time for session to be queryable via Clerk API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      console.log('[SignUpForm] Calling link-session API with clerkSessionId:', clerkSessionId);
+      
+      // Call link-session API directly, passing clerkSessionId as backup auth
+      const linkResponse = await fetch('/api/funnel/link-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ flowSessionId, clerkSessionId }),
+      });
+
+      if (!linkResponse.ok) {
+        console.error('[SignUpForm] Link session failed:', await linkResponse.text());
+        return false;
+      }
+
+      const linkData = await linkResponse.json();
+      console.log('[SignUpForm] Session linked successfully:', linkData);
+
+      // Get funnel details to redirect
+      const sessionResponse = await fetch(`/api/funnel/session?sessionId=${flowSessionId}`);
+      const sessionData = await sessionResponse.json();
+
+      if (sessionData.session) {
+        const funnelResponse = await fetch(`/api/funnel/${sessionData.session.funnelId}`);
+        const funnelData = await funnelResponse.json();
+
+        if (funnelData.funnel && funnelData.program) {
+          if (linkData.enrolledInOrg) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+
+          // Preserve ?tenant= param for localhost development
+          let funnelUrl = `/join/${funnelData.program.slug}/${funnelData.funnel.slug}`;
+          const currentParams = new URLSearchParams(window.location.search);
+          const tenantParam = currentParams.get('tenant');
+          if (tenantParam) {
+            funnelUrl += `?tenant=${tenantParam}`;
+          }
+
+          console.log('[SignUpForm] Redirecting to funnel:', funnelUrl);
+          router.push(funnelUrl);
+          return true;
+        }
+      }
+
+      // Fallback to dashboard (preserve tenant param)
+      const currentParams = new URLSearchParams(window.location.search);
+      const tenantParam = currentParams.get('tenant');
+      const dashboardUrl = tenantParam ? `/?tenant=${tenantParam}` : '/';
+      router.push(dashboardUrl);
+      return true;
+    } catch (err) {
+      console.error('[SignUpForm] Error linking session:', err);
+      return false;
+    }
+  }, [redirectUrl, router]);
+
   // Helper to handle successful auth
   // In embedded mode: send postMessage to parent with redirectUrl
-  // Otherwise: redirect normally
-  const handleAuthSuccess = () => {
+  // Otherwise: redirect normally (with localhost funnel flow handling)
+  // Optional sessionIdOverride for cases where session was just created and hook hasn't updated
+  const handleAuthSuccess = useCallback(async (sessionIdOverride?: string | null) => {
     if (embedded && origin) {
       // Notify parent window of successful auth with redirectUrl
       // Parent can use this to redirect to the correct page (e.g., funnel callback with flowSessionId)
       window.parent.postMessage({ type: 'auth-success', redirectUrl }, origin);
-    } else {
-      handleRedirect(redirectUrl);
+      return;
     }
-  };
 
-  // Helper to handle redirects - external URLs (http/https) use window.location
-  // Internal paths use Next.js router
-  const handleRedirect = (url: string) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      window.location.href = url;
-    } else {
-      router.push(url);
+    // Try localhost funnel flow first (pass sessionId for backup auth)
+    const effectiveSessionId = sessionIdOverride || sessionId;
+    const handled = await linkSessionAndRedirectForLocalhost(effectiveSessionId);
+    if (!handled) {
+      // Fallback: redirect to callback with session ID so it can activate the session
+      // This is critical for localhost where cookies don't propagate properly
+      let fallbackUrl = redirectUrl;
+      if (effectiveSessionId && redirectUrl.includes('/join/callback')) {
+        try {
+          const url = new URL(redirectUrl, window.location.origin);
+          url.searchParams.set('_sessionId', effectiveSessionId);
+          // Also preserve tenant param
+          const currentParams = new URLSearchParams(window.location.search);
+          const tenantParam = currentParams.get('tenant');
+          if (tenantParam && !url.searchParams.has('tenant')) {
+            url.searchParams.set('tenant', tenantParam);
+          }
+          fallbackUrl = url.pathname + url.search;
+        } catch {
+          // URL parsing failed, use original
+        }
+      }
+      handleRedirect(fallbackUrl);
     }
-  };
+  }, [embedded, origin, redirectUrl, handleRedirect, linkSessionAndRedirectForLocalhost, sessionId]);;
+
+  // Handle redirect when user is already signed in (useEffect to avoid render-time side effects)
+  useEffect(() => {
+    if (isLoaded && isSignedIn && !hasTriggeredRedirect) {
+      setHasTriggeredRedirect(true);
+      handleAuthSuccess();
+    }
+  }, [isLoaded, isSignedIn, hasTriggeredRedirect, handleAuthSuccess]);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -111,7 +260,12 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || !signUp) return;
+    console.log('[SignUpForm] handleEmailSignUp called, isLoaded:', isLoaded, 'signUp:', !!signUp);
+    if (!isLoaded || !signUp) {
+      console.error('[SignUpForm] Clerk not ready - isLoaded:', isLoaded, 'signUp:', signUp);
+      setError('Authentication system not ready. Please refresh the page.');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -156,7 +310,16 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
         }
       }
 
-      await signUp.create({
+      console.log('[SignUpForm] Calling signUp.create...');
+      console.log('[SignUpForm] Current signUp state:', { id: signUp.id, status: signUp.status });
+
+      // If there's a stale signup attempt, we need to handle it
+      // Check if signup already exists with same email - if so, it might be stale
+      if (signUp.id && signUp.status !== 'complete') {
+        console.log('[SignUpForm] Found existing incomplete signup, attempting to continue or restart...');
+      }
+
+      const result = await signUp.create({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         emailAddress: email,
@@ -166,22 +329,105 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
           signupDomain: signupDomain,
         },
       });
+      console.log('[SignUpForm] signUp.create succeeded, status:', result.status);
+
+      // Check if signup completed immediately (no verification needed)
+      // This can happen in some Clerk configurations
+      if (result.status === 'complete') {
+        console.log('[SignUpForm] Signup complete, activating session...');
+        await setActive({ session: result.createdSessionId });
+
+        // Try localhost funnel flow (makes API calls directly while session is active)
+        // Pass the session ID so the API can verify auth even if cookies don't propagate
+        const handled = await linkSessionAndRedirectForLocalhost(result.createdSessionId);
+        if (handled) {
+          return;
+        }
+
+        // Non-localhost or non-funnel flow: use normal redirect
+        // Wait for session to propagate before redirecting
+        console.log('[SignUpForm] Waiting for session propagation...');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Pass the session ID to the callback URL so it can activate it if cookies don't work
+        let finalRedirectUrl = redirectUrl;
+        if (result.createdSessionId) {
+          const url = new URL(redirectUrl, window.location.origin);
+          url.searchParams.set('_sessionId', result.createdSessionId);
+          // Preserve ?tenant= param for localhost development
+          const currentParams = new URLSearchParams(window.location.search);
+          const tenantParam = currentParams.get('tenant');
+          if (tenantParam) {
+            url.searchParams.set('tenant', tenantParam);
+          }
+          finalRedirectUrl = url.pathname + url.search;
+        }
+
+        // Use hard redirect to ensure Clerk re-initializes with the new session
+        // Client-side navigation (router.push) doesn't always pick up the new session
+        console.log('[SignUpForm] Redirecting to:', finalRedirectUrl);
+        window.location.href = finalRedirectUrl;
+        return;
+      }
 
       // Send email verification code
+      console.log('[SignUpForm] Calling prepareEmailAddressVerification...');
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      console.log('[SignUpForm] Verification prepared, setting pendingVerification=true');
       setPendingVerification(true);
+      console.log('[SignUpForm] setPendingVerification called');
     } catch (err: unknown) {
-      const clerkError = err as { errors?: Array<{ message: string; code: string }> };
-      const errorMessage = clerkError.errors?.[0]?.message || 'Something went wrong. Please try again.';
+      console.error('[SignUpForm] Clerk error:', JSON.stringify(err, null, 2));
+      const clerkError = err as { errors?: Array<{ message: string; code: string; longMessage?: string }> };
+      console.error('[SignUpForm] Error details:', clerkError.errors);
+      const errorMessage = clerkError.errors?.[0]?.longMessage || clerkError.errors?.[0]?.message || 'Something went wrong. Please try again.';
       const errorCode = clerkError.errors?.[0]?.code;
 
-      if (errorCode === 'form_identifier_exists') {
+      // Handle "session already exists" error by signing out and retrying
+      if (errorCode === 'session_exists' || errorMessage.toLowerCase().includes('session already exists')) {
+        try {
+          await signOut();
+          // After signing out, retry the sign-up
+          await signUp.create({
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            emailAddress: email,
+            password,
+            unsafeMetadata: { signupDomain },
+          });
+          await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+          setPendingVerification(true);
+          return;
+        } catch (retryErr) {
+          console.error('[SignUpForm] Retry after signOut failed:', retryErr);
+          setError('Please refresh the page and try again.');
+        }
+      } else if (errorCode === 'form_identifier_exists') {
         // Email already exists - show helpful error with sign-in link
         // If signInUrl is provided (e.g., from funnel flow), use it to preserve flowSessionId
         const signInLink = signInUrl || '/sign-in';
-        setFieldErrors({ 
-          email: `An account with this email already exists. <a href="${signInLink}" class="text-brand-accent hover:underline font-medium">Sign in instead</a>` 
+        setFieldErrors({
+          email: `An account with this email already exists. <a href="${signInLink}" class="text-brand-accent hover:underline font-medium">Sign in instead</a>`
         });
+      } else if (errorCode === 'form_identifier_not_found' || errorMessage.toLowerCase().includes('no sign up attempt was found')) {
+        // Sign-up state was lost (page refresh, navigation, etc.)
+        // This can happen due to stale Clerk SDK state - try to create fresh
+        console.log('[SignUpForm] Stale signup state detected, retrying with fresh create...');
+        try {
+          await signUp.create({
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            emailAddress: email,
+            password,
+            unsafeMetadata: { signupDomain },
+          });
+          await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+          setPendingVerification(true);
+          return; // Success on retry
+        } catch (retryErr) {
+          console.error('[SignUpForm] Retry after stale state failed:', retryErr);
+          setError('Unable to create account. Please refresh the page and try again.');
+        }
       } else if (errorCode === 'form_password_pwned') {
         setFieldErrors({ password: 'This password was found in a data breach. Please create a unique password with a mix of letters, numbers, and symbols.' });
       } else if (errorCode === 'form_password_length_too_short') {
@@ -215,7 +461,8 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        handleAuthSuccess();
+        // Pass the session ID directly since useAuth hook may not have updated yet
+        await handleAuthSuccess(result.createdSessionId);
       } else {
         setError('Verification incomplete. Please try again.');
       }
@@ -254,6 +501,15 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
     );
   }
 
+  // If user is already signed in, show spinner while useEffect handles redirect
+  if (isSignedIn) {
+    return (
+      <div className="w-full flex justify-center py-12">
+        <div className="w-8 h-8 border-2 border-text-secondary/30 border-t-text-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   // Verification step
   if (pendingVerification) {
     // Cubic bezier easing for smooth animations
@@ -283,20 +539,15 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
       },
     };
 
-    return (
-      <div className="w-full max-w-lg mx-auto">
-        <motion.div 
-          className="bg-white/80 dark:bg-[#171b22]/90 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-3xl p-8 shadow-lg"
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, ease: smoothEase }}
+    // When embedded, skip the outer container (parent already provides it)
+    const content = (
+      <>
+        <motion.div
+          className="text-center mb-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
         >
-          <motion.div 
-            className="text-center mb-8"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
             <motion.div 
               className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center"
               variants={itemVariants}
@@ -350,12 +601,12 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
             <motion.button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] dark:bg-none dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg flex items-center justify-center gap-2"
+              className="w-full bg-brand-accent hover:brightness-110 text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-brand-accent/20 flex items-center justify-center gap-2"
               variants={itemVariants}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <div className="w-5 h-5 border-2 border-[#2c2520]/30 dark:border-white/30 border-t-[#2c2520] dark:border-t-white rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Verifying...
                 </span>
               ) : (
@@ -384,7 +635,7 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
             </button>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="mt-4 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -402,6 +653,24 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
               ← Back to sign up
             </button>
           </motion.div>
+      </>
+    );
+
+    // When embedded, return content without container (parent provides it)
+    if (embedded) {
+      return content;
+    }
+
+    // Standalone: wrap in container
+    return (
+      <div className="w-full max-w-lg mx-auto">
+        <motion.div
+          className="bg-white/80 dark:bg-[#171b22]/90 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-3xl p-8 shadow-lg"
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, ease: smoothEase }}
+        >
+          {content}
         </motion.div>
       </div>
     );
@@ -498,10 +767,13 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
             </div>
           )}
 
+          {/* Clerk CAPTCHA container - required for bot protection */}
+          <div id="clerk-captcha" />
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] dark:bg-none dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-[#e8b923]/20 dark:shadow-[#b8896a]/20 mt-2"
+            className="w-full bg-brand-accent hover:brightness-110 text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-brand-accent/20 mt-2"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

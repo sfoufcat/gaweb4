@@ -529,6 +529,8 @@ export default function FunnelClient({
     if (!currentStep) return null;
 
     const stepConfig = currentStep.config as FunnelStepConfig;
+    // Helper to safely extract nested config with fallback to empty object
+    const getConfig = <T,>(): T => (stepConfig?.config ?? {}) as T;
     // Include flowSessionId and programId in data for API calls
     const dataWithSession = {
       ...data,
@@ -547,13 +549,13 @@ export default function FunnelClient({
 
     switch (currentStep.type) {
       case 'question':
-        return <QuestionStep {...commonProps} config={stepConfig.config as FunnelStepConfigQuestion} />;
-      
+        return <QuestionStep {...commonProps} config={getConfig<FunnelStepConfigQuestion>()} />;
+
       case 'signup':
         return (
           <SignupStep
             {...commonProps}
-            config={stepConfig.config as FunnelStepConfigSignup}
+            config={getConfig<FunnelStepConfigSignup>()}
             hostname={hostname}
             flowSessionId={sessionId || ''}
             organizationId={organization.id}
@@ -568,33 +570,33 @@ export default function FunnelClient({
         return (
           <PaymentStep
             {...commonProps}
-            config={stepConfig.config as FunnelStepConfigPayment}
+            config={getConfig<FunnelStepConfigPayment>()}
             skipPayment={skipPayment}
             organizationId={organization.id}
           />
         );
-      
+
       case 'goal_setting':
-        return <GoalStep {...commonProps} config={stepConfig.config as FunnelStepConfigGoal} />;
-      
+        return <GoalStep {...commonProps} config={getConfig<FunnelStepConfigGoal>()} />;
+
       case 'identity':
-        return <IdentityStep {...commonProps} config={stepConfig.config as FunnelStepConfigIdentity} />;
-      
+        return <IdentityStep {...commonProps} config={getConfig<FunnelStepConfigIdentity>()} />;
+
       case 'analyzing':
-        return <AnalyzingStep {...commonProps} config={stepConfig.config as FunnelStepConfigAnalyzing} />;
-      
+        return <AnalyzingStep {...commonProps} config={getConfig<FunnelStepConfigAnalyzing>()} />;
+
       case 'plan_reveal':
       case 'transformation':
-        return <PlanRevealStep {...commonProps} config={stepConfig.config as FunnelStepConfigPlanReveal} />;
-      
+        return <PlanRevealStep {...commonProps} config={getConfig<FunnelStepConfigPlanReveal>()} />;
+
       case 'explainer':
-        return <ExplainerStep {...commonProps} config={stepConfig.config as FunnelStepConfigExplainer} />;
+        return <ExplainerStep {...commonProps} config={getConfig<FunnelStepConfigExplainer>()} />;
       
       case 'landing_page': {
-        const lpConfig = stepConfig.config as FunnelStepConfigLandingPage;
+        const lpConfig = getConfig<FunnelStepConfigLandingPage>();
         return (
-          <LandingPageStep 
-            {...commonProps} 
+          <LandingPageStep
+            {...commonProps}
             config={{
               ...lpConfig,
               // Auto-populate from program if not set in step config
@@ -612,8 +614,8 @@ export default function FunnelClient({
       }
       
       case 'upsell': {
-        const upsellConfig = stepConfig.config as FunnelStepConfigUpsell;
-        const upsellProductPrice = productPrices[upsellConfig.productId];
+        const upsellConfig = getConfig<FunnelStepConfigUpsell>();
+        const upsellProductPrice = upsellConfig.productId ? productPrices[upsellConfig.productId] : undefined;
         return (
           <UpsellStep
             config={upsellConfig}
@@ -653,8 +655,8 @@ export default function FunnelClient({
       case 'downsell': {
         // Only show downsell if its linked upsell was declined
         // (this is handled by the flow logic, but we double-check here)
-        const downsellConfig = stepConfig.config as FunnelStepConfigDownsell;
-        const downsellProductPrice = productPrices[downsellConfig.productId];
+        const downsellConfig = getConfig<FunnelStepConfigDownsell>();
+        const downsellProductPrice = downsellConfig.productId ? productPrices[downsellConfig.productId] : undefined;
         return (
           <DownsellStep
             config={downsellConfig}
@@ -679,19 +681,19 @@ export default function FunnelClient({
       case 'info':
         // Legacy support: treat 'info' as 'explainer' with defaults
         return <ExplainerStep {...commonProps} config={{
-          ...stepConfig.config as FunnelStepConfigInfo,
+          ...getConfig<FunnelStepConfigInfo>(),
           mediaType: 'image',
           layout: 'media_top',
         } as FunnelStepConfigExplainer} />;
-      
+
       case 'success':
-        return <SuccessStep {...commonProps} config={stepConfig.config as FunnelStepConfigSuccess} />;
-      
+        return <SuccessStep {...commonProps} config={getConfig<FunnelStepConfigSuccess>()} />;
+
       case 'scheduling':
         return (
           <SchedulingStep
             {...commonProps}
-            config={stepConfig.config as FunnelStepConfigScheduling}
+            config={getConfig<FunnelStepConfigScheduling>()}
             organizationId={organization.id}
             flowSessionId={sessionId || ''}
           />
@@ -811,6 +813,9 @@ export default function FunnelClient({
   const themeStyle = {
     '--funnel-primary': branding.primaryColor,
     '--funnel-primary-hover': adjustColor(branding.primaryColor, -15),
+    // Set brand accent variables for components that use bg-brand-accent (SignUpForm, etc.)
+    '--brand-accent-light': branding.primaryColor,
+    '--brand-accent-dark': adjustColor(branding.primaryColor, -15),
   } as React.CSSProperties;
 
   return (

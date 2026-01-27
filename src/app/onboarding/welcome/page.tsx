@@ -90,6 +90,53 @@ export default function OnboardingWelcomePage() {
   const { user, isLoaded } = useUser();
   const { logoUrl, appTitle } = useBrandingValues();
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
+
+  // Check if org has onboarding enabled - redirect to dashboard if disabled
+  useEffect(() => {
+    if (!isLoaded || !user) return;
+
+    const checkOnboardingEnabled = async () => {
+      try {
+        const res = await fetch('/api/user/me');
+        if (!res.ok) {
+          // If we can't check, allow onboarding to proceed
+          setIsCheckingOnboarding(false);
+          return;
+        }
+        const data = await res.json();
+
+        // If user already completed onboarding, go to dashboard
+        if (data.user?.hasCompletedOnboarding) {
+          console.log('[ONBOARDING] User already completed onboarding, redirecting to dashboard');
+          router.replace('/');
+          return;
+        }
+
+        // If org has a custom onboarding flow, redirect there instead
+        if (data.orgOnboardingEnabled && data.orgOnboardingFlowId) {
+          console.log('[ONBOARDING] Org has custom flow, redirecting to:', data.orgOnboardingFlowId);
+          router.replace(`/onboarding/flow/${data.orgOnboardingFlowId}`);
+          return;
+        }
+
+        // If org onboarding is NOT enabled, skip to dashboard
+        if (!data.orgOnboardingEnabled) {
+          console.log('[ONBOARDING] Org onboarding is not enabled, redirecting to dashboard');
+          router.replace('/');
+          return;
+        }
+
+        // No custom flow but onboarding enabled - show generic flow (fallback)
+        setIsCheckingOnboarding(false);
+      } catch (error) {
+        console.error('[ONBOARDING] Error checking onboarding status:', error);
+        setIsCheckingOnboarding(false);
+      }
+    };
+
+    checkOnboardingEnabled();
+  }, [isLoaded, user, router]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -114,7 +161,7 @@ export default function OnboardingWelcomePage() {
     router.push('/onboarding/workday');
   };
 
-  if (!isLoaded || !user) {
+  if (!isLoaded || !user || isCheckingOnboarding) {
     return (
       <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
         <div className="relative">

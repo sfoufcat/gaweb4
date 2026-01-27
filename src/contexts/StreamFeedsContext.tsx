@@ -66,8 +66,12 @@ export function StreamFeedsProvider({ children }: StreamFeedsProviderProps) {
         }
 
         const data = await response.json();
+
+        // Token may be null during auth transitions - return null instead of throwing
         if (!data.token) {
-          throw new Error('Invalid token response');
+          globalFeedsConnectionPromise = null;
+          globalFeedsConnectedUserId = null;
+          return null;
         }
 
         // Get API key

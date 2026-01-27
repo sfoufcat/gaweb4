@@ -151,6 +151,24 @@ export function SignupStep({
   // For custom domains, use the passed tenantSubdomain; otherwise extract from hostname
   const subdomain = isCustomDomain ? (tenantSubdomain || null) : getSubdomainFromHostname();
 
+  // Get tenant param from URL (for localhost dev mode)
+  const [tenantParam, setTenantParam] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setTenantParam(params.get('tenant'));
+    }
+  }, []);
+
+  // Helper to build callback URL with tenant param preserved (critical for localhost dev)
+  const buildCallbackUrl = useCallback((baseUrl: string) => {
+    if (tenantParam) {
+      return `${baseUrl}&tenant=${tenantParam}`;
+    }
+    return baseUrl;
+  }, [tenantParam]);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -308,7 +326,7 @@ export function SignupStep({
         await signUp.authenticateWithRedirect({
           strategy: provider,
           redirectUrl: '/sso-callback',
-          redirectUrlComplete: `/join/callback?flowSessionId=${flowSessionId}`,
+          redirectUrlComplete: buildCallbackUrl(`/join/callback?flowSessionId=${flowSessionId}`),
           unsafeMetadata: { signupDomain: hostname },
         });
       } catch (err) {
@@ -568,8 +586,8 @@ export function SignupStep({
   // ============================================
   // CASE 1: New User - Show sign-up form
   // ============================================
-  const heading = config.heading || 'Create your account';
-  const subheading = config.subheading || 'Sign up to continue your journey';
+  const heading = config?.heading || 'Create your account';
+  const subheading = config?.subheading || 'Sign up to continue your journey';
 
   // Construct URLs for iframe
   const subdomainBase = subdomain 
@@ -651,7 +669,7 @@ export function SignupStep({
               )}
 
               {/* OAuth Button - hide when email is locked to single address (OAuth could use different email) */}
-              {config.showSocialLogin !== false && !lockedEmail && (
+              {config?.showSocialLogin !== false && !lockedEmail && (
                 <>
                   <div className="space-y-3">
                     <OAuthButton
@@ -687,9 +705,9 @@ export function SignupStep({
                 <SignUpForm
                   embedded={true}
                   origin=""
-                  redirectUrl={`/join/callback?flowSessionId=${flowSessionId}`}
+                  redirectUrl={buildCallbackUrl(`/join/callback?flowSessionId=${flowSessionId}`)}
                   hideOAuth={true}
-                  signInUrl={`/sign-in?redirect_url=${encodeURIComponent(`/join/callback?flowSessionId=${flowSessionId}`)}`}
+                  signInUrl={buildCallbackUrl(`/sign-in?redirect_url=${encodeURIComponent(buildCallbackUrl(`/join/callback?flowSessionId=${flowSessionId}`))}`)}
                   lockedEmail={lockedEmail}
                   lockedEmails={lockedEmails}
                 />
@@ -711,8 +729,8 @@ export function SignupStep({
           {/* Sign in link for existing users - preserves flowSessionId for enrollment after sign-in */}
           <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">
             Already have an account?{' '}
-            <Link 
-              href={`/sign-in?redirect_url=${encodeURIComponent(`/join/callback?flowSessionId=${flowSessionId}`)}`} 
+            <Link
+              href={buildCallbackUrl(`/sign-in?redirect_url=${encodeURIComponent(buildCallbackUrl(`/join/callback?flowSessionId=${flowSessionId}`))}`)}
               className="text-brand-accent hover:text-[#8a6649] font-medium"
             >
               Sign in

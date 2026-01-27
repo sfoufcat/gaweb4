@@ -35,18 +35,22 @@ interface SquadFunnelPageProps {
 
 export default async function SquadFunnelPage({ params, searchParams }: SquadFunnelPageProps) {
   const { squadSlug, funnelSlug } = await params;
-  const { invite: inviteCode, ref: referrerId } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { invite: inviteCode, ref: referrerId } = resolvedSearchParams;
 
   // Get hostname for tenant resolution and branding
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
 
-  // Resolve tenant (organization) from hostname
-  const tenantResult = await resolveTenant(hostname, null, null);
+  // Convert search params to URLSearchParams for tenant resolution (supports ?tenant= on localhost)
+  const urlSearchParams = new URLSearchParams(resolvedSearchParams as Record<string, string>);
+
+  // Resolve tenant (organization) from hostname (or ?tenant= param on localhost)
+  const tenantResult = await resolveTenant(hostname, urlSearchParams, null);
   const organizationId = tenantResult.type === 'tenant' ? tenantResult.tenant.organizationId : null;
 
-  // Get branding
-  const branding = await getBrandingForDomain(hostname);
+  // Get branding (pass search params for ?tenant= on localhost)
+  const branding = await getBrandingForDomain(hostname, urlSearchParams);
   const logoUrl = getBestLogoUrl(branding);
   const appTitle = branding.appTitle;
   const primaryColor = branding.primaryColor;

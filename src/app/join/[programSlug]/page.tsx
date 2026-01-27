@@ -26,18 +26,22 @@ interface JoinPageProps {
 
 export default async function JoinProgramPage({ params, searchParams }: JoinPageProps) {
   const { programSlug } = await params;
-  const { invite, funnel: funnelSlug } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { invite, funnel: funnelSlug } = resolvedSearchParams;
 
   // Get hostname for tenant resolution
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
 
-  // Resolve tenant (organization) from hostname
-  const tenantResult = await resolveTenant(hostname, null, null);
+  // Convert search params to URLSearchParams for tenant resolution (supports ?tenant= on localhost)
+  const urlSearchParams = new URLSearchParams(resolvedSearchParams as Record<string, string>);
+
+  // Resolve tenant (organization) from hostname (or ?tenant= param on localhost)
+  const tenantResult = await resolveTenant(hostname, urlSearchParams, null);
   const organizationId = tenantResult.type === 'tenant' ? tenantResult.tenant.organizationId : null;
 
-  // Get branding for error messages
-  const branding = await getBrandingForDomain(hostname);
+  // Get branding for error messages (pass search params for ?tenant= on localhost)
+  const branding = await getBrandingForDomain(hostname, urlSearchParams);
 
   // Find program by slug
   let programQuery = adminDb.collection('programs').where('slug', '==', programSlug);

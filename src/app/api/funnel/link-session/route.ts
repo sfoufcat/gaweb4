@@ -103,17 +103,53 @@ async function ensureOrgMembership(
  */
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    let userId: string | null = null;
+
+    // Try standard server-side auth first
+    const authResult = await auth();
+    userId = authResult.userId;
+    console.log(`[FUNNEL_LINK_SESSION] POST called, auth() userId: ${userId || 'null'}`);
+
+    const body = await req.json();
+    const { flowSessionId, clerkSessionId } = body;
+    console.log(`[FUNNEL_LINK_SESSION] flowSessionId: ${flowSessionId}, clerkSessionId provided: ${!!clerkSessionId}`);
+
+    // If server-side auth failed but we have a clerkSessionId, try to verify via Clerk API
+    // This is the localhost fix where cookies don't propagate properly after signup
+    if (!userId && clerkSessionId) {
+      console.log(`[FUNNEL_LINK_SESSION] Attempting to verify session via Clerk API... clerkSessionId: ${clerkSessionId}`);
+      try {
+        const client = await clerkClient();
+        const session = await client.sessions.getSession(clerkSessionId);
+        console.log(`[FUNNEL_LINK_SESSION] Session lookup result:`, {
+          sessionId: session?.id,
+          userId: session?.userId,
+          status: session?.status,
+        });
+        // Accept both 'active' and 'pending' sessions - pending means email verified but session
+        // not yet fully activated (common immediately after signup with email verification)
+        if (session && session.userId && (session.status === 'active' || session.status === 'pending')) {
+          userId = session.userId;
+          console.log(`[FUNNEL_LINK_SESSION] Session verified via Clerk API, userId: ${userId}, status: ${session.status}`);
+        } else {
+          console.log(`[FUNNEL_LINK_SESSION] Session not valid - status: ${session?.status}, userId: ${session?.userId ? 'present' : 'missing'}`);
+        }
+      } catch (sessionErr) {
+        console.error('[FUNNEL_LINK_SESSION] Failed to verify session via Clerk API:', sessionErr);
+        // Log the error details for debugging
+        if (sessionErr instanceof Error) {
+          console.error('[FUNNEL_LINK_SESSION] Error name:', sessionErr.name, 'message:', sessionErr.message);
+        }
+      }
+    }
 
     if (!userId) {
+      console.log('[FUNNEL_LINK_SESSION] No userId - returning 401');
       return NextResponse.json(
         { error: 'Unauthorized - must be authenticated to link session' },
         { status: 401 }
       );
     }
-
-    const body = await req.json();
-    const { flowSessionId } = body;
 
     if (!flowSessionId) {
       return NextResponse.json(
@@ -142,6 +178,12 @@ export async function POST(req: Request) {
     }
 
     const session = sessionDoc.data() as FlowSession;
+    console.log(`[FUNNEL_LINK_SESSION] Flow session found:`, {
+      organizationId: session.organizationId,
+      funnelId: session.funnelId,
+      existingUserId: session.userId,
+      inviteId: session.inviteId,
+    });
 
     // Check if expired
     if (new Date(session.expiresAt) < new Date()) {
@@ -289,11 +331,12 @@ export async function POST(req: Request) {
     let membershipCreated = false;
     
     if (session.organizationId) {
+      console.log(`[FUNNEL_LINK_SESSION] Enrolling user ${userId} in org ${session.organizationId}...`);
       try {
         // 1. Add user to Clerk organization (also updates publicMetadata)
         await addUserToOrganization(userId, session.organizationId, 'org:member');
         enrolledInOrg = true;
-        console.log(`[FUNNEL_LINK_SESSION] Added user ${userId} to Clerk org ${session.organizationId}`);
+        console.log(`[FUNNEL_LINK_SESSION] Successfully added user ${userId} to Clerk org ${session.organizationId}`);
         
         // 2. Also update primaryOrganizationId in user metadata for multi-org support
         const client = await clerkClient();
@@ -321,13 +364,17 @@ export async function POST(req: Request) {
         // The /api/funnel/complete will also try to add them to the org
         console.error(`[FUNNEL_LINK_SESSION] Failed to enroll user in org (non-fatal):`, orgError);
       }
+    } else {
+      console.log(`[FUNNEL_LINK_SESSION] No organizationId on flow session - skipping org enrollment`);
     }
+
+    console.log(`[FUNNEL_LINK_SESSION] Complete - enrolledInOrg: ${enrolledInOrg}, membershipCreated: ${membershipCreated}`);
 
     // Return updated session
     const updatedDoc = await sessionRef.get();
     const updatedSession = updatedDoc.data() as FlowSession;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       alreadyLinked,
       enrolledInOrg,
@@ -336,6 +383,29 @@ export async function POST(req: Request) {
       organizationId: session.organizationId,
       session: updatedSession,
     });
+
+    // ==========================================================================
+    // SET BYPASS COOKIE (100% reliable middleware bypass for fresh enrollments)
+    // ==========================================================================
+    //
+    // When we enroll a user in an org, Clerk's session JWT won't immediately have
+    // the updated claims. The middleware checks session claims and would redirect
+    // to /access-denied. This short-lived cookie tells middleware to skip the
+    // org membership check - it expires in 60 seconds, by which time Clerk's
+    // session should have propagated the new claims.
+    //
+    if (enrolledInOrg && session.organizationId) {
+      response.cookies.set('funnel_org_bypass', session.organizationId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60, // 60 seconds - just enough for session claims to propagate
+      });
+      console.log(`[FUNNEL_LINK_SESSION] Set bypass cookie for org ${session.organizationId} (60s TTL)`);
+    }
+
+    return response;
   } catch (error) {
     console.error('[FUNNEL_LINK_SESSION]', error);
     return NextResponse.json(

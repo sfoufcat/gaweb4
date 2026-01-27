@@ -184,7 +184,23 @@ export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      // Return empty state instead of 401 to prevent error spam during auth transitions
+      const now = new Date().toISOString();
+      return NextResponse.json({
+        promo: {
+          id: 'default',
+          organizationId: null,
+          ...DEFAULT_COACHING_PROMO,
+          createdAt: now,
+          updatedAt: now,
+        },
+        organizationId: null,
+        isEnabled: false,
+        destinationUrl: null,
+        hasActiveIndividualEnrollment: false,
+        coachingChatChannelId: null,
+        coachInfo: null,
+      });
     }
 
     // MULTI-TENANCY: Get org from tenant domain (null on platform domain)

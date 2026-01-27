@@ -465,12 +465,15 @@ export default function SquadFunnelClient({
     currentStep?.type !== 'landing_page';
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-white"
       style={{
         '--funnel-primary': branding.primaryColor,
         '--funnel-primary-light': adjustColor(branding.primaryColor, 20),
         '--funnel-primary-dark': adjustColor(branding.primaryColor, -15),
+        // Set brand accent variables for components that use bg-brand-accent (SignUpForm, etc.)
+        '--brand-accent-light': branding.primaryColor,
+        '--brand-accent-dark': adjustColor(branding.primaryColor, -15),
       } as React.CSSProperties}
     >
       {/* Pixel Tracker - loads funnel pixels and fires step events */}

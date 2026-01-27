@@ -448,6 +448,19 @@ export async function GET(
     const allAssignedResources: WeekResourceAssignment[] = [];
     const weekSource = instance?.weeks || program.weeks || [];
 
+    console.log('[DASHBOARD] Content completion debug:', {
+      hasInstance: !!instance,
+      instanceId: instance?.id,
+      instanceWeeksCount: instance?.weeks?.length,
+      programWeeksCount: program.weeks?.length,
+      weekSourceCount: weekSource.length,
+      weekSourceSample: weekSource[0] ? {
+        weekNumber: weekSource[0].weekNumber,
+        resourceAssignmentsCount: weekSource[0].resourceAssignments?.length || 0,
+        courseAssignmentsCount: weekSource[0].courseAssignments?.length || 0,
+      } : null,
+    });
+
     weekSource.forEach((week) => {
       // Get resources from both new and legacy formats
       const resources = week.resourceAssignments || [];

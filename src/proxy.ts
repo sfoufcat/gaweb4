@@ -344,6 +344,14 @@ const isPublicRoute = createRouteMatcher([
   '/api/public/intake(.*)',  // Public intake APIs (token-based auth)
   '/api/public/video-guest-token',  // Guest video token - token-based auth
   '/intake-call(.*)',  // Guest intake call pages - token-based auth
+  // Auth-transition-safe routes: return graceful responses when not authenticated
+  // These handle their own auth and return empty/default data instead of 401
+  '/api/user/me',  // Returns { exists: false } when not authenticated
+  '/api/stream-token',  // Returns { token: null } when not authenticated
+  '/api/stream-video-token',  // Returns { token: null } when not authenticated
+  '/api/squad/me',  // Returns empty arrays when not authenticated
+  '/api/user/org-coaching-promo',  // Returns default promo when not authenticated
+  '/api/feed/token',  // Returns { token: null } when not authenticated
 ]);
 
 // Define admin routes that require admin role
@@ -536,6 +544,7 @@ async function resolveTenantFromApi(
         coachingPromo: data.coachingPromo,
         verifiedCustomDomain: data.verifiedCustomDomain,
         websiteEnabled: data.websiteEnabled ?? false,
+        feedEnabled: data.feedEnabled === true,
         updatedAt: new Date().toISOString(),
       } : undefined;
       
@@ -980,7 +989,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     // Handle non-allowed routes on marketing domain
     // IMPORTANT: Do NOT redirect to app.coachful.co - that's for super_admins only!
     // Instead, redirect to appropriate location based on user state
-      const { userId, sessionClaims } = await auth();
+      const { userId, sessionClaims } = await auth({ treatPendingAsSignedOut: false });
       const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
       
       // Super admins can go to app.coachful.co
@@ -1008,10 +1017,12 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   // Skip this check if we're in tenant mode (e.g., dev override with ?tenant= param)
   if (isPlatformAdminDomain(hostname) && !isTenantMode) {
     // Allow public routes (auth, api, static assets, access-denied page)
-    const isPlatformPublicRoute = 
+    const isPlatformPublicRoute =
       pathname.startsWith('/sign-in') ||
       pathname.startsWith('/sign-up') ||
+      pathname.startsWith('/signup') ||
       pathname.startsWith('/sso-callback') ||
+      pathname.startsWith('/join') ||  // Funnel system - needed for dev mode callbacks
       pathname.startsWith('/api/') ||
       pathname.startsWith('/_next/') ||
       pathname.startsWith('/static/') ||
@@ -1020,7 +1031,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     
     if (!isPlatformPublicRoute) {
       // Check if user is super_admin
-      const { userId, sessionClaims } = await auth();
+      const { userId, sessionClaims } = await auth({ treatPendingAsSignedOut: false });
       const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
       
       if (!userId || role !== 'super_admin') {
@@ -1078,7 +1089,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
 
   // Get auth state early to set auth hint header (prevents flash of unauthenticated content)
   // Note: auth() is called again later for more detailed checks, but we need userId here for the header
-  const { userId: earlyUserId } = await auth();
+  const { userId: earlyUserId } = await auth({ treatPendingAsSignedOut: false });
   requestHeaders.set('x-user-authenticated', earlyUserId ? 'true' : 'false');
 
   // Create response with modified request headers
@@ -1214,41 +1225,50 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   }
 
   // Get auth state
-  const { userId, sessionClaims } = await auth();
+  // Use treatPendingAsSignedOut: false to recognize users with pending session tasks
+  // (e.g., choose-organization task). This prevents sign-in loops where the user
+  // authenticates but their session is in "pending" state due to uncompleted tasks.
+  const { userId, sessionClaims } = await auth({ treatPendingAsSignedOut: false });
   
   // ==========================================================================
   // TENANT MEMBERSHIP ENFORCEMENT (Multi-Org Support)
   // ==========================================================================
-  
+
   // If in tenant mode and user is signed in, verify they belong to this org
   // Uses Clerk session claims only - no HTTP calls needed
   if (isTenantMode && userId && tenantOrgId) {
     const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    
+
     // Check membership using session claims only (fast, no HTTP):
     // 1. Clerk's native organization context
-    const { orgId: clerkOrgId } = await auth();
-    
+    const { orgId: clerkOrgId } = await auth({ treatPendingAsSignedOut: false });
+
     // 2. publicMetadata.primaryOrganizationId (new multi-org field)
     const primaryOrgId = publicMetadata?.primaryOrganizationId;
-    
+
     // 3. publicMetadata.organizationId (legacy field)
     const legacyOrgId = publicMetadata?.organizationId;
-    
+
+    // 4. Bypass cookie from fresh funnel enrollment (link-session sets this)
+    //    This handles the race condition where Clerk's session JWT hasn't updated yet
+    const bypassCookie = request.cookies.get('funnel_org_bypass');
+    const bypassOrgId = bypassCookie?.value;
+
     // Check if any metadata matches the tenant org
     // Note: For multi-org, org_memberships is checked server-side in protected routes
     // Middleware just does fast session-based check
-    const isMember = 
-      clerkOrgId === tenantOrgId || 
-      primaryOrgId === tenantOrgId || 
-      legacyOrgId === tenantOrgId;
-    
+    const isMember =
+      clerkOrgId === tenantOrgId ||
+      primaryOrgId === tenantOrgId ||
+      legacyOrgId === tenantOrgId ||
+      bypassOrgId === tenantOrgId; // Fresh enrollment bypass
+
     if (!isMember) {
       // User's session doesn't indicate membership in this org
       // Allow public routes - they might be signing up for this org
       // Protected routes will do deeper membership checks server-side
       console.log(`[MIDDLEWARE] User ${userId} session doesn't match tenant org ${tenantOrgId}`);
-      
+
       // Only block non-public routes
       if (!isPublicRoute(request)) {
         if (pathname.startsWith('/api/')) {
@@ -1256,6 +1276,9 @@ export const proxy = clerkMiddleware(async (auth, request) => {
         }
         return NextResponse.redirect(new URL('/access-denied', request.url));
       }
+    } else if (bypassOrgId === tenantOrgId) {
+      // If we matched via bypass cookie, log it for debugging
+      console.log(`[MIDDLEWARE] User ${userId} matched via funnel_org_bypass cookie (session claims not yet updated)`);
     }
   }
   
@@ -1264,7 +1287,17 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   if (userId && pathname.startsWith('/sign-in')) {
     const redirectUrl = request.nextUrl.searchParams.get('redirect_url');
     // Use redirect_url if it's a safe relative path, otherwise default to /
-    const destination = redirectUrl && redirectUrl.startsWith('/') ? redirectUrl : '/';
+    let destination = redirectUrl && redirectUrl.startsWith('/') ? redirectUrl : '/';
+
+    // In development, preserve the ?tenant= param so tenant mode stays active
+    if (process.env.NODE_ENV === 'development') {
+      const tenantParam = request.nextUrl.searchParams.get('tenant');
+      if (tenantParam && !destination.includes('tenant=')) {
+        const separator = destination.includes('?') ? '&' : '?';
+        destination = `${destination}${separator}tenant=${tenantParam}`;
+      }
+    }
+
     return NextResponse.redirect(new URL(destination, request.url));
   }
 

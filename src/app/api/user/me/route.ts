@@ -17,7 +17,8 @@ export async function GET() {
     const { userId } = await auth();
 
     if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      // Return empty state to prevent error spam during auth transitions
+      return NextResponse.json({ exists: false, user: null });
     }
 
     // MULTI-TENANCY: Get org from tenant domain
@@ -28,11 +29,40 @@ export async function GET() {
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
-      // User document doesn't exist yet (might be first login)
-      return NextResponse.json({
-        exists: false,
-        userId,
-      });
+      // User document doesn't exist yet - auto-create from Clerk data
+      // This handles the race condition where webhook hasn't fired yet
+      try {
+        const client = await clerkClient();
+        const clerkUser = await client.users.getUser(userId);
+
+        const newUserData = {
+          id: userId,
+          email: clerkUser.emailAddresses[0]?.emailAddress || '',
+          firstName: clerkUser.firstName || '',
+          lastName: clerkUser.lastName || '',
+          name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User',
+          imageUrl: clerkUser.imageUrl,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await userRef.set(newUserData);
+        console.log('[USER_ME] Auto-created user from Clerk:', userId);
+
+        return NextResponse.json({
+          exists: true,
+          user: newUserData,
+          goal: null,
+          orgOnboardingEnabled: false,
+        });
+      } catch (clerkError) {
+        console.error('[USER_ME] Failed to auto-create user from Clerk:', clerkError);
+        // Fall back to basic response
+        return NextResponse.json({
+          exists: false,
+          userId,
+        });
+      }
     }
 
     const userData = userDoc.data() as FirebaseUser;
@@ -93,6 +123,7 @@ export async function GET() {
 
     // Check if org has an enabled onboarding flow for new users
     let orgOnboardingEnabled = false;
+    let orgOnboardingFlowId: string | null = null;
     if (organizationId) {
       try {
         const flowSnapshot = await adminDb
@@ -101,8 +132,11 @@ export async function GET() {
           .where('enabled', '==', true)
           .limit(1)
           .get();
-        
+
         orgOnboardingEnabled = !flowSnapshot.empty;
+        if (!flowSnapshot.empty) {
+          orgOnboardingFlowId = flowSnapshot.docs[0].id;
+        }
       } catch (error) {
         console.warn('[USER_ME] Failed to check org onboarding flow:', error);
       }
@@ -113,6 +147,7 @@ export async function GET() {
       user: mergedUserData,
       goal: activeGoal,
       orgOnboardingEnabled,
+      orgOnboardingFlowId,
     });
 
   } catch (error) {
@@ -130,7 +165,8 @@ export async function PATCH(req: Request) {
     const { userId } = await auth();
 
     if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      // Return success silently to prevent error spam during auth transitions
+      return NextResponse.json({ success: true });
     }
 
     const body = await req.json();

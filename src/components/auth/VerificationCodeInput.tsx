@@ -100,10 +100,10 @@ export function VerificationCodeInput({
 
   return (
     <div className="w-full">
-      <label className="block font-sans text-sm font-medium text-text-primary mb-3">
+      <label className="block font-sans text-sm font-medium text-text-primary mb-3 text-center">
         Verification code
       </label>
-      <div className="flex justify-between gap-2 sm:gap-3">
+      <div className="flex justify-center gap-1.5 sm:gap-2">
         {[0, 1, 2, 3, 4, 5].map((index) => (
           <input
             key={index}
@@ -121,15 +121,15 @@ export function VerificationCodeInput({
             onFocus={() => handleFocus(index)}
             disabled={disabled}
             className={`
-              w-full aspect-square max-w-[60px] sm:max-w-[64px]
+              w-12 h-14 sm:w-14 sm:h-16
               bg-white border-2 rounded-xl
               font-sans text-2xl sm:text-3xl font-semibold text-center text-text-primary
               focus:outline-none transition-all duration-200
               disabled:opacity-50 disabled:cursor-not-allowed
-              ${error 
-                ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' 
-                : digits[index] 
-                  ? 'border-brand-accent focus:border-brand-accent focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20' 
+              ${error
+                ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                : digits[index]
+                  ? 'border-brand-accent focus:border-brand-accent focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20'
                   : 'border-[#e1ddd8] focus:border-brand-accent focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20'
               }
             `}

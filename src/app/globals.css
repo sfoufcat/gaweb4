@@ -39,11 +39,12 @@
     
     /* Organization Branding CSS Variables (accent colors only) */
     /* These can be overridden by BrandingContext for custom branding */
-    --brand-accent-light: #a07855;
-    --brand-accent-dark: #b8896a;
+    /* Platform default is yellow/gold, tenants override with their own colors */
+    --brand-accent-light: #e8b923;
+    --brand-accent-dark: #d4a61d;
     /* Foreground colors for text on accent backgrounds (auto-computed for contrast) */
-    --brand-accent-light-foreground: #ffffff;
-    --brand-accent-dark-foreground: #ffffff;
+    --brand-accent-light-foreground: #2c2520;
+    --brand-accent-dark-foreground: #2c2520;
   }
 
   .dark {

@@ -113,8 +113,12 @@ export function StreamVideoProvider({ children }: StreamVideoProviderProps) {
         }
 
         const data = await response.json();
+
+        // Token may be null during auth transitions - return null instead of throwing
         if (!data.token || !data.apiKey) {
-          throw new Error('Invalid token response');
+          globalConnectionPromise = null;
+          globalConnectedUserId = null;
+          return null;
         }
 
         // Create video client

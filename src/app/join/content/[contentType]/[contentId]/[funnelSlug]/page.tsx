@@ -60,7 +60,8 @@ const CONTENT_COLLECTION_MAP: Record<FunnelContentType, string> = {
 
 export default async function ContentFunnelPage({ params, searchParams }: ContentFunnelPageProps) {
   const { contentType: rawContentType, contentId, funnelSlug } = await params;
-  const { invite: inviteCode, ref: referrerId } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { invite: inviteCode, ref: referrerId } = resolvedSearchParams;
 
   // Validate content type
   const contentType = rawContentType as FunnelContentType;
@@ -72,14 +73,17 @@ export default async function ContentFunnelPage({ params, searchParams }: Conten
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
 
-  // Resolve tenant (organization) from hostname
-  const tenantResult = await resolveTenant(hostname, null, null);
+  // Convert search params to URLSearchParams for tenant resolution (supports ?tenant= on localhost)
+  const urlSearchParams = new URLSearchParams(resolvedSearchParams as Record<string, string>);
+
+  // Resolve tenant (organization) from hostname (or ?tenant= param on localhost)
+  const tenantResult = await resolveTenant(hostname, urlSearchParams, null);
   const organizationId = tenantResult.type === 'tenant' ? tenantResult.tenant.organizationId : null;
   // Extract subdomain for custom domain auth iframe (needed by SignupStep)
   const tenantSubdomain = tenantResult.type === 'tenant' ? tenantResult.tenant.subdomain : null;
 
-  // Get branding
-  const branding = await getBrandingForDomain(hostname);
+  // Get branding (pass search params for ?tenant= on localhost)
+  const branding = await getBrandingForDomain(hostname, urlSearchParams);
   const logoUrl = getBestLogoUrl(branding);
   const appTitle = branding.appTitle;
   const primaryColor = branding.primaryColor;

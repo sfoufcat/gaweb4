@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Building2, Users, Globe, ArrowLeft, ExternalLink, Trash2, Loader2, Settings } from 'lucide-react';
+import { Building2, Users, Globe, ArrowLeft, ExternalLink, Trash2, Loader2, Settings, UserPlus } from 'lucide-react';
 import type { UserRole, CoachTier } from '@/types';
 import { AdminUsersTab } from './AdminUsersTab';
 import { Button } from '@/components/ui/button';
@@ -78,6 +78,13 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
   const [editingCreditsToAdd, setEditingCreditsToAdd] = useState('');
   const [savingTier, setSavingTier] = useState(false);
   const [loadingTier, setLoadingTier] = useState(false);
+
+  // Add user to org state
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [addUserEmail, setAddUserEmail] = useState('');
+  const [addingUser, setAddingUser] = useState(false);
+  const [addUserError, setAddUserError] = useState<string | null>(null);
+  const [addUserSuccess, setAddUserSuccess] = useState<string | null>(null);
 
   const handleDeleteDomain = async (orgId: string, domainId: string, domainName: string) => {
     if (!confirm(`Are you sure you want to delete the domain "${domainName}"?\n\nThis will remove it from:\n- Clerk (authentication)\n- Vercel (hosting)\n- Stripe (Apple Pay)\n- Edge Config (caching)\n\nThis action cannot be undone.`)) {
@@ -203,6 +210,54 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
     }
   };
 
+  // Add user to organization
+  const handleAddUserToOrg = async () => {
+    if (!selectedOrg || !addUserEmail.trim()) return;
+
+    setAddingUser(true);
+    setAddUserError(null);
+    setAddUserSuccess(null);
+
+    try {
+      const response = await fetch(`/api/admin/organizations/${selectedOrg.id}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: addUserEmail.trim(),
+          orgRole: 'member',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add user');
+      }
+
+      setAddUserSuccess(`Successfully added ${data.user.name || data.user.email} to ${selectedOrg.name}`);
+      setAddUserEmail('');
+
+      // Update member count
+      setSelectedOrg({
+        ...selectedOrg,
+        membersCount: selectedOrg.membersCount + 1,
+      });
+
+      // Close dialog after short delay to show success
+      setTimeout(() => {
+        setAddUserDialogOpen(false);
+        setAddUserSuccess(null);
+        // Force refresh of users list by refreshing the page or triggering re-fetch
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      console.error('Error adding user:', err);
+      setAddUserError(err instanceof Error ? err.message : 'Failed to add user');
+    } finally {
+      setAddingUser(false);
+    }
+  };
+
   // Get tier badge color
   const getTierBadgeColor = (tier: CoachTier | undefined) => {
     switch (tier) {
@@ -321,15 +376,32 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                 </div>
               </div>
               
-              {/* Edit Tier Button */}
-              <Button
-                onClick={openTierDialog}
-                variant="outline"
-                className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Manage Tier
-              </Button>
+              <div className="flex gap-2">
+                {/* Add User Button */}
+                <Button
+                  onClick={() => {
+                    setAddUserEmail('');
+                    setAddUserError(null);
+                    setAddUserSuccess(null);
+                    setAddUserDialogOpen(true);
+                  }}
+                  variant="outline"
+                  className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add User
+                </Button>
+
+                {/* Edit Tier Button */}
+                <Button
+                  onClick={openTierDialog}
+                  variant="outline"
+                  className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Manage Tier
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -471,6 +543,92 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
               >
                 {savingTier ? 'Saving...' : 'Save Changes'}
               </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Add User Dialog */}
+        <AlertDialog open={addUserDialogOpen} onOpenChange={setAddUserDialogOpen}>
+          <AlertDialogContent className="sm:max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-albert">Add User to Organization</AlertDialogTitle>
+              <AlertDialogDescription className="font-albert" asChild>
+                <div>
+                  <p className="mb-4">
+                    Add an existing user to <strong>{selectedOrg.name}</strong> by email address.
+                  </p>
+
+                  {addUserSuccess ? (
+                    <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-lg">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {addUserSuccess}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                          User Email
+                        </label>
+                        <input
+                          type="email"
+                          value={addUserEmail}
+                          onChange={(e) => {
+                            setAddUserEmail(e.target.value);
+                            setAddUserError(null);
+                          }}
+                          placeholder="user@example.com"
+                          className="w-full h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 focus:border-brand-accent font-albert disabled:opacity-50"
+                          disabled={addingUser}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddUserToOrg();
+                            }
+                          }}
+                        />
+                        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                          The user must already have an account on the platform.
+                        </p>
+                      </div>
+
+                      {addUserError && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm font-albert">
+                          {addUserError}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                disabled={addingUser}
+                className="font-albert"
+              >
+                {addUserSuccess ? 'Close' : 'Cancel'}
+              </AlertDialogCancel>
+              {!addUserSuccess && (
+                <AlertDialogAction
+                  onClick={(e: React.MouseEvent) => {
+                    e.preventDefault();
+                    handleAddUserToOrg();
+                  }}
+                  disabled={addingUser || !addUserEmail.trim()}
+                  className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
+                >
+                  {addingUser ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    'Add User'
+                  )}
+                </AlertDialogAction>
+              )}
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

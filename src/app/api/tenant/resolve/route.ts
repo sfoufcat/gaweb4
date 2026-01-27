@@ -119,6 +119,22 @@ async function getOrgWebsiteEnabled(organizationId: string): Promise<boolean> {
 }
 
 /**
+ * Fetch feedEnabled setting for an organization from Firestore
+ */
+async function getOrgFeedEnabled(organizationId: string): Promise<boolean> {
+  try {
+    const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+    if (settingsDoc.exists) {
+      return settingsDoc.data()?.feedEnabled === true;
+    }
+    return false;
+  } catch (error) {
+    console.error('[TENANT_RESOLVE] Error fetching feedEnabled:', error);
+    return false;
+  }
+}
+
+/**
  * Fetch coaching promo data for an organization from Firestore
  * If no custom image is set, resolves to coach's profile picture
  */
@@ -227,6 +243,7 @@ export async function GET(request: Request) {
       const branding = await getOrgBranding(data.organizationId);
       const coachingPromo = await getOrgCoachingPromo(data.organizationId);
       const websiteEnabled = await getOrgWebsiteEnabled(data.organizationId);
+      const feedEnabled = await getOrgFeedEnabled(data.organizationId);
 
       return NextResponse.json({
         found: true,
@@ -237,6 +254,7 @@ export async function GET(request: Request) {
         branding,
         coachingPromo,
         websiteEnabled,
+        feedEnabled,
       });
     } else if (domain) {
       // Resolve by custom domain
@@ -268,6 +286,7 @@ export async function GET(request: Request) {
       const branding = await getOrgBranding(customDomainData.organizationId);
       const coachingPromo = await getOrgCoachingPromo(customDomainData.organizationId);
       const websiteEnabled = await getOrgWebsiteEnabled(customDomainData.organizationId);
+      const feedEnabled = await getOrgFeedEnabled(customDomainData.organizationId);
 
       return NextResponse.json({
         found: true,
@@ -278,6 +297,7 @@ export async function GET(request: Request) {
         branding,
         coachingPromo,
         websiteEnabled,
+        feedEnabled,
       });
     }
     

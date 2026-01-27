@@ -2937,8 +2937,8 @@ export type OrgDefaultTheme = 'light' | 'dark' | 'system';
  * Only accent colors are customizable (menu and page backgrounds use theme defaults)
  */
 export interface OrgBrandingColors {
-  accentLight: string;         // Accent/primary color in light mode (default: "#a07855")
-  accentDark: string;          // Accent/primary color in dark mode (default: "#b8896a")
+  accentLight: string;         // Accent/primary color in light mode (default: "#e8b923" yellow)
+  accentDark: string;          // Accent/primary color in dark mode (default: "#d4a61d" yellow)
   // Text colors for accent backgrounds (computed based on accent luminance)
   accentLightForeground?: string;  // Text color on accentLight bg (default: "#ffffff" if dark accent, "#1a1a1a" if light)
   accentDarkForeground?: string;   // Text color on accentDark bg (default: "#ffffff" if dark accent, "#1a1a1a" if light)

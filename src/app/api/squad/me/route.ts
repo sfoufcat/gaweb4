@@ -366,7 +366,17 @@ export async function GET(request: Request) {
     const includeStats = searchParams.get('includeStats') !== 'false'; // Default to true
 
     if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      // Return empty state instead of 401 to prevent error spam during auth transitions
+      return NextResponse.json({
+        squads: [],
+        discoverySquads: [],
+        premiumSquad: null,
+        premiumMembers: [],
+        premiumStats: null,
+        standardSquad: null,
+        standardMembers: [],
+        standardStats: null,
+      });
     }
 
     // MULTI-TENANCY: Get effective org ID

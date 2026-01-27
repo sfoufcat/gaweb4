@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useSignIn } from '@clerk/nextjs';
+import { useSignIn, useAuth, useClerk, useSession } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { AuthInput } from './AuthInput';
 import { OAuthButton } from './OAuthButton';
@@ -16,11 +16,21 @@ interface SignInFormProps {
 
 export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', hideOAuth = false }: SignInFormProps) {
   const { signIn, isLoaded, setActive } = useSignIn();
+  // Use treatPendingAsSignedOut: false to recognize users with pending session tasks
+  // (e.g., choose-organization). This prevents the form from showing when user is
+  // authenticated but has incomplete tasks.
+  const { isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
+  const { session } = useSession();
+  const { signOut } = useClerk();
   const router = useRouter();
-  
+
   // Check if we're on the marketing domain (coachful.co without subdomain)
   const [isMarketingDomain, setIsMarketingDomain] = useState(false);
-  
+  // Track if we've already triggered a redirect to prevent loops
+  const [hasTriggeredRedirect, setHasTriggeredRedirect] = useState(false);
+  // Track when we've successfully authenticated and are redirecting
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname.toLowerCase();
@@ -30,28 +40,149 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
     }
   }, []);
 
-  // Helper to handle redirects - external URLs (http/https) use window.location
-  // Internal paths use Next.js router
+  // Helper to handle redirects - use client-side navigation when possible
+  // to avoid server-side auth timing issues after sign-in
   const handleRedirect = useCallback((url: string) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      window.location.href = url;
+    console.log('[SignInForm] handleRedirect called with:', url);
+
+    // In development, preserve the ?tenant= param from current URL
+    // This ensures the dev-tenant cookie is set on the redirected page
+    let finalUrl = url;
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+      const currentParams = new URLSearchParams(window.location.search);
+      const tenantParam = currentParams.get('tenant');
+      if (tenantParam && !url.includes('tenant=')) {
+        // Add tenant param to redirect URL
+        const separator = url.includes('?') ? '&' : '?';
+        finalUrl = `${url}${separator}tenant=${tenantParam}`;
+        console.log('[SignInForm] Preserving tenant param, new URL:', finalUrl);
+      }
+    }
+
+    // For full URLs, check if it's the same origin and extract pathname
+    if (finalUrl.startsWith('http://') || finalUrl.startsWith('https://')) {
+      try {
+        const parsedUrl = new URL(finalUrl);
+        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+
+        // If same origin, use client-side navigation to avoid server-side auth race
+        if (parsedUrl.origin === currentOrigin) {
+          const relativePath = parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
+          console.log('[SignInForm] Using router.push for same-origin URL:', relativePath);
+          router.push(relativePath);
+          return;
+        }
+      } catch {
+        // Invalid URL, fall through to window.location
+      }
+      console.log('[SignInForm] Using window.location.href for cross-origin URL');
+      window.location.href = finalUrl;
     } else {
-      router.push(url);
+      console.log('[SignInForm] Using router.push for relative URL:', finalUrl);
+      router.push(finalUrl);
     }
   }, [router]);
+
+  // Helper to link session and redirect for localhost funnel flows
+  // This avoids the cookie propagation issue by making API calls while session is active
+  const linkSessionAndRedirectForLocalhost = useCallback(async (): Promise<boolean> => {
+    const isLocalhost = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    if (!isLocalhost || !redirectUrl.includes('/join/callback') || !redirectUrl.includes('flowSessionId=')) {
+      return false; // Not a localhost funnel flow
+    }
+
+    console.log('[SignInForm] Localhost funnel detected, linking session directly...');
+
+    // Extract flowSessionId from redirectUrl
+    const url = new URL(redirectUrl, window.location.origin);
+    const flowSessionId = url.searchParams.get('flowSessionId');
+
+    if (!flowSessionId) {
+      return false;
+    }
+
+    try {
+      // Wait for Clerk to initialize session
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Call link-session API directly
+      const linkResponse = await fetch('/api/funnel/link-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ flowSessionId }),
+      });
+
+      if (!linkResponse.ok) {
+        console.error('[SignInForm] Link session failed:', await linkResponse.text());
+        return false;
+      }
+
+      const linkData = await linkResponse.json();
+      console.log('[SignInForm] Session linked successfully:', linkData);
+
+      // Get funnel details to redirect
+      const sessionResponse = await fetch(`/api/funnel/session?sessionId=${flowSessionId}`);
+      const sessionData = await sessionResponse.json();
+
+      if (sessionData.session) {
+        const funnelResponse = await fetch(`/api/funnel/${sessionData.session.funnelId}`);
+        const funnelData = await funnelResponse.json();
+
+        if (funnelData.funnel && funnelData.program) {
+          if (linkData.enrolledInOrg) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+
+          // Preserve ?tenant= param for localhost development
+          let funnelUrl = `/join/${funnelData.program.slug}/${funnelData.funnel.slug}`;
+          const currentParams = new URLSearchParams(window.location.search);
+          const tenantParam = currentParams.get('tenant');
+          if (tenantParam) {
+            funnelUrl += `?tenant=${tenantParam}`;
+          }
+
+          console.log('[SignInForm] Redirecting to funnel:', funnelUrl);
+          router.push(funnelUrl);
+          return true;
+        }
+      }
+
+      // Fallback to dashboard (preserve tenant param)
+      const currentParams = new URLSearchParams(window.location.search);
+      const tenantParam = currentParams.get('tenant');
+      const dashboardUrl = tenantParam ? `/?tenant=${tenantParam}` : '/';
+      router.push(dashboardUrl);
+      return true;
+    } catch (err) {
+      console.error('[SignInForm] Error linking session:', err);
+      return false;
+    }
+  }, [redirectUrl, router]);
 
   // Helper to handle successful auth
   // In embedded mode: send postMessage to parent with redirectUrl
   // On marketing domain: call API to determine redirect URL (for coaches)
-  // Otherwise: redirect normally
+  // Otherwise: redirect normally (with localhost funnel flow handling)
   const handleAuthSuccess = useCallback(async () => {
+    console.log('[SignInForm] handleAuthSuccess called, redirectUrl:', redirectUrl);
+    // Set redirecting state immediately to show spinner
+    setIsRedirecting(true);
+
     if (embedded && origin) {
       // Notify parent window of successful auth with redirectUrl
       // Parent can use this to redirect to the correct page (e.g., funnel callback with flowSessionId)
       window.parent.postMessage({ type: 'auth-success', redirectUrl }, origin);
       return;
     }
-    
+
+    // Try localhost funnel flow first (makes API calls directly while session is active)
+    const handled = await linkSessionAndRedirectForLocalhost();
+    if (handled) {
+      return;
+    }
+
     // On marketing domain, check if user is a coach with an org
     // and redirect them appropriately (to onboarding or their subdomain)
     if (isMarketingDomain) {
@@ -60,7 +191,7 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           if (data.redirect) {
@@ -73,10 +204,20 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
         // Fall through to default redirect on error
       }
     }
-    
+
     // Default: use provided redirectUrl
     handleRedirect(redirectUrl);
-  }, [embedded, origin, isMarketingDomain, redirectUrl, handleRedirect]);
+  }, [embedded, origin, isMarketingDomain, redirectUrl, handleRedirect, linkSessionAndRedirectForLocalhost]);
+
+  // Handle redirect when user is already signed in (useEffect to avoid render-time side effects)
+  // With treatPendingAsSignedOut: false, isSignedIn will be true even for pending sessions
+  useEffect(() => {
+    if (isLoaded && isSignedIn && !hasTriggeredRedirect) {
+      console.log('[SignInForm] User is signed in (sessionStatus:', session?.status, '), redirecting');
+      setHasTriggeredRedirect(true);
+      handleAuthSuccess();
+    }
+  }, [isLoaded, isSignedIn, session?.status, hasTriggeredRedirect, handleAuthSuccess]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -166,9 +307,12 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
         password,
       });
 
+      console.log('[SignInForm] Sign-in result status:', result.status);
       if (result.status === 'complete') {
+        console.log('[SignInForm] Sign-in complete, setting session active');
         await setActive({ session: result.createdSessionId });
-        handleAuthSuccess();
+        console.log('[SignInForm] Session set active, calling handleAuthSuccess');
+        await handleAuthSuccess();
       } else if (result.status === 'needs_first_factor' || result.status === 'needs_second_factor') {
         // User needs to verify with a code (email verification or 2FA)
         // Check if email_code strategy is available
@@ -195,7 +339,25 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
       const errorCode = clerkError.errors?.[0]?.code;
       const errorMessage = clerkError.errors?.[0]?.message || 'Something went wrong. Please try again.';
 
-      if (errorCode === 'form_identifier_not_found') {
+      // Handle "session already exists" error by signing out and retrying
+      if (errorCode === 'session_exists' || errorMessage.toLowerCase().includes('session already exists')) {
+        try {
+          await signOut();
+          // After signing out, retry the sign-in
+          const result = await signIn.create({
+            identifier: email,
+            password,
+          });
+          if (result.status === 'complete') {
+            await setActive({ session: result.createdSessionId });
+            await handleAuthSuccess();
+            return;
+          }
+        } catch (retryErr) {
+          console.error('[SignInForm] Retry after signOut failed:', retryErr);
+          setError('Please refresh the page and try again.');
+        }
+      } else if (errorCode === 'form_identifier_not_found') {
         setFieldErrors({ email: 'No account found with this email' });
       } else if (errorCode === 'form_password_incorrect') {
         setFieldErrors({ password: 'Incorrect password' });
@@ -230,7 +392,7 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        handleAuthSuccess();
+        await handleAuthSuccess();
       } else if (result.status === 'needs_second_factor') {
         // Handle 2FA if needed (for future expansion)
         setError('Additional verification required. Please contact support.');
@@ -330,6 +492,18 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
     return (
       <div className="w-full flex justify-center py-12">
         <div className="w-8 h-8 border-2 border-text-secondary/30 border-t-text-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // If user is already signed in OR we're redirecting after successful auth, show spinner
+  // With treatPendingAsSignedOut: false, isSignedIn includes pending sessions
+  if (isSignedIn || isRedirecting) {
+    console.log('[SignInForm] Showing spinner (isSignedIn:', isSignedIn, ', sessionStatus:', session?.status, ', isRedirecting:', isRedirecting, ')');
+    return (
+      <div className="w-full flex flex-col items-center justify-center py-12 gap-4">
+        <div className="w-8 h-8 border-2 border-text-secondary/30 border-t-text-primary rounded-full animate-spin" />
+        <p className="text-sm text-text-secondary">Redirecting...</p>
       </div>
     );
   }

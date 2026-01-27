@@ -24,7 +24,7 @@ export interface ServerBranding {
   organizationId: string | null;
 }
 
-const DEFAULT_PRIMARY_COLOR = '#a07855';
+const DEFAULT_PRIMARY_COLOR = '#e8b923';  // Platform yellow - matches globals.css
 
 const DEFAULT_BRANDING: ServerBranding = {
   logoUrl: DEFAULT_LOGO_URL,
@@ -74,21 +74,25 @@ async function getBrandingFromCookie(): Promise<ServerBranding | null> {
  * - Hostname is the platform domain (coachful.co)
  * - Organization not found
  * - No custom branding set
- * 
+ *
  * @param hostname - The hostname from the request (e.g., "cyberked.com" or "coach.coachful.co")
+ * @param searchParams - Optional URL search params (for ?tenant= on localhost)
  * @returns ServerBranding object with logo URLs and app title
  */
-export async function getBrandingForDomain(hostname: string): Promise<ServerBranding> {
+export async function getBrandingForDomain(
+  hostname: string,
+  searchParams?: URLSearchParams | null
+): Promise<ServerBranding> {
   try {
     // Priority 1: Try cookie (fast - set by middleware from KV)
     const cookieBranding = await getBrandingFromCookie();
     if (cookieBranding) {
       return cookieBranding;
     }
-    
+
     // Priority 2: Fallback to Firestore lookup (for when cookie not set)
-    // Resolve tenant from hostname
-    const result = await resolveTenant(hostname, null, null);
+    // Resolve tenant from hostname (or ?tenant= param on localhost)
+    const result = await resolveTenant(hostname, searchParams ?? null, null);
     
     // If platform mode or not found, return defaults
     if (result.type !== 'tenant') {

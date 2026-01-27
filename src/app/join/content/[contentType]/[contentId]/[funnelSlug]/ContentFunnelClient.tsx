@@ -510,12 +510,15 @@ export default function ContentFunnelClient({
   const progress = steps.length > 0 ? ((currentStepIndex + 1) / steps.length) * 100 : 0;
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] flex flex-col"
       style={{
         '--primary-color': branding.primaryColor,
         '--primary-color-light': adjustColor(branding.primaryColor, 10),
         '--primary-color-dark': adjustColor(branding.primaryColor, -10),
+        // Set brand accent variables for components that use bg-brand-accent (SignUpForm, etc.)
+        '--brand-accent-light': branding.primaryColor,
+        '--brand-accent-dark': adjustColor(branding.primaryColor, -15),
       } as React.CSSProperties}
     >
       {/* Pixel Tracker */}

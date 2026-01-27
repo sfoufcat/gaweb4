@@ -193,7 +193,153 @@ export async function GET(
   }
 }
 
+/**
+ * POST /api/admin/organizations/[organizationId]/users
+ * Add a user to an organization by email (super_admin only)
+ *
+ * This allows platform admins to manually assign users to organizations,
+ * which is useful for localhost development where funnel signup doesn't work properly.
+ *
+ * Body:
+ * - email: string (required) - Email of the user to add
+ * - orgRole: OrgRole (optional, default: 'member')
+ */
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ organizationId: string }> }
+) {
+  try {
+    // Check authorization - only super_admin can access
+    await requireSuperAdmin();
 
+    const { organizationId } = await context.params;
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { email, orgRole = 'member' } = body;
+
+    if (!email || typeof email !== 'string') {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+
+    const validOrgRoles: OrgRole[] = ['member', 'coach', 'super_coach'];
+    if (!validOrgRoles.includes(orgRole)) {
+      return NextResponse.json({ error: 'Invalid org role' }, { status: 400 });
+    }
+
+    const client = await clerkClient();
+
+    // Verify org exists
+    let org;
+    try {
+      org = await client.organizations.getOrganization({ organizationId });
+    } catch {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
+    // Find user by email
+    const { data: existingUsers } = await client.users.getUserList({
+      emailAddress: [email],
+      limit: 1,
+    });
+
+    if (existingUsers.length === 0) {
+      return NextResponse.json({ error: `No user found with email: ${email}` }, { status: 404 });
+    }
+
+    const user = existingUsers[0];
+
+    // Check if already a member of this org
+    const existingMemberships = await client.organizations.getOrganizationMembershipList({
+      organizationId,
+      limit: 500,
+    });
+
+    const isAlreadyMember = existingMemberships.data.some(
+      m => m.publicUserData?.userId === user.id
+    );
+
+    if (isAlreadyMember) {
+      return NextResponse.json({
+        error: 'User is already a member of this organization'
+      }, { status: 400 });
+    }
+
+    // Add user to Clerk organization
+    await client.organizations.createOrganizationMembership({
+      organizationId,
+      userId: user.id,
+      role: orgRole === 'super_coach' ? 'org:admin' : 'org:member',
+    });
+
+    // Update user's publicMetadata with the org info
+    const currentMetadata = user.publicMetadata as ClerkPublicMetadataWithOrgRoles;
+    const orgRolesByOrgId = currentMetadata?.orgRolesByOrgId || {};
+
+    await client.users.updateUserMetadata(user.id, {
+      publicMetadata: {
+        ...currentMetadata,
+        primaryOrganizationId: currentMetadata?.primaryOrganizationId || organizationId,
+        orgRolesByOrgId: {
+          ...orgRolesByOrgId,
+          [organizationId]: orgRole,
+        },
+      },
+    });
+
+    // Create org_membership in Firebase
+    const now = new Date().toISOString();
+    const membershipRef = adminDb.collection('org_memberships').doc();
+    await membershipRef.set({
+      id: membershipRef.id,
+      userId: user.id,
+      organizationId,
+      orgRole,
+      tier: 'standard' as UserTier,
+      track: null,
+      squadId: null,
+      premiumSquadId: null,
+      accessSource: 'manual',
+      accessExpiresAt: null,
+      inviteCodeUsed: null,
+      isActive: true,
+      joinedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    console.log(`[ADMIN_ADD_USER_TO_ORG] Added user ${user.id} (${email}) to org ${organizationId} (${org.name}) with role ${orgRole}`);
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.emailAddresses[0]?.emailAddress || email,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed User',
+        orgRole,
+      },
+      organization: {
+        id: organizationId,
+        name: org.name,
+      },
+    });
+  } catch (error) {
+    console.error('[ADMIN_ADD_USER_TO_ORG_ERROR]', error);
+    const message = error instanceof Error ? error.message : 'Internal Error';
+
+    if (message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (message.includes('Forbidden') || message.includes('Super admin')) {
+      return NextResponse.json({ error: 'Forbidden: Super admin access required' }, { status: 403 });
+    }
+
+    return NextResponse.json({ error: message || 'Internal Error' }, { status: 500 });
+  }
+}
 
 
 

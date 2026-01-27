@@ -1246,13 +1246,23 @@ export function ChannelManagementTab() {
                   <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
                     {coachingPromo.title}
                   </span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-albert font-medium ${
-                    coachingPromo.isVisible
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                      : 'bg-[#f3f1ef] dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
-                  }`}>
-                    {coachingPromo.isVisible ? 'Visible' : 'Hidden'}
-                  </span>
+                  {/* Show badge based on actual visibility to users:
+                      - "Visible" (green) = isVisible AND has linked program
+                      - "No Program" (orange) = isVisible but no linked program (won't show to users)
+                      - "Hidden" (gray) = not visible */}
+                  {!coachingPromo.isVisible ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-albert font-medium bg-[#f3f1ef] dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]">
+                      Hidden
+                    </span>
+                  ) : !coachingPromo.programId ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-albert font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                      No Program
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-albert font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                      Visible
+                    </span>
+                  )}
                 </div>
                 <p className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
                   {coachingPromo.subtitle}

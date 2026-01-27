@@ -6,7 +6,8 @@ export async function GET() {
   const { userId } = await auth();
 
   if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Return null token instead of 401 to prevent error spam during auth transitions
+    return NextResponse.json({ token: null, userId: null, apiKey: null });
   }
 
   try {
