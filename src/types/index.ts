@@ -1628,9 +1628,12 @@ export interface DynamicPrompt {
  * Habits are stored in the program day (typically Day 1 defines default habits)
  */
 export interface ProgramHabitTemplate {
+  id?: string; // Optional ID for UI tracking (auto-generated if not provided)
   title: string;
   description?: string;
+  linkedRoutine?: string; // e.g., "after breakfast"
   frequency: 'daily' | 'weekday' | 'custom';
+  customDays?: number[]; // 0-6 (Mon-Sun) when frequency is 'custom'
 }
 
 // Squad Types
@@ -6354,10 +6357,39 @@ export interface ProgramInstance {
   // Status
   status?: 'active' | 'completed' | 'paused';
 
+  // Embedded modules (copied from template, can be customized per instance)
+  modules?: ProgramInstanceModule[];
+
   // Metadata
   createdAt: string;
   updatedAt: string;
   lastSyncedFromTemplate?: string;  // Last time content was synced from program template
+}
+
+/**
+ * Program Instance Module - Module data embedded in a program instance
+ *
+ * Mirrors the template module structure (from program_modules collection)
+ * but allows per-instance customization of name, description, and habits.
+ *
+ * The module structure (order, day ranges) is inherited from the template
+ * and synced when the template structure changes. Only content (name,
+ * description, habits) can be customized per instance.
+ */
+export interface ProgramInstanceModule {
+  id: string;                      // Unique ID for this instance module
+  templateModuleId: string;        // FK to program_modules (original template)
+  order: number;                   // Position (synced from template)
+  name: string;                    // Customizable per instance
+  description?: string;            // Customizable per instance
+  habits?: ProgramHabitTemplate[]; // Customizable per instance
+  startDayIndex: number;           // Inherited from template (synced on structure changes)
+  endDayIndex: number;             // Inherited from template (synced on structure changes)
+  linkedCourseIds?: string[];      // Inherited from template
+  hasLocalChanges?: boolean;       // True if name/description/habits were customized
+  lastSyncedFromTemplate?: string; // ISO timestamp of last sync
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /**

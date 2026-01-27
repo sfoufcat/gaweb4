@@ -31,8 +31,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { ProgramInstance, ProgramInstanceDay } from '@/types';
+import type { ProgramInstance, ProgramInstanceDay, ProgramInstanceModule, ProgramModule } from '@/types';
 import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
+
+/**
+ * Fetches and converts template modules to instance modules.
+ * Used during instance creation to pre-populate modules with customizable copies.
+ *
+ * @param programId - The program ID to fetch modules for
+ * @returns Array of ProgramInstanceModule ready for embedding in instance
+ */
+async function fetchAndConvertModules(programId: string): Promise<ProgramInstanceModule[]> {
+  const modulesSnapshot = await adminDb.collection('program_modules')
+    .where('programId', '==', programId)
+    .orderBy('order', 'asc')
+    .get();
+
+  const now = new Date().toISOString();
+
+  return modulesSnapshot.docs.map(doc => {
+    const m = doc.data() as ProgramModule;
+    return {
+      id: crypto.randomUUID(),
+      templateModuleId: doc.id,
+      order: m.order,
+      name: m.name,
+      description: m.description,
+      habits: m.habits || [],
+      startDayIndex: m.startDayIndex,
+      endDayIndex: m.endDayIndex,
+      linkedCourseIds: m.linkedCourseIds,
+      hasLocalChanges: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
+}
 
 /**
  * Distributes weeklyTasks to days based on each task's dayTag and the week's distribution setting.
@@ -568,6 +602,10 @@ export async function GET(request: NextRequest) {
               });
             }
 
+            // Fetch and convert modules for this instance
+            const modules = await fetchAndConvertModules(programId);
+            console.log(`[INSTANCES_LIST_GET] Fetched ${modules.length} modules for cohort instance`);
+
             // Create the instance
             const instanceData = {
               programId,
@@ -579,12 +617,13 @@ export async function GET(request: NextRequest) {
               includeWeekends: programData.includeWeekends !== false,
               dailyFocusSlots: programData.dailyFocusSlots || 3,
               weeks,
+              modules,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
 
             const newInstanceRef = await adminDb.collection('program_instances').add(instanceData);
-            console.log(`[INSTANCES_LIST_GET] Auto-created instance ${newInstanceRef.id} for cohort ${cohortId}`);
+            console.log(`[INSTANCES_LIST_GET] Auto-created instance ${newInstanceRef.id} for cohort ${cohortId} with ${modules.length} modules`);
 
             // Return the newly created instance
             return NextResponse.json({
@@ -891,6 +930,10 @@ export async function GET(request: NextRequest) {
               });
             }
 
+            // Fetch and convert modules for this instance
+            const modules = await fetchAndConvertModules(programId);
+            console.log(`[INSTANCES_LIST_GET] Fetched ${modules.length} modules for enrollment instance`);
+
             // Create the instance for individual enrollment
             // Use effectiveStartDate (already calculated with fallbacks) for startDate
             const instanceData = {
@@ -904,12 +947,13 @@ export async function GET(request: NextRequest) {
               includeWeekends: programData.includeWeekends !== false,
               dailyFocusSlots: programData.dailyFocusSlots || 3,
               weeks,
+              modules,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
 
             const newInstanceRef = await adminDb.collection('program_instances').add(instanceData);
-            console.log(`[INSTANCES_LIST_GET] Auto-created instance ${newInstanceRef.id} for enrollment ${enrollmentId}`);
+            console.log(`[INSTANCES_LIST_GET] Auto-created instance ${newInstanceRef.id} for enrollment ${enrollmentId} with ${modules.length} modules`);
 
             // Fetch user name for the response
             let userName = 'Unknown User';

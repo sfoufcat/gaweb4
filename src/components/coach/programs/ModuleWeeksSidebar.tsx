@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import type { Program, ProgramDay, ProgramModule, ProgramWeek, ClientViewContext, CohortViewContext } from '@/types';
+import type { Program, ProgramDay, ProgramModule, ProgramInstanceModule, ProgramWeek, ClientViewContext, CohortViewContext } from '@/types';
 import { calculateCalendarWeeks, type CalendarWeek } from '@/lib/calendar-weeks';
 import { calculateCyclesSinceDate, getActiveCycleNumber } from '@/lib/program-client-utils';
 import type { ProgramEnrollment, ProgramCohort } from '@/types';
@@ -90,6 +90,10 @@ interface ModuleWeeksSidebarProps {
   onDiscardAll?: () => void;
   /** Callback to refresh instance data after sync operations */
   onRefreshInstance?: () => Promise<void>;
+  /** Instance modules - customized module copies for this enrollment/cohort */
+  instanceModules?: ProgramInstanceModule[];
+  /** Instance ID for module editing */
+  instanceId?: string | null;
 }
 
 /**
@@ -385,6 +389,8 @@ export function ModuleWeeksSidebar({
   onSaveAll,
   onDiscardAll,
   onRefreshInstance,
+  instanceModules,
+  instanceId,
 }: ModuleWeeksSidebarProps) {
   // In client view mode, disable reordering (structure comes from template)
   const isClientView = viewContext?.mode === 'client';
@@ -429,7 +435,33 @@ export function ModuleWeeksSidebar({
     return () => setMounted(false);
   }, []);
 
+  // Merge instance modules over template modules for display
+  // When viewing instance (cohort/client), use instance module names if available
+  const displayModules = useMemo((): ProgramModule[] => {
+    if (!instanceModules || instanceModules.length === 0) {
+      return modules;
+    }
 
+    // Create a map of templateModuleId -> instance module
+    const instanceModuleMap = new Map<string, ProgramInstanceModule>();
+    for (const im of instanceModules) {
+      instanceModuleMap.set(im.templateModuleId, im);
+    }
+
+    // Overlay instance module data on template modules
+    return modules.map(tm => {
+      const im = instanceModuleMap.get(tm.id);
+      if (im) {
+        // Use instance module's customized name/description
+        return {
+          ...tm,
+          name: im.name || tm.name,
+          description: im.description ?? tm.description,
+        };
+      }
+      return tm;
+    });
+  }, [modules, instanceModules]);
 
   // Auto-calculate weeks based on program length
   // Uses same structure as calendar weeks: Onboarding (Week 0), Regular (1-N), Closing (-1)
@@ -652,7 +684,8 @@ export function ModuleWeeksSidebar({
     const map = new Map<string, CalculatedWeek[]>();
 
     // Initialize with empty arrays for each module (sorted by order)
-    const sortedModules = [...modules].sort((a, b) => (a.order || 0) - (b.order || 0));
+    // Use displayModules which merges instance customizations
+    const sortedModules = [...displayModules].sort((a, b) => (a.order || 0) - (b.order || 0));
     sortedModules.forEach(m => map.set(m.id, []));
 
     if (sortedModules.length === 0) return map;
@@ -683,7 +716,7 @@ export function ModuleWeeksSidebar({
     });
 
     return map;
-  }, [modules, displayWeeks]);
+  }, [displayModules, displayWeeks]);
 
   // Clear localWeekOrder when props catch up to local state
   // This prevents visual snap-back during async operations
@@ -899,10 +932,10 @@ export function ModuleWeeksSidebar({
     }
   }, [currentDayIndex, displayWeeks, viewStatus, isClientView, isCohortView, findModuleForWeek]); // Added findModuleForWeek
 
-  // Sorted modules for rendering
+  // Sorted modules for rendering - use displayModules which merges instance customizations
   const sortedModules = useMemo(() =>
-    [...modules].sort((a, b) => a.order - b.order),
-    [modules]
+    [...displayModules].sort((a, b) => a.order - b.order),
+    [displayModules]
   );
 
   const toggleModule = useCallback((moduleId: string) => {

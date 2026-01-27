@@ -23,11 +23,14 @@ import type {
   ProgramInstanceDay,
   ProgramTaskTemplate,
   ProgramInstanceTask,
+  ProgramInstanceModule,
+  ProgramModule,
+  ProgramHabitTemplate,
   TemplateSyncOptions,
   ProgramEnrollment,
 } from '@/types';
 import { syncInstanceStructure } from '@/lib/program-utils';
-import { dayIndexToDate } from '@/lib/calendar-weeks';
+import { dayIndexToDate, calculateCalendarWeeks } from '@/lib/calendar-weeks';
 
 type RouteParams = { params: Promise<{ instanceId: string }> };
 
@@ -40,6 +43,9 @@ interface SyncTemplateRequest {
   overwriteStructure?: boolean;
   includeWeekends?: boolean;
   lengthDays?: number;
+  // Module sync options
+  syncModules?: boolean;           // Default true - sync modules from template
+  moduleIds?: string[];            // Optional: sync specific modules only
 }
 
 /**
@@ -381,6 +387,8 @@ export async function POST(
       overwriteStructure = false,
       includeWeekends,
       lengthDays,
+      syncModules = true,
+      moduleIds,
     } = body;
 
     // Fetch the instance
@@ -487,6 +495,15 @@ export async function POST(
       instanceWeekMap.set(week.weekNumber, week);
     }
 
+    // Calculate calendar weeks from instance start date for correct day indices
+    // This handles partial onboarding weeks (e.g., Tuesday start = 4 active days, not 5)
+    const programIncludeWeekends = program.includeWeekends !== false;
+    const programTotalDays = program.lengthDays || 30;
+    const calendarWeeks = instance.startDate
+      ? calculateCalendarWeeks(instance.startDate, programTotalDays, programIncludeWeekends)
+      : [];
+    const calendarByWeekNumber = new Map(calendarWeeks.map(cw => [cw.weekNumber, cw]));
+
     let weeksUpdated = 0;
     let weeksCreated = 0;
     const updatedWeeks: ProgramInstanceWeek[] = [];
@@ -495,20 +512,25 @@ export async function POST(
     for (const templateWeek of weeksToSync) {
       const existingWeek = instanceWeekMap.get(templateWeek.weekNumber);
 
+      // Get calculated calendar week for correct day indices
+      // This handles partial onboarding (e.g., Tuesday start = 4 active days)
+      const calendarWeek = calendarByWeekNumber.get(templateWeek.weekNumber);
+
       // Build synced week data
+      // Priority for startDayIndex/endDayIndex: calculated calendar > template > fallback
       const syncedWeek: ProgramInstanceWeek = {
         id: existingWeek?.id || templateWeek.id || crypto.randomUUID(),
         weekNumber: templateWeek.weekNumber,
         moduleId: templateWeek.moduleId,
-        startDayIndex: templateWeek.startDayIndex,
-        endDayIndex: templateWeek.endDayIndex,
-        // Preserve existing calendar dates
-        calendarStartDate: existingWeek?.calendarStartDate,
-        calendarEndDate: existingWeek?.calendarEndDate,
-        // Preserve partial week indicators for task distribution
-        actualStartDayOfWeek: existingWeek?.actualStartDayOfWeek,
-        actualEndDayOfWeek: existingWeek?.actualEndDayOfWeek,
-        displayDaysCount: existingWeek?.displayDaysCount,
+        startDayIndex: calendarWeek?.startDayIndex ?? templateWeek.startDayIndex,
+        endDayIndex: calendarWeek?.endDayIndex ?? templateWeek.endDayIndex,
+        // Use calculated calendar dates, fallback to existing
+        calendarStartDate: calendarWeek?.startDate ?? existingWeek?.calendarStartDate,
+        calendarEndDate: calendarWeek?.endDate ?? existingWeek?.calendarEndDate,
+        // Use calculated partial week indicators for task distribution
+        actualStartDayOfWeek: calendarWeek?.actualStartDayOfWeek ?? existingWeek?.actualStartDayOfWeek,
+        actualEndDayOfWeek: calendarWeek?.actualEndDayOfWeek ?? existingWeek?.actualEndDayOfWeek,
+        displayDaysCount: calendarWeek?.displayDaysCount ?? existingWeek?.displayDaysCount,
         // Initialize with existing or empty
         weeklyTasks: existingWeek?.weeklyTasks || [],
         days: existingWeek?.days || [],
@@ -578,32 +600,47 @@ export async function POST(
       // Preserve distribution setting if exists, otherwise use template
       syncedWeek.distribution = existingWeek?.distribution || templateWeek.distribution as ProgramInstanceWeek['distribution'];
 
-      // Handle days
-      if (overwriteDays || !existingWeek?.days?.length) {
+      // Handle days - regenerate if:
+      // 1. overwriteDays is true, OR
+      // 2. No existing days, OR
+      // 3. Calculated boundaries differ from existing days (data corruption fix)
+      const existingDayIndices = existingWeek?.days?.map(d => d.globalDayIndex) || [];
+      const existingStartDay = existingDayIndices.length > 0 ? Math.min(...existingDayIndices) : 0;
+      const existingEndDay = existingDayIndices.length > 0 ? Math.max(...existingDayIndices) : 0;
+      const boundariesMismatch = calendarWeek && (
+        existingStartDay !== calendarWeek.startDayIndex ||
+        existingEndDay !== calendarWeek.endDayIndex
+      );
+      const needsDayRegeneration = overwriteDays || !existingWeek?.days?.length || boundariesMismatch;
+
+      if (needsDayRegeneration) {
         // Create fresh days from template structure
-        // Use stored day indices - they should always exist in the new week structure
-        // Fallback calculation only for legacy data (won't work for week -1 closing)
+        // Priority: calculated calendar (accurate) > template stored > fallback calculation
+        // The calendarWeek values account for partial weeks (e.g., Tuesday start = 4 active days)
         const daysPerWeekFromProgram = program.includeWeekends !== false ? 7 : 5;
-        const totalDays = program.lengthDays || 30;
         let weekStartDay: number;
         let weekEndDay: number;
 
-        if (templateWeek.startDayIndex !== undefined && templateWeek.endDayIndex !== undefined) {
-          // Preferred: use stored indices
+        if (calendarWeek) {
+          // Best: use calculated calendar values (handles partial weeks correctly)
+          weekStartDay = calendarWeek.startDayIndex;
+          weekEndDay = calendarWeek.endDayIndex;
+        } else if (templateWeek.startDayIndex !== undefined && templateWeek.endDayIndex !== undefined) {
+          // Fallback: use template stored indices
           weekStartDay = templateWeek.startDayIndex;
           weekEndDay = templateWeek.endDayIndex;
         } else if (templateWeek.weekNumber === 0) {
-          // Onboarding: days 1 to daysPerWeek
+          // Legacy fallback: Onboarding - days 1 to daysPerWeek
           weekStartDay = 1;
-          weekEndDay = Math.min(daysPerWeekFromProgram, totalDays);
+          weekEndDay = Math.min(daysPerWeekFromProgram, programTotalDays);
         } else if (templateWeek.weekNumber === -1) {
-          // Closing: last daysPerWeek days
-          weekStartDay = Math.max(1, totalDays - daysPerWeekFromProgram + 1);
-          weekEndDay = totalDays;
+          // Legacy fallback: Closing - last daysPerWeek days
+          weekStartDay = Math.max(1, programTotalDays - daysPerWeekFromProgram + 1);
+          weekEndDay = programTotalDays;
         } else {
-          // Regular weeks: sequential after onboarding
+          // Legacy fallback: Regular weeks - sequential after onboarding
           weekStartDay = daysPerWeekFromProgram + (templateWeek.weekNumber - 1) * daysPerWeekFromProgram + 1;
-          weekEndDay = Math.min(weekStartDay + daysPerWeekFromProgram - 1, totalDays - daysPerWeekFromProgram);
+          weekEndDay = Math.min(weekStartDay + daysPerWeekFromProgram - 1, programTotalDays - daysPerWeekFromProgram);
         }
         const numDays = weekEndDay - weekStartDay + 1;
         const days: ProgramInstanceDay[] = [];
@@ -665,10 +702,110 @@ export async function POST(
       return a.weekNumber - b.weekNumber;
     });
 
+    // ========================================
+    // MODULE SYNC
+    // ========================================
+    let modulesUpdated = 0;
+    let modulesCreated = 0;
+    let finalModules: ProgramInstanceModule[] = instance.modules || [];
+
+    if (syncModules) {
+      // Fetch template modules from program_modules collection
+      const templateModulesSnap = await adminDb
+        .collection('program_modules')
+        .where('programId', '==', instance.programId)
+        .orderBy('order', 'asc')
+        .get();
+
+      const templateModules = templateModulesSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as ProgramModule[];
+
+      // Filter by moduleIds if provided
+      const modulesToSync = moduleIds?.length
+        ? templateModules.filter(m => moduleIds.includes(m.id))
+        : templateModules;
+
+      // Build a map of existing instance modules by templateModuleId
+      const existingByTemplateId = new Map<string, ProgramInstanceModule>(
+        (instance.modules || []).map(m => [m.templateModuleId, m])
+      );
+
+      const syncedModules: ProgramInstanceModule[] = [];
+      const syncedTemplateIds = new Set<string>();
+
+      for (const template of modulesToSync) {
+        const existing = existingByTemplateId.get(template.id);
+        syncedTemplateIds.add(template.id);
+
+        if (existing) {
+          // Update existing module
+          // If hasLocalChanges, preserve customizations; otherwise sync from template
+          const updatedModule: ProgramInstanceModule = {
+            ...existing,
+            // Always sync structural fields
+            order: template.order,
+            startDayIndex: template.startDayIndex,
+            endDayIndex: template.endDayIndex,
+            linkedCourseIds: template.linkedCourseIds,
+            // Only sync content if NOT customized locally
+            ...(existing.hasLocalChanges ? {} : {
+              name: template.name,
+              description: template.description,
+              habits: template.habits || [],
+            }),
+            lastSyncedFromTemplate: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          syncedModules.push(updatedModule);
+          modulesUpdated++;
+        } else {
+          // Create new instance module from template
+          const newModule: ProgramInstanceModule = {
+            id: crypto.randomUUID(),
+            templateModuleId: template.id,
+            order: template.order,
+            name: template.name,
+            description: template.description,
+            habits: template.habits || [],
+            startDayIndex: template.startDayIndex,
+            endDayIndex: template.endDayIndex,
+            linkedCourseIds: template.linkedCourseIds,
+            hasLocalChanges: false,
+            lastSyncedFromTemplate: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          syncedModules.push(newModule);
+          modulesCreated++;
+        }
+      }
+
+      // Add existing modules that weren't in the sync scope (if moduleIds was specified)
+      if (moduleIds?.length) {
+        for (const [templateId, existingModule] of existingByTemplateId) {
+          if (!syncedTemplateIds.has(templateId)) {
+            syncedModules.push(existingModule);
+          }
+        }
+      }
+
+      // Sort by order
+      syncedModules.sort((a, b) => a.order - b.order);
+      finalModules = syncedModules;
+
+      console.log(
+        `[INSTANCE_SYNC_TEMPLATE] Synced ${modulesUpdated + modulesCreated} modules ` +
+        `(${modulesCreated} created, ${modulesUpdated} updated) for instance ${instanceId}`
+      );
+    }
+
     // Update the instance
     const now = new Date().toISOString();
     await adminDb.collection('program_instances').doc(instanceId).update({
       weeks: finalWeeks,
+      modules: finalModules,
       lastSyncedFromTemplate: now,
       updatedAt: now,
     });
@@ -727,7 +864,10 @@ export async function POST(
       weeksUpdated: weeksUpdated + weeksCreated,
       weeksCreated,
       weeksModified: weeksUpdated,
-      message: `Synced ${weeksUpdated + weeksCreated} weeks from template`,
+      modulesUpdated: modulesUpdated + modulesCreated,
+      modulesCreated,
+      modulesModified: modulesUpdated,
+      message: `Synced ${weeksUpdated + weeksCreated} weeks and ${modulesUpdated + modulesCreated} modules from template`,
       lastSyncedFromTemplate: now,
       ...(distributeAfterSync && { distributed: true, userTasksSynced }),
     });

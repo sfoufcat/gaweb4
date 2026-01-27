@@ -404,20 +404,40 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   }, [instanceId, instanceLoading, instance]);
 
   // Derive flattened days from instance (when using new system)
+  // IMPORTANT: Recalculate globalDayIndex from calendar weeks to handle corrupted stored data
   const instanceDays = useMemo(() => {
     if (!instance?.weeks) return [];
     const days: (ClientProgramDay | CohortProgramDay)[] = [];
     const now = new Date().toISOString();
 
+    // Calculate calendar weeks from instance start date for correct day indices
+    const includeWeekends = selectedProgram?.includeWeekends !== false;
+    let calendarByWeekNumber: Map<number, { startDayIndex: number; endDayIndex: number }> = new Map();
+    if (instance.startDate && selectedProgram?.lengthDays) {
+      const calculatedWeeks = calculateCalendarWeeks(instance.startDate, selectedProgram.lengthDays, includeWeekends);
+      calendarByWeekNumber = new Map(calculatedWeeks.map(cw => [cw.weekNumber, { startDayIndex: cw.startDayIndex, endDayIndex: cw.endDayIndex }]));
+    }
+
     for (const week of instance.weeks) {
       if (!week.days) continue;
+
+      // Get the correct start day index from calendar calculation
+      // This handles cases where stored week data has corrupted day indices
+      const calendarWeek = calendarByWeekNumber.get(week.weekNumber);
+      const weekStartDayIndex = calendarWeek?.startDayIndex ?? week.startDayIndex ?? 1;
+
       for (const day of week.days) {
+        // Recalculate globalDayIndex based on position within week
+        // day.dayIndex is 1-based within the week (1, 2, 3, 4, 5)
+        // weekStartDayIndex is the global day index where this week starts
+        const correctedGlobalDayIndex = weekStartDayIndex + (day.dayIndex - 1);
+
         // Build base day object with required fields
         const baseDay = {
-          id: `${instance.id}-day-${day.globalDayIndex}`,
+          id: `${instance.id}-day-${correctedGlobalDayIndex}`,
           programId: instance.programId,
           organizationId: instance.organizationId,
-          dayIndex: day.globalDayIndex,
+          dayIndex: correctedGlobalDayIndex,
           tasks: day.tasks?.map(t => ({
             id: t.id,
             label: t.label,
@@ -442,7 +462,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             ...baseDay,
             enrollmentId: instance.enrollmentId,
             userId: instance.userId || '',
-            programDayId: `${instance.programId}-day-${day.globalDayIndex}`,
+            programDayId: `${instance.programId}-day-${correctedGlobalDayIndex}`,
           } as ClientProgramDay);
         } else if (instance.type === 'cohort' && instance.cohortId) {
           // CohortProgramDay
@@ -454,7 +474,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       }
     }
     return days;
-  }, [instance]);
+  }, [instance, selectedProgram?.includeWeekends, selectedProgram?.lengthDays]);
 
   // Derive weeks from instance (when using new system)
   // If calendarStartDate is missing (legacy instances), calculate it from enrollment start date
@@ -564,25 +584,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       (cohortViewContext.mode === 'cohort' && cohortViewContext.cohortId)
     );
 
-    console.log('[DAYS_TO_USE] Computing:', {
-      isInstanceMode,
-      hasInstance: !!instance,
-      instanceDaysCount: instanceDays.length,
-      programDaysCount: programDays.length,
-      clientMode: clientViewContext.mode,
-      cohortMode: cohortViewContext.mode,
-    });
-
     // INSTANCE MODE: Use ONLY instance days (no template mixing)
     if (isInstanceMode) {
-      console.log('[DAYS_TO_USE] Using INSTANCE branch (no template merge)');
       // Return instance days directly - no merging with template
       // If instance has no days yet, return empty array (not template data!)
       return instanceDays;
     }
 
     // TEMPLATE MODE: Use ONLY template days
-    console.log('[DAYS_TO_USE] Using TEMPLATE branch');
     return programDays;
   }, [programDays, instanceDays, clientViewContext, cohortViewContext, instance]);
 
@@ -5014,6 +5023,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               onCycleSelect={handleCycleSelect}
               onSaveSuccess={handleSaveSuccess}
               onRefreshInstance={async () => { await refreshInstance(); }}
+              instanceModules={instance?.modules}
+              instanceId={instanceId}
             />
                 </div>
 
@@ -5042,12 +5053,35 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   const selectedModule = programModules.find(m => m.id === sidebarSelection.id);
                   if (!selectedModule) return <p>Module not found</p>;
                   const isClientMode = selectedProgram?.type === 'individual' && clientViewContext.mode === 'client';
+                  const isCohortMode = selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort';
+                  const isInstanceMode = (isClientMode || isCohortMode) && !!instanceId;
+
+                  // Find instance module if in instance mode
+                  const instanceModule = isInstanceMode && instance?.modules
+                    ? instance.modules.find(m => m.templateModuleId === selectedModule.id)
+                    : null;
+
+                  // Use instance module for display if available
+                  const moduleToEdit = instanceModule || selectedModule;
+
+                  // Determine view context
+                  const viewContext = isCohortMode ? 'cohort' : (isClientMode ? 'client' : 'template');
+                  const clientContextId = isCohortMode
+                    ? (cohortViewContext as { cohortId?: string }).cohortId
+                    : (clientViewContext as { enrollmentId?: string }).enrollmentId;
+
                   return (
                     <ModuleEditor
-                      module={selectedModule}
+                      module={moduleToEdit}
                       weeks={programWeeks.filter(w => w.moduleId === selectedModule.id)}
-                      readOnly={isClientMode}
+                      readOnly={false} // Instance mode is editable
                       programId={selectedProgram?.id}
+                      instanceId={isInstanceMode ? instanceId : null}
+                      viewContext={viewContext}
+                      clientContextId={clientContextId}
+                      programType={selectedProgram?.type}
+                      enrollments={programEnrollments}
+                      cohorts={programCohorts}
                       onSave={async (updates) => {
                         try {
                           const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/modules/${selectedModule.id}`, {
@@ -5063,7 +5097,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           console.error('Error saving module:', err);
                         }
                       }}
-                      onDelete={async () => {
+                      onDelete={isInstanceMode ? undefined : async () => {
+                        // Only allow deletion in template mode
                         try {
                           const res = await fetch(`${apiBasePath}/${selectedProgram?.id}/modules/${selectedModule.id}`, {
                             method: 'DELETE',
@@ -5077,6 +5112,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         }
                       }}
                       isSaving={saving}
+                      showSyncHabits={!isInstanceMode}
                     />
                   );
                 })()
@@ -5130,19 +5166,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   }
 
                   // Generate key to force remount when context changes
+                  // Include instance.updatedAt to force remount when instance data changes (e.g., after sync)
+                  // This prevents stale weeklyTasks from persisting across week switches
+                  const instanceSuffix = instance?.updatedAt ? `-${instance.updatedAt}` : '';
                   const weekEditorKey = isClientMode
-                    ? `week-${weekNumber}-client-${clientViewContext.mode === 'client' ? clientViewContext.enrollmentId || 'loading' : 'none'}`
+                    ? `week-${weekNumber}-client-${clientViewContext.mode === 'client' ? clientViewContext.enrollmentId || 'loading' : 'none'}${instanceSuffix}`
                     : isCohortMode
-                      ? `week-${weekNumber}-cohort-${cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId || 'loading' : 'none'}`
+                      ? `week-${weekNumber}-cohort-${cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId || 'loading' : 'none'}${instanceSuffix}`
                       : `week-${weekNumber}-template`;
+
+                  const filteredDays = daysToUse.filter(d =>
+                    d.dayIndex >= startDay && d.dayIndex <= endDay
+                  );
 
                   return (
                     <WeekEditor
                       key={weekEditorKey}
                       week={selectedWeek}
-                      days={daysToUse.filter(d =>
-                        d.dayIndex >= startDay && d.dayIndex <= endDay
-                      )}
+                      days={filteredDays}
                       onSave={async (updates) => {
                         console.log('[WEEK_EDITOR_SAVE] Starting save...', {
                           isClientMode,

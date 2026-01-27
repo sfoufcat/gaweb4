@@ -14,22 +14,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { Program, ProgramEnrollment, ProgramHabitTemplate, ProgramModule, FrequencyType, Habit } from '@/types';
+import type { Program, ProgramEnrollment, ProgramHabitTemplate, ProgramModule, ProgramInstance, ProgramInstanceModule, FrequencyType, Habit } from '@/types';
 
 /**
  * Map program habit frequency to Habit format
  */
-function mapFrequency(frequency: ProgramHabitTemplate['frequency']): {
+function mapFrequency(template: ProgramHabitTemplate): {
   frequencyType: FrequencyType;
   frequencyValue: number | number[];
 } {
-  if (frequency === 'daily') {
+  if (template.frequency === 'daily') {
     return { frequencyType: 'daily', frequencyValue: 1 };
-  } else if (frequency === 'weekday') {
-    return { frequencyType: 'weekly_specific_days', frequencyValue: [1, 2, 3, 4, 5] }; // Mon-Fri
+  } else if (template.frequency === 'weekday') {
+    return { frequencyType: 'weekly_specific_days', frequencyValue: [0, 1, 2, 3, 4] }; // Mon-Fri (0-indexed)
   } else {
-    // custom defaults to Mon, Wed, Fri
-    return { frequencyType: 'weekly_specific_days', frequencyValue: [1, 3, 5] };
+    // custom - use customDays or default to Mon, Wed, Fri
+    const days = template.customDays && template.customDays.length > 0
+      ? template.customDays
+      : [0, 2, 4]; // Mon, Wed, Fri (0-indexed)
+    return { frequencyType: 'weekly_specific_days', frequencyValue: days };
   }
 }
 
@@ -68,8 +71,12 @@ function calculateCurrentDayIndex(startedAt: string, includeWeekends: boolean = 
 
 /**
  * Find the module a user should be in based on their current day index
+ * Works for both template modules (ProgramModule) and instance modules (ProgramInstanceModule)
  */
-function getCurrentModule(modules: ProgramModule[], currentDayIndex: number): ProgramModule | null {
+function getCurrentModule<T extends { order: number; startDayIndex: number; endDayIndex: number }>(
+  modules: T[],
+  currentDayIndex: number
+): T | null {
   // Sort modules by order
   const sortedModules = [...modules].sort((a, b) => a.order - b.order);
 
@@ -181,13 +188,32 @@ export async function POST(
       let habitsToSync: ProgramHabitTemplate[] = [];
       let currentModuleId: string | null = null;
 
-      if (useModuleHabits) {
-        // Find user's current module
+      // Check if there's a program instance for this enrollment (instance modules take priority)
+      const instanceSnapshot = await adminDb
+        .collection('program_instances')
+        .where('enrollmentId', '==', enrollment.id)
+        .limit(1)
+        .get();
+
+      const instance = instanceSnapshot.docs[0]?.data() as ProgramInstance | undefined;
+      const instanceModules: ProgramInstanceModule[] = instance?.modules || [];
+
+      if (instanceModules.length > 0) {
+        // Use instance modules (customized per enrollment/cohort)
+        const currentInstanceModule = getCurrentModule(instanceModules, currentDayIndex) as ProgramInstanceModule | null;
+        if (currentInstanceModule) {
+          // Use templateModuleId for backward compatibility with habit tracking
+          currentModuleId = currentInstanceModule.templateModuleId;
+          habitsToSync = currentInstanceModule.habits || [];
+          console.log(`[SYNC_HABITS] User ${userId}: day ${currentDayIndex}, instance module "${currentInstanceModule.name}" (template: ${currentModuleId}), ${habitsToSync.length} habits (from instance)`);
+        }
+      } else if (useModuleHabits) {
+        // Fall back to template modules if no instance modules exist
         const currentModule = getCurrentModule(modules, currentDayIndex);
         if (currentModule) {
           currentModuleId = currentModule.id;
           habitsToSync = currentModule.habits || [];
-          console.log(`[SYNC_HABITS] User ${userId}: day ${currentDayIndex}, module "${currentModule.name}" (${currentModuleId}), ${habitsToSync.length} habits`);
+          console.log(`[SYNC_HABITS] User ${userId}: day ${currentDayIndex}, module "${currentModule.name}" (${currentModuleId}), ${habitsToSync.length} habits (from template)`);
         }
       } else {
         // Fallback to program-level habits (legacy)
@@ -261,7 +287,7 @@ export async function POST(
         }
 
         const existingHabit = existingByTitle.get(template.title);
-        const { frequencyType, frequencyValue } = mapFrequency(template.frequency);
+        const { frequencyType, frequencyValue } = mapFrequency(template);
 
         if (existingHabit) {
           // UPDATE existing habit - preserve progress, update moduleId if needed

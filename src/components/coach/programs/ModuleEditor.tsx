@@ -1,11 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { ProgramModule, ProgramWeek, ProgramHabitTemplate } from '@/types';
-import { Trash2, Calendar, AlertTriangle, Info, Plus, X } from 'lucide-react';
+import type { ProgramModule, ProgramWeek, ProgramHabitTemplate, ProgramEnrollment, ProgramCohort } from '@/types';
+import { Calendar, AlertTriangle, Info, Plus, X, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
+import { SyncTemplateDialog } from './SyncTemplateDialog';
+
+interface EnrollmentWithUser extends ProgramEnrollment {
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    imageUrl?: string;
+  };
+}
 
 interface ModuleEditorProps {
   module: ProgramModule;
@@ -17,6 +29,16 @@ interface ModuleEditorProps {
   readOnly?: boolean;
   /** Program ID for context registration */
   programId?: string;
+  /** Whether to show sync button (requires programId) */
+  showSyncHabits?: boolean;
+  /** View context: 'template' | 'client' | 'cohort' */
+  viewContext?: 'template' | 'client' | 'cohort';
+  /** Program type for showing appropriate sync button */
+  programType?: 'individual' | 'group';
+  /** Enrollments for sync dialog (individual programs) */
+  enrollments?: EnrollmentWithUser[];
+  /** Cohorts for sync dialog (group programs) */
+  cohorts?: ProgramCohort[];
 }
 
 /**
@@ -31,6 +53,11 @@ export function ModuleEditor({
   isSaving = false,
   readOnly = false,
   programId,
+  showSyncHabits = false,
+  viewContext = 'template',
+  programType,
+  enrollments,
+  cohorts,
 }: ModuleEditorProps) {
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();
@@ -63,6 +90,7 @@ export function ModuleEditor({
   const [hasChanges, setHasChanges] = useState(!!pendingData);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
 
   // Build API endpoint
   const getApiEndpoint = useCallback(() => {
@@ -92,7 +120,14 @@ export function ModuleEditor({
       setFormData(getDefaultFormData());
       setHasChanges(false);
     }
-  }, [editorContext?.resetVersion, getDefaultFormData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorContext?.resetVersion]);
+
+  // Extract stable context functions to avoid infinite loops
+  // (context object changes on every pendingChanges update)
+  const registerChange = editorContext?.registerChange;
+  const discardChange = editorContext?.discardChange;
+  const getChangeKey = editorContext?.getChangeKey;
 
   // Check for changes and register with context
   useEffect(() => {
@@ -104,8 +139,8 @@ export function ModuleEditor({
     setHasChanges(changed);
 
     // Register changes with context if available
-    if (editorContext && changed && programId) {
-      editorContext.registerChange({
+    if (registerChange && changed && programId) {
+      registerChange({
         entityType: 'module',
         entityId: module.id,
         viewContext: 'template', // Modules are always template-level
@@ -118,12 +153,12 @@ export function ModuleEditor({
         apiEndpoint: getApiEndpoint(),
         httpMethod: 'PATCH',
       });
-    } else if (editorContext && !changed) {
+    } else if (discardChange && getChangeKey && !changed) {
       // Remove from pending changes if no longer changed
-      const changeKey = editorContext.getChangeKey('module', module.id);
-      editorContext.discardChange(changeKey);
+      const changeKey = getChangeKey('module', module.id);
+      discardChange(changeKey);
     }
-  }, [formData, module, editorContext, programId, getApiEndpoint]);
+  }, [formData, module, registerChange, discardChange, getChangeKey, programId, getApiEndpoint]);
 
   // handleSave is kept for backwards compatibility but rarely used now
   const handleSave = async () => {
@@ -181,10 +216,23 @@ export function ModuleEditor({
   // Get weeks in this module
   const moduleWeeks = weeks.filter(w => w.moduleId === module.id).sort((a, b) => a.order - b.order);
 
+  // Determine if we're in instance mode (cohort or client)
+  const isInstanceMode = viewContext === 'cohort' || viewContext === 'client';
+
   return (
     <div className="space-y-6">
+      {/* Instance mode warning banner */}
+      {isInstanceMode && (
+        <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-700 dark:text-amber-300 font-albert">
+            You are editing this {viewContext === 'cohort' ? 'cohort' : 'client'}. Changes will not affect the template or other {viewContext === 'cohort' ? 'cohorts' : 'clients'}.
+          </p>
+        </div>
+      )}
+
       {/* Read-only info banner */}
-      {readOnly && (
+      {readOnly && !isInstanceMode && (
         <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-blue-700 dark:text-blue-300 font-albert">
@@ -194,23 +242,24 @@ export function ModuleEditor({
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
           {module.name || `Module ${module.order}`}
         </h3>
-        {!readOnly && (
-          <div className="flex items-center gap-2">
-            {onDelete && (
-              <Button
-                variant="ghost"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Sync Button - only in template mode */}
+          {!readOnly && showSyncHabits && programId && !isInstanceMode && (
+            <Button
+              variant="outline"
+              onClick={() => setShowSyncDialog(true)}
+              className="flex items-center gap-1.5 border-brand-accent text-brand-accent hover:bg-brand-accent/10 h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3"
+            >
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Sync to {programType === 'group' ? 'Cohorts' : 'Clients'}</span>
+              <span className="sm:hidden">Sync</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Module Name */}
@@ -268,7 +317,7 @@ export function ModuleEditor({
         </div>
 
         {formData.habits.length === 0 ? (
-          <div className="p-4 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg text-center">
+          <div className="p-4 bg-[#faf9f7] dark:bg-[#1a1e25] rounded-xl border border-[#eae6e1] dark:border-[#252a34] text-center">
             <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
               No habits defined for this module
             </p>
@@ -285,58 +334,63 @@ export function ModuleEditor({
             )}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {formData.habits.map((habit, index) => (
               <div
                 key={index}
-                className="p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]"
+                className="group relative p-3 bg-[#faf9f7] dark:bg-[#1a1e25] rounded-xl border border-[#eae6e1] dark:border-[#252a34]"
               >
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 space-y-3">
-                    {/* Habit Title */}
+                {/* Delete button - always visible */}
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => removeHabit(index)}
+                    className="absolute -top-2 -right-2 z-10 h-5 w-5 flex items-center justify-center rounded-full bg-white dark:bg-[#11141b] border border-[#e5e1dc] dark:border-[#2a2f3a] text-[#8c8c8c] dark:text-[#7d8190] hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 shadow-sm transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+
+                <div className="space-y-2">
+                  {/* Row 1: Title + Frequency side by side */}
+                  <div className="flex items-center gap-2">
                     <input
                       type="text"
                       value={habit.title}
                       onChange={(e) => updateHabit(index, { title: e.target.value })}
-                      placeholder="Habit title (e.g., Morning journaling)"
+                      placeholder="Habit name"
                       disabled={readOnly}
-                      className={`w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      className={`flex-1 min-w-0 px-3 py-2 text-sm font-medium rounded-lg border border-[#e5e1dc] dark:border-[#2a2f3a] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#5a5f6d] focus:outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 transition-all ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-[#d1cdc8] dark:hover:border-[#3a4050]'}`}
                     />
-
-                    {/* Habit Description */}
-                    <input
-                      type="text"
-                      value={habit.description || ''}
-                      onChange={(e) => updateHabit(index, { description: e.target.value })}
-                      placeholder="Description (optional)"
-                      disabled={readOnly}
-                      className={`w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    />
-
-                    {/* Frequency Select */}
-                    <select
+                    <Select
                       value={habit.frequency}
-                      onChange={(e) => updateHabit(index, { frequency: e.target.value as 'daily' | 'weekday' | 'custom' })}
+                      onValueChange={(value) => updateHabit(index, { frequency: value as 'daily' | 'weekday' | 'custom' })}
                       disabled={readOnly}
-                      className={`w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
-                      <option value="daily">Daily</option>
-                      <option value="weekday">Weekdays only (Mon-Fri)</option>
-                      <option value="custom">Custom (Mon, Wed, Fri)</option>
-                    </select>
+                      <SelectTrigger className={`w-28 h-[38px] px-3 text-xs font-medium border border-[#e5e1dc] dark:border-[#2a2f3a] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert hover:border-[#d1cdc8] dark:hover:border-[#3a4050] focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 transition-all ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                        <SelectValue>
+                          {habit.frequency === 'daily' && 'Daily'}
+                          {habit.frequency === 'weekday' && 'Weekdays'}
+                          {habit.frequency === 'custom' && 'Custom'}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Every day</SelectItem>
+                        <SelectItem value="weekday">Weekdays only</SelectItem>
+                        <SelectItem value="custom">Custom days</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  {/* Remove Button */}
-                  {!readOnly && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeHabit(index)}
-                      className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 p-1"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
+                  {/* Row 2: Linked routine */}
+                  <input
+                    type="text"
+                    value={habit.linkedRoutine || ''}
+                    onChange={(e) => updateHabit(index, { linkedRoutine: e.target.value })}
+                    placeholder="Linked routine (e.g., after breakfast)"
+                    disabled={readOnly}
+                    className={`w-full px-3 py-1.5 text-xs rounded-lg border border-[#e5e1dc] dark:border-[#2a2f3a] bg-white dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#5a5f6d] focus:outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 transition-all ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-[#d1cdc8] dark:hover:border-[#3a4050]'}`}
+                  />
                 </div>
               </div>
             ))}
@@ -361,7 +415,7 @@ export function ModuleEditor({
             {moduleWeeks.map((week) => (
               <div
                 key={week.id}
-                className="flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#1e222a] rounded-lg"
+                className="flex items-center gap-3 p-3 bg-[#faf9f7] dark:bg-[#1a1e25] rounded-xl border border-[#eae6e1] dark:border-[#252a34]"
               >
                 <Calendar className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                 <div className="flex-1">
@@ -383,11 +437,13 @@ export function ModuleEditor({
       </CollapsibleSection>
 
       {/* Day Range Info */}
-      <div className="p-3 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg">
-        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-          <span className="font-medium">Day range:</span> {module.startDayIndex} - {module.endDayIndex}
-        </p>
-      </div>
+      {(module.startDayIndex !== undefined && module.endDayIndex !== undefined) && (
+        <div className="p-3 bg-[#faf9f7] dark:bg-[#1a1e25] rounded-xl border border-[#eae6e1] dark:border-[#252a34]">
+          <p className="text-sm text-[#6b6560] dark:text-[#9a9fac] font-albert">
+            <span className="font-medium">Day range:</span> {module.startDayIndex} - {module.endDayIndex}
+          </p>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
@@ -426,6 +482,18 @@ export function ModuleEditor({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Sync Template Dialog */}
+      {programId && (
+        <SyncTemplateDialog
+          open={showSyncDialog}
+          onOpenChange={setShowSyncDialog}
+          programId={programId}
+          targetType={programType === 'group' ? 'cohorts' : 'clients'}
+          enrollments={enrollments}
+          cohorts={cohorts}
+        />
       )}
     </div>
   );

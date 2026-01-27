@@ -10,7 +10,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, u
  */
 
 // Entity types that can have pending changes
-export type PendingEntityType = 'module' | 'week' | 'day';
+export type PendingEntityType = 'module' | 'week' | 'day' | 'instanceModule';
 
 // View context types
 export type PendingViewContext = 'template' | 'client' | 'cohort';
@@ -23,6 +23,7 @@ export interface PendingChange {
   dayIndex?: number; // For days
   viewContext: PendingViewContext;
   clientContextId?: string; // enrollmentId or cohortId
+  instanceId?: string; // For instance-level entities (instanceModule)
   originalData: Record<string, unknown>;
   pendingData: Record<string, unknown>;
   apiEndpoint: string;
@@ -331,6 +332,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
 
     // Group changes by type for ordered saving
     const moduleChanges: PendingChange[] = [];
+    const instanceModuleChanges: PendingChange[] = [];
     const weekChanges: PendingChange[] = [];
     const dayChanges: PendingChange[] = [];
 
@@ -338,6 +340,9 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
       switch (change.entityType) {
         case 'module':
           moduleChanges.push(change);
+          break;
+        case 'instanceModule':
+          instanceModuleChanges.push(change);
           break;
         case 'week':
           weekChanges.push(change);
@@ -348,7 +353,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
       }
     });
 
-    console.log(`[ProgramEditor] Saving ${moduleChanges.length} modules, ${weekChanges.length} weeks, ${dayChanges.length} days`);
+    console.log(`[ProgramEditor] Saving ${moduleChanges.length} modules, ${instanceModuleChanges.length} instanceModules, ${weekChanges.length} weeks, ${dayChanges.length} days`);
 
     // CRITICAL: Filter out template changes if cohort/client change exists for same entity
     // This is a defensive measure to prevent dual saves even if discardChange timing failed
@@ -405,6 +410,39 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
           result.errors.push({
             entityType: 'module',
             entityId: moduleChanges[i].entityId,
+            error: r.reason?.message || 'Unknown error',
+          });
+        }
+      });
+    }
+
+    // 1b. Save instance modules (can parallelize, separate from template modules)
+    if (instanceModuleChanges.length > 0) {
+      const instanceModuleResults = await Promise.allSettled(
+        instanceModuleChanges.map(async (change) => {
+          const response = await fetch(change.apiEndpoint, {
+            method: change.httpMethod,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(change.pendingData),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `HTTP ${response.status}`);
+          }
+
+          return change;
+        })
+      );
+
+      instanceModuleResults.forEach((r, i) => {
+        if (r.status === 'fulfilled') {
+          result.savedCount++;
+        } else {
+          result.success = false;
+          result.errors.push({
+            entityType: 'instanceModule',
+            entityId: instanceModuleChanges[i].entityId,
             error: r.reason?.message || 'Unknown error',
           });
         }
