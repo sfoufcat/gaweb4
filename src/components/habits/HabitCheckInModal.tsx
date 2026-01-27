@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { type Habit } from '@/types';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface HabitCheckInModalProps {
   habit: Habit;
@@ -14,10 +16,78 @@ interface HabitCheckInModalProps {
 
 export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }: HabitCheckInModalProps) {
   const router = useRouter();
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   const handleEdit = () => {
     router.push(`/habits/${habit.id}`);
   };
+
+  const content = (
+    <>
+      {/* Close button - Desktop only */}
+      <button
+        onClick={onClose}
+        className="hidden md:block absolute top-4 right-4 text-text-muted hover:text-text-primary transition-colors"
+        aria-label="Close"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      {/* Content */}
+      <div className="px-6 pt-5 md:pt-8 pb-6 space-y-4">
+        <p className="font-albert text-[20px] md:text-[24px] font-medium text-text-secondary tracking-[-1.5px] leading-[1.3]">
+          Habit actions
+        </p>
+        <p className="font-albert text-[28px] md:text-[36px] text-text-primary tracking-[-2px] leading-[1.2]">
+          Did you crush it today?
+        </p>
+
+        {/* Habit Card */}
+        <div className="bg-[#f3f1ef] dark:bg-[#1a1f28] rounded-[20px] p-4 flex items-center justify-between">
+          <p className="font-albert text-[16px] md:text-[18px] font-semibold tracking-[-1px] text-text-primary">
+            {habit.text}
+          </p>
+          <button
+            onClick={handleEdit}
+            className="text-text-secondary hover:text-text-primary transition-colors"
+            aria-label="Edit habit"
+          >
+            <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3 px-6 pb-6 md:pb-8 pt-2">
+        <button
+          onClick={onSkip}
+          className="flex-1 py-3 md:py-4 px-4 rounded-full bg-white dark:bg-[#1a1f28] text-text-primary border border-[#d7d2cc]/50 dark:border-[#3a3f48] font-sans font-bold text-[14px] md:text-[16px] tracking-[-0.5px] leading-[1.4] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+        >
+          Skip for today
+        </button>
+        <button
+          onClick={onComplete}
+          className="flex-1 py-3 md:py-4 px-4 rounded-full bg-[#2c2520] text-white font-sans font-bold text-[14px] md:text-[16px] tracking-[-0.5px] leading-[1.4] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+        >
+          I did it!
+        </button>
+      </div>
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-[500px] p-0">
+          {content}
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Drawer
@@ -26,60 +96,8 @@ export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }
       shouldScaleBackground={false}
     >
       <DrawerContent className="max-w-[500px] mx-auto">
-        {/* Close button - Desktop only */}
-        <button
-          onClick={onClose}
-          className="hidden md:block absolute top-4 right-4 text-text-muted hover:text-text-primary transition-colors"
-          aria-label="Close"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        {/* Content */}
-        <div className="px-6 pt-5 md:pt-8 pb-6 space-y-4">
-          <p className="font-albert text-[20px] md:text-[24px] font-medium text-text-secondary tracking-[-1.5px] leading-[1.3]">
-            Habit actions
-          </p>
-          <p className="font-albert text-[28px] md:text-[36px] text-text-primary tracking-[-2px] leading-[1.2]">
-            Did you crush it today?
-          </p>
-
-          {/* Habit Card */}
-          <div className="bg-[#f3f1ef] dark:bg-[#1a1f28] rounded-[20px] p-4 flex items-center justify-between">
-            <p className="font-albert text-[16px] md:text-[18px] font-semibold tracking-[-1px] text-text-primary">
-              {habit.text}
-            </p>
-            <button
-              onClick={handleEdit}
-              className="text-text-secondary hover:text-text-primary transition-colors"
-              aria-label="Edit habit"
-            >
-              <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3 px-6 pb-6 md:pb-8 pt-2">
-          <button
-            onClick={onSkip}
-            className="flex-1 py-3 md:py-4 px-4 rounded-full bg-white dark:bg-[#1a1f28] text-text-primary border border-[#d7d2cc]/50 dark:border-[#3a3f48] font-sans font-bold text-[14px] md:text-[16px] tracking-[-0.5px] leading-[1.4] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-          >
-            Skip for today
-          </button>
-          <button
-            onClick={onComplete}
-            className="flex-1 py-3 md:py-4 px-4 rounded-full bg-[#2c2520] text-white font-sans font-bold text-[14px] md:text-[16px] tracking-[-0.5px] leading-[1.4] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all"
-          >
-            I did it!
-          </button>
-        </div>
+        {content}
       </DrawerContent>
     </Drawer>
   );
 }
-

@@ -169,26 +169,35 @@ export async function PATCH(
 
             const enrollment = enrollmentDoc.data();
             const userId = enrollment?.userId;
-            if (!userId || !enrollment?.startedAt) continue;
+            if (!userId) continue;
 
             // Calculate current day index
-            const startDate = new Date(enrollment.startedAt);
-            const today = new Date();
-            startDate.setHours(0, 0, 0, 0);
-            today.setHours(0, 0, 0, 0);
+            // Use startedAt, startDate, or default to today (for users who haven't started yet)
+            const startDateStr = enrollment.startedAt || enrollment.startDate;
+            let currentDayIndex = 1; // Default to day 1 if no start date or before start
 
-            let currentDayIndex = 1;
-            if (includeWeekends) {
-              currentDayIndex = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-            } else {
-              const current = new Date(startDate);
-              while (current <= today) {
-                const dayOfWeek = current.getDay();
-                if (dayOfWeek !== 0 && dayOfWeek !== 6) currentDayIndex++;
-                current.setDate(current.getDate() + 1);
+            if (startDateStr) {
+              const startDate = new Date(startDateStr);
+              const today = new Date();
+              startDate.setHours(0, 0, 0, 0);
+              today.setHours(0, 0, 0, 0);
+
+              if (includeWeekends) {
+                currentDayIndex = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+              } else {
+                const current = new Date(startDate);
+                let dayCount = 0;
+                while (current <= today) {
+                  const dayOfWeek = current.getDay();
+                  if (dayOfWeek !== 0 && dayOfWeek !== 6) dayCount++;
+                  current.setDate(current.getDate() + 1);
+                }
+                currentDayIndex = Math.max(1, dayCount);
               }
-              currentDayIndex = Math.max(1, currentDayIndex);
             }
+
+            // Ensure day index is at least 1 (for users who haven't started or are before start)
+            currentDayIndex = Math.max(1, currentDayIndex);
 
             // Find the current module (from instance modules)
             const instanceModules = updatedModules;
@@ -197,18 +206,19 @@ export async function PATCH(
               m => currentDayIndex >= m.startDayIndex && currentDayIndex <= m.endDayIndex
             );
 
-            // Fallback to last module if past all modules
+            // Fallback: if no module found, use first module (for day 0/1 or users before start)
             if (!currentModule && sortedModules.length > 0) {
               const lastModule = sortedModules[sortedModules.length - 1];
               if (currentDayIndex > lastModule.endDayIndex) {
                 currentModule = lastModule;
-              } else if (currentDayIndex < sortedModules[0].startDayIndex) {
+              } else {
+                // User is before first module or in day 0/1 - use first module
                 currentModule = sortedModules[0];
               }
             }
 
             if (!currentModule) {
-              console.log(`[INSTANCE_MODULE_PATCH] No current module for user ${userId} at day ${currentDayIndex}`);
+              console.log(`[INSTANCE_MODULE_PATCH] No modules available for user ${userId}`);
               continue;
             }
 

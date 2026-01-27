@@ -9,6 +9,7 @@ import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { SyncTemplateDialog } from './SyncTemplateDialog';
+import { DaysOfWeekSelector } from '@/components/habits/DaysOfWeekSelector';
 
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -454,21 +455,21 @@ export function ModuleEditor({
 
                 <div className="space-y-2">
                   {/* Row 1: Title + Frequency side by side */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <input
                       type="text"
                       value={habit.title}
                       onChange={(e) => updateHabit(index, { title: e.target.value })}
                       placeholder="Habit name"
                       disabled={readOnly}
-                      className={`flex-1 min-w-0 px-3 py-2 text-sm font-medium rounded-lg border border-[#e5e1dc] dark:border-[#2a2f3a] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#5a5f6d] focus:outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 transition-all ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-[#d1cdc8] dark:hover:border-[#3a4050]'}`}
+                      className={`flex-1 min-w-0 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#5a5f6d] focus:outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 transition-all ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
                     />
                     <Select
                       value={habit.frequency}
                       onValueChange={(value) => updateHabit(index, { frequency: value as 'daily' | 'weekday' | 'custom' })}
                       disabled={readOnly}
                     >
-                      <SelectTrigger className={`w-28 h-[38px] px-3 text-xs font-medium border border-[#e5e1dc] dark:border-[#2a2f3a] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert hover:border-[#d1cdc8] dark:hover:border-[#3a4050] focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 transition-all ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                      <SelectTrigger className={`w-[100px] px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 transition-all ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}>
                         <SelectValue>
                           {habit.frequency === 'daily' && 'Daily'}
                           {habit.frequency === 'weekday' && 'Weekdays'}
@@ -483,14 +484,24 @@ export function ModuleEditor({
                     </Select>
                   </div>
 
-                  {/* Row 2: Linked routine */}
+                  {/* Row 2: Custom days selector (when frequency is 'custom') */}
+                  {habit.frequency === 'custom' && (
+                    <div className="pt-1">
+                      <DaysOfWeekSelector
+                        selected={habit.customDays || []}
+                        onChange={(days) => updateHabit(index, { customDays: days })}
+                      />
+                    </div>
+                  )}
+
+                  {/* Row 3: Linked routine */}
                   <input
                     type="text"
                     value={habit.linkedRoutine || ''}
                     onChange={(e) => updateHabit(index, { linkedRoutine: e.target.value })}
                     placeholder="Linked routine (e.g., after breakfast)"
                     disabled={readOnly}
-                    className={`w-full px-3 py-1.5 text-xs rounded-lg border border-[#e5e1dc] dark:border-[#2a2f3a] bg-white dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#5a5f6d] focus:outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 transition-all ${readOnly ? 'opacity-60 cursor-not-allowed' : 'hover:border-[#d1cdc8] dark:hover:border-[#3a4050]'}`}
+                    className={`w-full px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#5a5f6d] focus:outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/20 transition-all ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
                   />
                 </div>
               </div>

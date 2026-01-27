@@ -182,7 +182,12 @@ export async function POST(
       const includeWeekends = program.includeWeekends !== false;
 
       // Calculate user's current day index
-      const currentDayIndex = calculateCurrentDayIndex(enrollment.startedAt, includeWeekends);
+      // Use startedAt, startDate, or default to day 1 (for users who haven't started yet)
+      const startDateStr = enrollment.startedAt || enrollment.startDate;
+      let currentDayIndex = 1; // Default to day 1 if no start date
+      if (startDateStr) {
+        currentDayIndex = calculateCurrentDayIndex(startDateStr, includeWeekends);
+      }
 
       // Determine which habits to sync
       let habitsToSync: ProgramHabitTemplate[] = [];
