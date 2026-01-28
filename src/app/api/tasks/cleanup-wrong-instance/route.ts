@@ -8,48 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-
-async function getUserValidInstanceIds(userId: string): Promise<Set<string>> {
-  const userInstanceIds = new Set<string>();
-
-  // Get user's active enrollments
-  const enrollmentsSnapshot = await adminDb
-    .collection('program_enrollments')
-    .where('userId', '==', userId)
-    .where('status', '==', 'active')
-    .get();
-
-  for (const doc of enrollmentsSnapshot.docs) {
-    const enrollment = doc.data();
-    const enrollmentId = doc.id;
-
-    // Individual enrollment instance
-    const indivDoc = await adminDb
-      .collection('program_instances')
-      .where('enrollmentId', '==', enrollmentId)
-      .where('type', '==', 'individual')
-      .limit(1)
-      .get();
-    if (!indivDoc.empty) {
-      userInstanceIds.add(indivDoc.docs[0].id);
-    }
-
-    // Cohort instance
-    if (enrollment.cohortId) {
-      const cohortDoc = await adminDb
-        .collection('program_instances')
-        .where('cohortId', '==', enrollment.cohortId)
-        .where('type', '==', 'cohort')
-        .limit(1)
-        .get();
-      if (!cohortDoc.empty) {
-        userInstanceIds.add(cohortDoc.docs[0].id);
-      }
-    }
-  }
-
-  return userInstanceIds;
-}
+import { getUserValidInstanceIds } from '@/lib/task-utils';
 
 export async function GET(request: NextRequest) {
   try {

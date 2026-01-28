@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { updateAlignmentForToday } from '@/lib/alignment';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { withDemoMode, isDemoRequest, demoNotAvailable } from '@/lib/demo-api';
+import { getUserValidInstanceIds, filterTasksByValidInstances } from '@/lib/task-utils';
 // REMOVED: syncProgramV2TasksForToday - lazy sync no longer used
 // Cron handles program task creation proactively
 import type { Task, CreateTaskRequest, ClerkPublicMetadata } from '@/types';
@@ -182,15 +183,22 @@ export async function GET(request: NextRequest) {
       console.error('⚠️  Backlog cleanup failed (this is OK if index is not created yet):', errorMessage);
     }
 
+    // Filter out orphaned tasks from invalid instances
+    // This prevents showing tasks from old/deleted instances
+    const validInstanceIds = await getUserValidInstanceIds(userId);
+    const filteredTasks = filterTasksByValidInstances(tasks, validInstanceIds);
+
+    console.log(`[TASKS_GET] After filtering invalid instances: ${filteredTasks.length} tasks (filtered ${tasks.length - filteredTasks.length})`);
+
     // Sort by listType (focus first) then by order
-    tasks.sort((a, b) => {
+    filteredTasks.sort((a, b) => {
       if (a.listType === b.listType) {
         return a.order - b.order;
       }
       return a.listType === 'focus' ? -1 : 1;
     });
 
-    return NextResponse.json({ tasks });
+    return NextResponse.json({ tasks: filteredTasks });
   } catch (error) {
     console.error('Error fetching tasks:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';

@@ -104,6 +104,10 @@ interface UnifiedResourcesTabsProps {
 
   // Calendar start date for displaying weekday names in cadence modal
   calendarStartDate?: string;
+
+  // Partial week bounds (for auto-spread to use correct day range)
+  actualStartDayOfWeek?: number;  // 1-based, defaults to 1
+  actualEndDayOfWeek?: number;    // 1-based, defaults to daysInWeek
 }
 
 // Cadence trigger button - opens the cadence modal
@@ -470,6 +474,8 @@ export function UnifiedResourcesTabs({
   includeWeekends = true,
   contentCompletion,
   calendarStartDate,
+  actualStartDayOfWeek,
+  actualEndDayOfWeek,
 }: UnifiedResourcesTabsProps) {
   const [activeTab, setActiveTab] = useState<ResourceType>('courses');
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
@@ -600,9 +606,14 @@ export function UnifiedResourcesTabs({
         let lessonDayMapping: Record<string, number> | undefined;
         if (a.resourceType === 'course') {
           if (dayTag === 'spread') {
-            // Auto-spread: distribute lessons across all weekdays
-            const allDays = Array.from({ length: daysInWeek }, (_, i) => i + 1);
-            lessonDayMapping = generateLessonDayMapping(a.resourceId, allDays);
+            // Auto-spread: distribute lessons across active days (respecting partial week bounds)
+            const startDay = actualStartDayOfWeek ?? 1;
+            const endDay = actualEndDayOfWeek ?? daysInWeek;
+            const activeDays = Array.from(
+              { length: endDay - startDay + 1 },
+              (_, i) => startDay + i
+            );
+            lessonDayMapping = generateLessonDayMapping(a.resourceId, activeDays);
           } else if (Array.isArray(dayTag) && dayTag.length >= 1) {
             // Multiple specific days selected
             lessonDayMapping = generateLessonDayMapping(a.resourceId, dayTag);

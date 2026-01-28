@@ -7,6 +7,90 @@ import type { ProgramWeek, ProgramTaskTemplate, ProgramHabitTemplate, UnifiedEve
 import type { DiscoverCourse } from '@/types/discover';
 
 /**
+ * Syncs tasks from instance to user's tasks collection.
+ * Used after migration to ensure Daily Focus shows correct tasks.
+ */
+async function syncMigratedTasksToUser(
+  instanceId: string,
+  userId: string,
+  days: ProgramInstanceDay[],
+  organizationId: string | undefined
+): Promise<void> {
+  const batch = adminDb.batch();
+  const now = new Date().toISOString();
+  let changes = 0;
+
+  for (const day of days) {
+    if (!day.calendarDate || !day.tasks?.length) continue;
+
+    const globalDayIndex = day.globalDayIndex;
+
+    // Get existing tasks for this instance + day + user
+    const existingTasksQuery = await adminDb.collection('tasks')
+      .where('userId', '==', userId)
+      .where('instanceId', '==', instanceId)
+      .where('dayIndex', '==', globalDayIndex)
+      .get();
+
+    const existingTasksByInstanceTaskId = new Map<string, string>();
+    for (const doc of existingTasksQuery.docs) {
+      const data = doc.data();
+      if (data.instanceTaskId) {
+        existingTasksByInstanceTaskId.set(data.instanceTaskId, doc.id);
+      }
+    }
+
+    // Create or update tasks
+    for (const task of day.tasks) {
+      const existingTaskId = existingTasksByInstanceTaskId.get(task.id);
+
+      if (existingTaskId) {
+        // Update existing task
+        const taskRef = adminDb.collection('tasks').doc(existingTaskId);
+        batch.update(taskRef, {
+          label: task.label,
+          title: task.label,
+          date: day.calendarDate,
+          updatedAt: now,
+        });
+        changes++;
+      } else {
+        // Create new task
+        const taskRef = adminDb.collection('tasks').doc();
+        batch.set(taskRef, {
+          userId,
+          instanceId,
+          instanceTaskId: task.id,
+          label: task.label,
+          title: task.label,
+          isPrimary: task.isPrimary,
+          type: task.type || 'task',
+          source: 'program',
+          sourceType: 'program',
+          listType: task.isPrimary ? 'focus' : 'backlog',
+          status: 'pending',
+          order: 0,
+          isPrivate: false,
+          dayIndex: globalDayIndex,
+          date: day.calendarDate,
+          completed: false,
+          completedAt: null,
+          createdAt: now,
+          updatedAt: now,
+          ...(organizationId && { organizationId }),
+        });
+        changes++;
+      }
+    }
+  }
+
+  if (changes > 0) {
+    await batch.commit();
+    console.log(`[WEEKLY_CONTENT] Synced ${changes} tasks to user's tasks collection`);
+  }
+}
+
+/**
  * Helper to convert task template to instance task
  */
 function toInstanceTask(task: ProgramTaskTemplate): ProgramInstanceDay['tasks'][0] {
@@ -25,20 +109,25 @@ function toInstanceTask(task: ProgramTaskTemplate): ProgramInstanceDay['tasks'][
 /**
  * Re-distributes tasks for a partial week using the correct active range.
  * Used for migrating stale instances where tasks were distributed before the fix.
+ *
+ * IMPORTANT: The `days` array contains ONLY active days (e.g., 4 days for Tue-Fri).
+ * The activeStartDay/activeEndDay parameters are calendar metadata for UI rendering,
+ * NOT for array indexing. Distribution always uses the full array (indices 0 to length-1).
  */
 function redistributeTasksForPartialWeek(
   weeklyTasks: ProgramTaskTemplate[],
   days: ProgramInstanceDay[],
   distribution: string | undefined,
-  activeStartDay: number,
-  activeEndDay: number
+  _activeStartDay: number,  // UNUSED - kept for API compatibility
+  _activeEndDay: number     // UNUSED - kept for API compatibility
 ): ProgramInstanceDay[] {
   const numDays = days.length;
   if (numDays === 0 || weeklyTasks.length === 0) return days;
 
-  const activeStartIdx = Math.max(0, activeStartDay - 1);
-  const activeEndIdx = Math.min(numDays - 1, activeEndDay - 1);
-  const activeRange = activeEndIdx - activeStartIdx + 1;
+  // The days array only contains ACTIVE days - always use full array range
+  const activeStartIdx = 0;
+  const activeEndIdx = numDays - 1;
+  const activeRange = numDays;
 
   // Clone days and clear tasks for re-distribution
   const updatedDays = days.map(d => ({ ...d, tasks: [] as ProgramInstanceDay['tasks'] }));
@@ -307,27 +396,32 @@ export async function GET(
       }
 
       if (targetWeek) {
-        // MIGRATION: Check if this partial week has tasks on inactive days (stale distribution)
-        const hasPartialStart = targetWeek.actualStartDayOfWeek && targetWeek.actualStartDayOfWeek > 1;
-        const hasPartialEnd = targetWeek.actualEndDayOfWeek && targetWeek.actualEndDayOfWeek < daysPerWeek;
-
+        // MIGRATION: Check for stale task distribution patterns
         let migratedDays: ProgramInstanceDay[] = targetWeek.days || [];
         let needsPersist = false;
 
-        if ((hasPartialStart || hasPartialEnd) && targetWeek.weeklyTasks?.length && migratedDays.length) {
-          const activeStartIdx = (targetWeek.actualStartDayOfWeek || 1) - 1;
-          const activeEndIdx = (targetWeek.actualEndDayOfWeek || daysPerWeek) - 1;
+        if (targetWeek.weeklyTasks?.length && migratedDays.length) {
+          // Count total tasks distributed across days
+          const totalDistributedTasks = migratedDays.reduce((sum, d) => sum + (d.tasks?.length || 0), 0);
+          const hasDistributedTasks = totalDistributedTasks > 0;
 
-          // Check if any tasks exist on inactive days
-          const hasTasksOnInactiveDays = migratedDays.some((day: ProgramInstanceDay, idx: number) =>
-            (idx < activeStartIdx || idx > activeEndIdx) && day.tasks && day.tasks.length > 0
-          );
+          // MIGRATION CHECK: For partial weeks with spread distribution, check if first day has no tasks
+          // This is a symptom of the old bug that used actualStartDayOfWeek as array index offset
+          const isSpreadDistribution = !targetWeek.distribution || targetWeek.distribution === 'spread';
+          const firstDayHasNoTasks = migratedDays[0]?.tasks?.length === 0;
+          const numTasks = targetWeek.weeklyTasks.length;
+          const numDays = migratedDays.length;
 
-          if (hasTasksOnInactiveDays) {
-            console.log(`[WEEKLY_CONTENT] MIGRATION: Fixing stale task distribution in week ${targetWeek.weekNumber}`);
-            console.log(`[WEEKLY_CONTENT] Active range: ${activeStartIdx + 1}-${activeEndIdx + 1}, daysPerWeek: ${daysPerWeek}`);
+          // With spread distribution of N tasks across M days where N >= M, every day should have at least 1 task
+          // If first day has 0 tasks but we have enough tasks to fill all days, it's a buggy distribution
+          const shouldHaveTasksOnFirstDay = isSpreadDistribution && numTasks >= numDays && numDays > 1;
+          const needsRedistribution = hasDistributedTasks && shouldHaveTasksOnFirstDay && firstDayHasNoTasks;
 
-            // Re-distribute tasks to only active days
+          if (needsRedistribution) {
+            console.log(`[WEEKLY_CONTENT] MIGRATION: Detected buggy distribution - first day has no tasks`);
+            console.log(`[WEEKLY_CONTENT] numTasks=${numTasks}, numDays=${numDays}, distribution=${targetWeek.distribution || 'spread'}`);
+
+            // Re-distribute tasks correctly
             migratedDays = redistributeTasksForPartialWeek(
               targetWeek.weeklyTasks,
               migratedDays,
@@ -366,6 +460,18 @@ export async function GET(
               updatedAt: new Date().toISOString()
             });
             console.log(`[WEEKLY_CONTENT] SYNC: Persisted updates to instance ${instanceDoc.id}`);
+
+            // Also sync tasks to user's tasks collection for Daily Focus
+            try {
+              await syncMigratedTasksToUser(
+                instanceDoc.id,
+                userId,
+                migratedDays,
+                organizationId || undefined
+              );
+            } catch (syncError) {
+              console.error('[WEEKLY_CONTENT] Task sync error (non-fatal):', syncError);
+            }
           }
         }
 

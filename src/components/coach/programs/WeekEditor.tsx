@@ -3677,6 +3677,8 @@ export function WeekEditor({
           includeWeekends={includeWeekends}
           contentCompletion={contentCompletion}
           calendarStartDate={weekCalendarStartDate}
+          actualStartDayOfWeek={week.actualStartDayOfWeek}
+          actualEndDayOfWeek={week.actualEndDayOfWeek}
         />
       </CollapsibleSection>
 

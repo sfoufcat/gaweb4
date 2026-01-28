@@ -32,6 +32,46 @@ import type {
 import { syncInstanceStructure } from '@/lib/program-utils';
 import { dayIndexToDate, calculateCalendarWeeks } from '@/lib/calendar-weeks';
 
+/**
+ * Cleans up orphaned tasks from other instances for the same enrollment context.
+ * Called before syncing tasks to ensure no duplicate tasks from old instances.
+ */
+async function cleanupOrphanedTasks(
+  currentInstanceId: string,
+  userId: string,
+  cohortId?: string
+): Promise<number> {
+  let deleted = 0;
+
+  // Query all program tasks for this user that have an instanceId
+  const tasksQuery = await adminDb.collection('tasks')
+    .where('userId', '==', userId)
+    .where('sourceType', '==', 'program')
+    .get();
+
+  // Find tasks from OTHER instances
+  const batch = adminDb.batch();
+  for (const doc of tasksQuery.docs) {
+    const data = doc.data();
+    // Skip tasks from the current instance
+    if (data.instanceId === currentInstanceId) continue;
+
+    // Delete tasks from other instances
+    // This handles orphaned tasks from old/deleted instances
+    if (data.instanceId) {
+      batch.delete(doc.ref);
+      deleted++;
+    }
+  }
+
+  if (deleted > 0) {
+    await batch.commit();
+    console.log(`[INSTANCE_SYNC_TEMPLATE] Cleaned up ${deleted} orphaned tasks from other instances for user ${userId}`);
+  }
+
+  return deleted;
+}
+
 type RouteParams = { params: Promise<{ instanceId: string }> };
 
 interface SyncTemplateRequest {
@@ -846,6 +886,20 @@ export async function POST(
       try {
         const enrollments = await getEnrollmentsForInstance(instance);
         console.log(`[INSTANCE_SYNC_TEMPLATE] Syncing tasks for ${enrollments.length} enrolled users`);
+
+        // Clean up orphaned tasks from other instances before syncing
+        let totalOrphansDeleted = 0;
+        for (const enrollment of enrollments) {
+          const orphansDeleted = await cleanupOrphanedTasks(
+            instanceId,
+            enrollment.userId,
+            instance.cohortId
+          );
+          totalOrphansDeleted += orphansDeleted;
+        }
+        if (totalOrphansDeleted > 0) {
+          console.log(`[INSTANCE_SYNC_TEMPLATE] Total orphaned tasks cleaned up: ${totalOrphansDeleted}`);
+        }
 
         for (const enrollment of enrollments) {
           for (const week of updatedWeeks) {

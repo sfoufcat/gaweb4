@@ -9,6 +9,7 @@ import {
   getProgramById,
   calculateCurrentDayIndex,
 } from '@/lib/program-engine';
+import { getUserValidInstanceIds, filterTasksByValidInstances } from '@/lib/task-utils';
 import type { Task, Habit, Program, ProgramCohort, ProgramEnrollment, Squad, SquadMember } from '@/types';
 
 /**
@@ -391,10 +392,15 @@ export async function GET(request: Request) {
     // =========================================================================
     // PROCESS TASKS
     // =========================================================================
-    const tasks: Task[] = tasksSnapshot.docs.map(doc => ({
+    const allTasks: Task[] = tasksSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
     } as Task));
+
+    // Filter out orphaned tasks from invalid instances
+    // This prevents showing tasks from old/deleted instances
+    const validInstanceIds = await getUserValidInstanceIds(userId);
+    const tasks = filterTasksByValidInstances(allTasks, validInstanceIds);
 
     const focusTasks = tasks.filter(t => t.listType === 'focus');
     const backlogTasks = tasks.filter(t => t.listType === 'backlog');

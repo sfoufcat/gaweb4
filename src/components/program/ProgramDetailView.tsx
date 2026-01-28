@@ -16,7 +16,6 @@ import { calculateCalendarWeeks, getCalendarWeekForDay, type CalendarWeek } from
 import { useProgramWeeklyContent, type WeeklyContentResponse } from '@/hooks/useProgramWeeklyContent';
 import { WeeklySection } from './WeeklySection';
 import { ProgramSchedule } from './ProgramSchedule';
-import { WeeklyOutcomes } from './WeeklyOutcomes';
 import { CoachNotes } from './CoachNotes';
 import { WeeklyResources } from './WeeklyResources';
 
@@ -765,13 +764,20 @@ export function ProgramDetailView({
               events={displayEvents}
               questionnaires={displayQuestionnaires}
               videos={displayVideos}
-              resourceAssignments={weeklyResourceAssignments}
-              days={weeklyDays}
               enrollmentId={enrollment?.id}
             />
           </div>
         );
       })()}
+
+      {/* Coach Notes - Above Program Overview */}
+      {weeklyWeek && (
+        <CoachNotes
+          week={weeklyWeek}
+          coachName={program.coachName}
+          coachImageUrl={program.coachImageUrl}
+        />
+      )}
 
       {/* Program Overview Section - Glass Card */}
       <div className="relative rounded-[20px] p-6 overflow-hidden bg-white/70 dark:bg-[#1c2026]/70 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm">
@@ -921,19 +927,7 @@ export function ProgramDetailView({
         </div>
       </div>
 
-      {/* Weekly Outcomes */}
-      {weeklyWeek && (
-        <div className="mt-6">
-          <WeeklyOutcomes week={weeklyWeek} />
-        </div>
-      )}
 
-      {/* Coach Notes */}
-      {weeklyWeek && (
-        <div className="mt-6">
-          <CoachNotes week={weeklyWeek} coachName={program.coachName} />
-        </div>
-      )}
 
       {/* Legacy 3 Day Focus Section - Fallback when no weekly content */}
       {hasAnyTasks && !weeklyWeek && (

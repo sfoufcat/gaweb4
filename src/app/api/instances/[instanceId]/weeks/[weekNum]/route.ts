@@ -605,14 +605,13 @@ export async function PATCH(
       // Get the days for this week (ensure it's an array)
       const daysToUpdate = updatedWeek.days || [];
 
-      // Get active day range for partial weeks (e.g., onboarding starting mid-week)
-      // actualStartDayOfWeek: 1=Mon, 2=Tue, etc. (1-based)
+      // The days array already contains ONLY active days (e.g., 4 days for Tue-Fri partial week)
+      // Distribution should always use the full array (indices 0 to length-1)
+      // Note: actualStartDayOfWeek is for UI rendering (blurred days), not for distribution indexing
       const numDays = daysToUpdate.length;
-      const activeStartDay = (updatedWeek as { actualStartDayOfWeek?: number }).actualStartDayOfWeek || 1;
-      const activeEndDay = (updatedWeek as { actualEndDayOfWeek?: number }).actualEndDayOfWeek || numDays;
-      const activeStartIdx = activeStartDay - 1; // Convert to 0-based
-      const activeEndIdx = Math.min(activeEndDay - 1, numDays - 1);
-      const activeRange = activeEndIdx - activeStartIdx + 1;
+      const activeStartIdx = 0;
+      const activeEndIdx = numDays - 1;
+      const activeRange = numDays;
 
       console.log(`[INSTANCE_WEEK_PATCH] Distribution: ${distribution.type}, tasks: ${weeklyTasks.length}, days: ${numDays}, active range: ${activeStartIdx}-${activeEndIdx} (${activeRange} days)`);
 

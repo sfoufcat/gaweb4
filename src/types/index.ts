@@ -1181,6 +1181,10 @@ export interface ProgramWeek {
   startDayIndex: number;
   endDayIndex: number;
 
+  // Partial week bounds (for weeks that don't start on Monday)
+  actualStartDayOfWeek?: number; // 1-based day within week (1=Mon, 5=Fri for 5-day programs)
+  actualEndDayOfWeek?: number;   // 1-based day within week
+
   // Weekly mode content fields
   weeklyTasks?: ProgramTaskTemplate[]; // Tasks for the entire week
   weeklyHabits?: ProgramHabitTemplate[]; // Habits for the week
