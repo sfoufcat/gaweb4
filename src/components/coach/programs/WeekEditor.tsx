@@ -1459,6 +1459,7 @@ export function WeekEditor({
           weeklyPrompt: formData.weeklyPrompt,
           notes: formData.notes,
           manualNotes: formData.manualNotes,
+          resourceAssignments: formData.resourceAssignments,
         };
         console.log('[WeekEditor:resetEffect] SAVE - stored snapshot:',
           { tasks: savedFormDataSnapshot.current.weeklyTasks.length, goals: savedFormDataSnapshot.current.currentFocus?.length });
@@ -1532,6 +1533,7 @@ export function WeekEditor({
         weeklyPrompt: savedFormDataSnapshot.current.weeklyPrompt || '',
         notes: savedFormDataSnapshot.current.notes || [],
         manualNotes: savedFormDataSnapshot.current.manualNotes || '',
+        resourceAssignments: savedFormDataSnapshot.current.resourceAssignments || [],
       });
       const weekFingerprint = JSON.stringify({
         tasks: weekTasksNormalized,
@@ -1541,6 +1543,7 @@ export function WeekEditor({
         weeklyPrompt: week.weeklyPrompt || '',
         notes: week.notes || [],
         manualNotes: week.manualNotes || '',
+        resourceAssignments: week.resourceAssignments || [],
       });
 
       if (weekFingerprint === snapshotFingerprint) {
@@ -1837,6 +1840,7 @@ export function WeekEditor({
         weeklyPrompt: contextSavedState.weeklyPrompt || '',
         notes: contextSavedState.notes || [],
         manualNotes: contextSavedState.manualNotes || '',
+        resourceAssignments: contextSavedState.resourceAssignments || [],
       } : null);
 
       if (!snapshotData) {
@@ -1851,6 +1855,7 @@ export function WeekEditor({
           weeklyPrompt: snapshotData.weeklyPrompt || '',
           notes: snapshotData.notes || [],
           manualNotes: snapshotData.manualNotes || '',
+          resourceAssignments: snapshotData.resourceAssignments || [],
         });
         const weekStr = JSON.stringify({
           weeklyTasks: weekTasksNormalized,
@@ -1860,6 +1865,7 @@ export function WeekEditor({
           weeklyPrompt: week.weeklyPrompt || '',
           notes: week.notes || [],
           manualNotes: week.manualNotes || '',
+          resourceAssignments: week.resourceAssignments || [],
         });
         const formStr = JSON.stringify({
           weeklyTasks: formTasksNormalized,
@@ -1869,6 +1875,7 @@ export function WeekEditor({
           weeklyPrompt: formData.weeklyPrompt,
           notes: formData.notes,
           manualNotes: formData.manualNotes,
+          resourceAssignments: formData.resourceAssignments || [],
         });
 
         if (weekStr === snapshotStr) {
@@ -3762,6 +3769,26 @@ export function WeekEditor({
           />
         </div>
       </CollapsibleSection>
+
+      {/* Instance mode info banner */}
+      {(isClientView || isCohortMode) && (
+        <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-700 dark:text-blue-300 font-albert">
+            You are editing this {isCohortMode ? 'cohort' : 'client'}. Changes will not affect the template or other {isCohortMode ? 'cohorts' : 'clients'}.
+          </p>
+        </div>
+      )}
+
+      {/* Template mode sync notice */}
+      {!isClientView && !isCohortMode && programId && (cohorts?.length || enrollments?.length) && (
+        <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-700 dark:text-blue-300 font-albert">
+            Changes here won&apos;t auto-sync. Use &quot;Sync to {programType === 'group' ? 'Cohorts' : 'Clients'}&quot; to push updates.
+          </p>
+        </div>
+      )}
 
       {/* Sync Template Dialog */}
       {programId && (

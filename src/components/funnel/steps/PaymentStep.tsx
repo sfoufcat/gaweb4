@@ -279,11 +279,15 @@ function SavedCardsForFunnel({
       </button>
 
       {/* Security note */}
-      <p className="text-center text-xs text-text-muted">
-        <Shield className="w-3 h-3 inline mr-1" />
-        {isRecurring 
-          ? 'Secure subscription powered by Stripe. Cancel anytime.'
-          : 'Your saved payment info is securely stored by Stripe'
+      <p className="text-center text-xs text-text-muted flex items-center justify-center gap-1.5">
+        <img
+          src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FIcon.jpeg?alt=media&token=a0b3f96f-af0e-4f5e-87a8-50d4ddce4080"
+          alt="Coachful"
+          className="w-4 h-4 rounded-sm"
+        />
+        {isRecurring
+          ? 'Secured by Coachful. Cancel anytime.'
+          : 'Secured by Coachful'
         }
       </p>
     </div>
@@ -507,11 +511,15 @@ function PaymentForm({ onSuccess, programName, priceInCents, basePriceInCents, c
       </button>
 
       {/* Security note */}
-      <p className="text-center text-xs text-text-muted">
-        <Lock className="w-3 h-3 inline mr-1" />
-        {isRecurring 
-          ? 'Secure subscription powered by Stripe. Cancel anytime.'
-          : 'Secured by Stripe. Your payment info is never stored on our servers.'
+      <p className="text-center text-xs text-text-muted flex items-center justify-center gap-1.5">
+        <img
+          src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FIcon.jpeg?alt=media&token=a0b3f96f-af0e-4f5e-87a8-50d4ddce4080"
+          alt="Coachful"
+          className="w-4 h-4 rounded-sm"
+        />
+        {isRecurring
+          ? 'Secured by Coachful. Cancel anytime.'
+          : 'Secured by Coachful'
         }
       </p>
     </form>

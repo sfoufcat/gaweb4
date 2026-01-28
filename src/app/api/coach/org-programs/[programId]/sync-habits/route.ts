@@ -183,7 +183,7 @@ export async function POST(
 
       // Calculate user's current day index
       // Use startedAt, startDate, or default to day 1 (for users who haven't started yet)
-      const startDateStr = enrollment.startedAt || enrollment.startDate;
+      const startDateStr = enrollment.startedAt;
       let currentDayIndex = 1; // Default to day 1 if no start date
       if (startDateStr) {
         currentDayIndex = calculateCurrentDayIndex(startDateStr, includeWeekends);

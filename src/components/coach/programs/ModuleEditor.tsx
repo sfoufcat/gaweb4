@@ -279,19 +279,12 @@ export function ModuleEditor({
   };
 
   // Get weeks in this module
-  const moduleWeeks = weeks.filter(w => w.moduleId === module.id).sort((a, b) => a.order - b.order);
+  // For instance modules, match on templateModuleId since weeks reference the template module
+  const moduleIdToMatch = (module as ProgramInstanceModule).templateModuleId || module.id;
+  const moduleWeeks = weeks.filter(w => w.moduleId === moduleIdToMatch).sort((a, b) => a.order - b.order);
 
   return (
     <div className="space-y-6">
-      {/* Instance mode warning banner */}
-      {isInstanceMode && (
-        <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-700 dark:text-amber-300 font-albert">
-            You are editing this {viewContext === 'cohort' ? 'cohort' : 'client'}. Changes will not affect the template or other {viewContext === 'cohort' ? 'cohorts' : 'clients'}.
-          </p>
-        </div>
-      )}
 
       {/* Read-only info banner */}
       {readOnly && !isInstanceMode && (
@@ -304,7 +297,7 @@ export function ModuleEditor({
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 min-h-[36px]">
         <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
           {module.name || `Module ${module.order}`}
         </h3>
@@ -396,8 +389,8 @@ export function ModuleEditor({
 
       {/* Module Habits Section */}
       <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-        <div className="flex items-center justify-between mb-4">
-          <div>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="min-w-0">
             <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
               Module Habits
             </h4>
@@ -410,7 +403,7 @@ export function ModuleEditor({
               variant="outline"
               size="sm"
               onClick={addHabit}
-              className="text-xs"
+              className="text-xs shrink-0 whitespace-nowrap"
             >
               <Plus className="w-3 h-3 mr-1" />
               Add Habit
@@ -553,6 +546,26 @@ export function ModuleEditor({
         <div className="p-3 bg-[#faf9f7] dark:bg-[#1a1e25] rounded-xl border border-[#eae6e1] dark:border-[#252a34]">
           <p className="text-sm text-[#6b6560] dark:text-[#9a9fac] font-albert">
             <span className="font-medium">Day range:</span> {module.startDayIndex} - {module.endDayIndex}
+          </p>
+        </div>
+      )}
+
+      {/* Instance mode info banner */}
+      {isInstanceMode && (
+        <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-700 dark:text-blue-300 font-albert">
+            You are editing this {viewContext === 'cohort' ? 'cohort' : 'client'}. Changes will not affect the template or other {viewContext === 'cohort' ? 'cohorts' : 'clients'}.
+          </p>
+        </div>
+      )}
+
+      {/* Template mode sync notice */}
+      {!isInstanceMode && programId && (cohorts?.length || enrollments?.length) && (
+        <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-700 dark:text-blue-300 font-albert">
+            Changes here won&apos;t auto-sync. Use &quot;Sync to {programType === 'group' ? 'Cohorts' : 'Clients'}&quot; to push updates.
           </p>
         </div>
       )}

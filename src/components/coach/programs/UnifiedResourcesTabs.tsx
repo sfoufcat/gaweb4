@@ -1,24 +1,37 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   GraduationCap,
   FileText,
   Download,
   Link2,
-  FileQuestion,
+  ClipboardList,
   Video,
   X,
   Calendar,
   ChevronDown,
+  ChevronRight,
+  Pencil,
+  MoreVertical,
+  Trash2,
   LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DayCourseSelector } from './DayCourseSelector';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import type { CourseModule } from '@/types/discover';
 import { ResourceCadenceModal, getResourceCadenceLabel } from './ResourceCadenceModal';
-import type { WeekResourceAssignment, ResourceDayTag, DayCourseAssignment } from '@/types';
+import type { WeekResourceAssignment, ResourceDayTag } from '@/types';
 import type { DiscoverCourse, DiscoverVideo } from '@/types/discover';
 
 // Resource types
@@ -36,9 +49,9 @@ const TABS: ResourceTabConfig[] = [
   { id: 'courses', label: 'Courses', shortLabel: 'Courses', icon: GraduationCap, resourceType: 'course' },
   { id: 'videos', label: 'Videos', shortLabel: 'Videos', icon: Video, resourceType: 'video' },
   { id: 'articles', label: 'Articles', shortLabel: 'Articles', icon: FileText, resourceType: 'article' },
+  { id: 'questionnaires', label: 'Forms', shortLabel: 'Forms', icon: ClipboardList, resourceType: 'questionnaire' },
   { id: 'downloads', label: 'Downloads', shortLabel: 'Files', icon: Download, resourceType: 'download' },
   { id: 'links', label: 'Links', shortLabel: 'Links', icon: Link2, resourceType: 'link' },
-  { id: 'questionnaires', label: 'Forms', shortLabel: 'Forms', icon: FileQuestion, resourceType: 'questionnaire' },
 ];
 
 // Day tag options for the dropdown
@@ -129,6 +142,12 @@ function LinkedResourceItem({
   completion,
   courseInfo,
   calendarStartDate,
+  coverImageUrl,
+  subtext,
+  onEdit,
+  isEditing,
+  // Course edit panel props
+  editPanelContent,
 }: {
   assignment: WeekResourceAssignment;
   title: string;
@@ -139,43 +158,153 @@ function LinkedResourceItem({
   completion?: ContentCompletionData;
   courseInfo?: { totalLessons: number; title?: string };
   calendarStartDate?: string;
+  coverImageUrl?: string;
+  subtext?: string;
+  onEdit?: () => void;
+  isEditing?: boolean;
+  editPanelContent?: React.ReactNode;
 }) {
   const [cadenceModalOpen, setCadenceModalOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 640px)');
 
   return (
     <>
-      <div className="flex items-center gap-3 p-3 bg-white dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] group">
-        <Icon className="w-4 h-4 text-brand-accent flex-shrink-0" />
-        <span className="flex-1 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-          {title}
-        </span>
-        {/* Completion badge */}
-        {completion && completion.totalCount > 0 && (
-          <span
-            className={cn(
-              'text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap',
-              completion.completedCount === completion.totalCount
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                : completion.completedCount > 0
-                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
+      <div className={cn(
+        "bg-white dark:bg-[#11141b] rounded-xl border overflow-hidden transition-all duration-300 ease-out",
+        isEditing
+          ? "border-brand-accent shadow-lg shadow-brand-accent/10"
+          : "border-[#e1ddd8] dark:border-[#262b35]"
+      )}>
+        {/* Header row - always visible */}
+        <div className="flex items-center gap-3 p-3 group">
+          {/* Cover image for courses */}
+          {coverImageUrl ? (
+            <img
+              src={coverImageUrl}
+              alt={title}
+              className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+            />
+          ) : (
+            <Icon className="w-4 h-4 text-brand-accent flex-shrink-0" />
+          )}
+          {/* Title and subtext */}
+          <div className="flex-1 min-w-0">
+            <span className="block text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+              {title}
+            </span>
+            {subtext && (
+              <span className="block text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
+                {subtext}
+              </span>
             )}
-          >
-            {completion.completedCount}/{completion.totalCount}
-          </span>
+          </div>
+          {/* Completion badge */}
+          {completion && completion.totalCount > 0 && (
+            <span
+              className={cn(
+                'text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap',
+                completion.completedCount === completion.totalCount
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                  : completion.completedCount > 0
+                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                  : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
+              )}
+            >
+              {completion.completedCount}/{completion.totalCount}
+            </span>
+          )}
+
+          {/* Desktop: individual buttons */}
+          {isDesktop ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setCadenceModalOpen(true)}
+                className="p-1.5 text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] rounded-lg transition-all"
+                title="Change cadence"
+              >
+                <Calendar className="w-4 h-4" />
+              </button>
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className={cn(
+                    "p-1.5 transition-colors rounded-lg",
+                    isEditing
+                      ? "text-brand-accent bg-brand-accent/10"
+                      : "text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent"
+                  )}
+                  title={isEditing ? 'Cancel editing' : 'Edit selection'}
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onRemove}
+                className="p-1.5 text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            /* Mobile: 3-dot menu */
+            <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="p-1.5 rounded-lg text-[#5f5a55] dark:text-[#7d8190] hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-all"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setCadenceModalOpen(true);
+                  }}
+                  className="gap-2"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>Cadence</span>
+                </DropdownMenuItem>
+                {onEdit && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      onEdit();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="gap-2"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    <span>{isEditing ? 'Cancel editing' : 'Edit selection'}</span>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    onRemove();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="gap-2 text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Remove</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
+        {/* Expandable edit panel */}
+        {isEditing && editPanelContent && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+            {editPanelContent}
+          </div>
         )}
-        <CadenceTriggerButton
-          value={assignment.dayTag}
-          onClick={() => setCadenceModalOpen(true)}
-          calendarStartDate={calendarStartDate}
-        />
-        <button
-          type="button"
-          onClick={onRemove}
-          className="p-1.5 text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-        >
-          <X className="w-4 h-4" />
-        </button>
       </div>
 
       <ResourceCadenceModal
@@ -188,6 +317,125 @@ function LinkedResourceItem({
         calendarStartDate={calendarStartDate}
       />
     </>
+  );
+}
+
+// Course edit panel - module/lesson selection tree (inline within card)
+function CourseEditPanel({
+  modules,
+  selectedModules,
+  selectedLessons,
+  expandedModules,
+  onToggleModuleExpand,
+  onToggleModuleSelection,
+  onToggleLessonSelection,
+  onSave,
+  onCancel,
+}: {
+  modules: CourseModule[];
+  selectedModules: Set<string>;
+  selectedLessons: Set<string>;
+  expandedModules: Set<string>;
+  onToggleModuleExpand: (moduleId: string) => void;
+  onToggleModuleSelection: (module: CourseModule) => void;
+  onToggleLessonSelection: (lessonId: string, moduleId: string, module: CourseModule) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="border-t border-brand-accent/20 bg-gradient-to-b from-brand-accent/5 to-transparent">
+      <div className="px-4 pt-3 pb-4 space-y-3">
+        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+          Select specific content (leave empty for full course)
+        </p>
+        {modules.length > 0 && (
+          <div className="max-h-56 overflow-y-auto space-y-0.5 rounded-lg bg-[#faf8f6] dark:bg-[#1d222b] p-2">
+            {modules.map((module) => (
+              <div key={module.id}>
+                <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-[#262b35]/60 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => onToggleModuleExpand(module.id)}
+                    className="p-0.5 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded transition-colors"
+                  >
+                    <ChevronRight
+                      className={cn(
+                        "w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] transition-transform duration-200",
+                        expandedModules.has(module.id) && "rotate-90"
+                      )}
+                    />
+                  </button>
+                  <div
+                    className="flex items-center gap-2 flex-1 cursor-pointer"
+                    onClick={() => onToggleModuleSelection(module)}
+                  >
+                    <BrandedCheckbox
+                      checked={selectedModules.has(module.id)}
+                      onChange={() => {}}
+                    />
+                    <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-medium">
+                      {module.title}
+                    </span>
+                    <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                      ({module.lessons?.length || 0} lessons)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Lessons - animated expand */}
+                <div
+                  className={cn(
+                    "ml-7 overflow-hidden transition-all duration-200 ease-out",
+                    expandedModules.has(module.id) ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                  )}
+                >
+                  {module.lessons && (
+                    <div className="py-1 space-y-0.5">
+                      {module.lessons.map((lesson) => (
+                        <div
+                          key={lesson.id}
+                          className="flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer hover:bg-white/60 dark:hover:bg-[#262b35]/60 transition-colors"
+                          onClick={() => onToggleLessonSelection(lesson.id, module.id, module)}
+                        >
+                          <BrandedCheckbox
+                            checked={selectedLessons.has(lesson.id)}
+                            onChange={() => {}}
+                          />
+                          <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert flex-1">
+                            {lesson.title}
+                          </span>
+                          {lesson.durationMinutes && (
+                            <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] tabular-nums">
+                              {lesson.durationMinutes}min
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors font-albert font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            className="px-4 py-2 text-sm bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors font-albert font-medium shadow-sm"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -208,6 +456,16 @@ export function UnifiedResourcesTabs({
   const [activeTab, setActiveTab] = useState<ResourceType>('courses');
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Course editing state
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set());
+  const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+
+  // Get course by ID
+  const getCourse = (courseId: string) => availableCourses.find(c => c.id === courseId);
 
   // Close mobile dropdown on click outside
   useEffect(() => {
@@ -329,38 +587,172 @@ export function UnifiedResourcesTabs({
     );
   };
 
-  // Convert course assignments to new format and handle changes
-  const courseAssignments: DayCourseAssignment[] = useMemo(() => {
-    return assignmentsByType.course.map((a) => ({
-      courseId: a.resourceId,
-      moduleIds: a.moduleIds,
-      lessonIds: a.lessonIds,
-      order: a.order,
-    }));
-  }, [assignmentsByType.course]);
+  // Course editing handlers
+  const toggleModuleExpand = (moduleId: string) => {
+    setExpandedModules(prev => {
+      const next = new Set(prev);
+      if (next.has(moduleId)) {
+        next.delete(moduleId);
+      } else {
+        next.add(moduleId);
+      }
+      return next;
+    });
+  };
 
-  const handleCourseAssignmentsChange = (newCourseAssignments: DayCourseAssignment[]) => {
-    // Remove existing course assignments
-    const nonCourseAssignments = resourceAssignments.filter(a => a.resourceType !== 'course');
+  const toggleModuleSelection = (module: CourseModule) => {
+    setSelectedModules(prev => {
+      const next = new Set(prev);
+      if (next.has(module.id)) {
+        next.delete(module.id);
+        // Also deselect all lessons in this module
+        const lessonIds = (module.lessons || []).map(l => l.id);
+        setSelectedLessons(prevLessons => {
+          const nextLessons = new Set(prevLessons);
+          lessonIds.forEach(id => nextLessons.delete(id));
+          return nextLessons;
+        });
+      } else {
+        next.add(module.id);
+        // Also select all lessons in this module
+        const lessonIds = (module.lessons || []).map(l => l.id);
+        setSelectedLessons(prevLessons => {
+          const nextLessons = new Set(prevLessons);
+          lessonIds.forEach(id => nextLessons.add(id));
+          return nextLessons;
+        });
+      }
+      return next;
+    });
+  };
 
-    // Convert new course assignments to resource assignments
-    const newCourseResourceAssignments: WeekResourceAssignment[] = newCourseAssignments.map((ca, index) => {
-      // Find existing assignment to preserve dayTag
-      const existing = assignmentsByType.course.find(a => a.resourceId === ca.courseId);
-      return {
-        id: existing?.id || generateId('course', ca.courseId),
-        resourceType: 'course' as const,
-        resourceId: ca.courseId,
-        moduleIds: ca.moduleIds,
-        lessonIds: ca.lessonIds,
-        dayTag: existing?.dayTag || 'week',
-        isRequired: existing?.isRequired || false,
-        order: index,
-      };
+  const toggleLessonSelection = (lessonId: string, moduleId: string, module: CourseModule) => {
+    setSelectedLessons(prev => {
+      const next = new Set(prev);
+      if (next.has(lessonId)) {
+        next.delete(lessonId);
+      } else {
+        next.add(lessonId);
+      }
+
+      // Check if all lessons in module are now selected
+      const moduleLessonIds = (module.lessons || []).map(l => l.id);
+      const allSelected = moduleLessonIds.length > 0 && moduleLessonIds.every(id => next.has(id));
+      const noneSelected = moduleLessonIds.every(id => !next.has(id));
+
+      // Update module selection state
+      setSelectedModules(prevModules => {
+        const nextModules = new Set(prevModules);
+        if (allSelected) {
+          nextModules.add(moduleId);
+        } else if (noneSelected) {
+          nextModules.delete(moduleId);
+        }
+        return nextModules;
+      });
+
+      return next;
+    });
+  };
+
+  // Start editing an existing course assignment
+  const handleEditCourse = (assignment: WeekResourceAssignment) => {
+    setEditingCourseId(assignment.resourceId);
+    setSelectedModules(new Set(assignment.moduleIds || []));
+    setSelectedLessons(new Set(assignment.lessonIds || []));
+    // Expand modules that have selected lessons
+    const course = getCourse(assignment.resourceId);
+    if (course?.modules && assignment.lessonIds?.length) {
+      const modulesToExpand = new Set<string>();
+      for (const module of course.modules) {
+        if (module.lessons?.some(l => assignment.lessonIds?.includes(l.id))) {
+          modulesToExpand.add(module.id);
+        }
+      }
+      setExpandedModules(modulesToExpand);
+    } else {
+      setExpandedModules(new Set());
+    }
+  };
+
+  // Save course edit
+  const handleSaveCourseEdit = () => {
+    if (!editingCourseId) return;
+
+    onResourceAssignmentsChange(
+      resourceAssignments.map(a => {
+        if (a.resourceType !== 'course' || a.resourceId !== editingCourseId) return a;
+        return {
+          ...a,
+          moduleIds: selectedModules.size > 0 ? Array.from(selectedModules) : undefined,
+          lessonIds: selectedLessons.size > 0 ? Array.from(selectedLessons) : undefined,
+        };
+      })
+    );
+
+    // Reset edit state
+    setEditingCourseId(null);
+    setSelectedModules(new Set());
+    setSelectedLessons(new Set());
+    setExpandedModules(new Set());
+  };
+
+  // Cancel course edit
+  const handleCancelCourseEdit = () => {
+    setEditingCourseId(null);
+    setSelectedModules(new Set());
+    setSelectedLessons(new Set());
+    setExpandedModules(new Set());
+  };
+
+  // Handle new course selection from dropdown
+  const handleCourseSelect = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setSelectedModules(new Set());
+    setSelectedLessons(new Set());
+    setExpandedModules(new Set());
+  };
+
+  // Add newly selected course
+  const handleAddCourse = () => {
+    if (!selectedCourseId) return;
+    if (assignmentsByType.course.some(a => a.resourceId === selectedCourseId)) return;
+
+    addResource('course', selectedCourseId, {
+      moduleIds: selectedModules.size > 0 ? Array.from(selectedModules) : undefined,
+      lessonIds: selectedLessons.size > 0 ? Array.from(selectedLessons) : undefined,
     });
 
-    onResourceAssignmentsChange([...nonCourseAssignments, ...newCourseResourceAssignments]);
+    // Reset selection state
+    setSelectedCourseId(null);
+    setSelectedModules(new Set());
+    setSelectedLessons(new Set());
+    setExpandedModules(new Set());
   };
+
+  // Cancel new course selection
+  const handleCancelCourseSelect = () => {
+    setSelectedCourseId(null);
+    setSelectedModules(new Set());
+    setSelectedLessons(new Set());
+    setExpandedModules(new Set());
+  };
+
+  // Get course assignment subtext
+  const getCourseSubtext = (assignment: WeekResourceAssignment) => {
+    const moduleCount = assignment.moduleIds?.length || 0;
+    const lessonCount = assignment.lessonIds?.length || 0;
+    if (moduleCount === 0 && lessonCount === 0) return 'Full course';
+    const parts: string[] = [];
+    if (moduleCount > 0) parts.push(`${moduleCount} module${moduleCount !== 1 ? 's' : ''}`);
+    if (lessonCount > 0) parts.push(`${lessonCount} lesson${lessonCount !== 1 ? 's' : ''}`);
+    return parts.join(', ');
+  };
+
+  // Filter out already assigned courses for the dropdown
+  const unassignedCourses = availableCourses.filter(
+    c => !assignmentsByType.course.some(a => a.resourceId === c.id)
+  );
 
   // Filter available items
   const getLinkedIds = (type: WeekResourceAssignment['resourceType']) =>
@@ -549,16 +941,17 @@ export function UnifiedResourcesTabs({
         {/* Courses Tab */}
         {activeTab === 'courses' && (
           <div className="space-y-3">
-            {/* Show course assignments with cadence modal */}
+            {/* Course assignments - unified card with edit panel */}
             {assignmentsByType.course.length > 0 && (
               <div className="space-y-2 mb-4">
                 {assignmentsByType.course.map((assignment) => {
-                  const course = availableCourses.find(c => c.id === assignment.resourceId);
-                  // Count total lessons for the course (used for spread info in cadence modal)
+                  const course = getCourse(assignment.resourceId);
+                  const isEditing = editingCourseId === assignment.resourceId;
                   const totalLessons = course?.modules?.reduce(
                     (sum, mod) => sum + (mod.lessons?.length || 0),
                     0
                   ) || 0;
+
                   return (
                     <LinkedResourceItem
                       key={assignment.id}
@@ -571,16 +964,163 @@ export function UnifiedResourcesTabs({
                       completion={contentCompletion?.get(assignment.resourceId)}
                       courseInfo={{ totalLessons, title: course?.title }}
                       calendarStartDate={calendarStartDate}
+                      coverImageUrl={course?.coverImageUrl}
+                      subtext={getCourseSubtext(assignment)}
+                      onEdit={() => isEditing ? handleCancelCourseEdit() : handleEditCourse(assignment)}
+                      isEditing={isEditing}
+                      editPanelContent={course?.modules && (
+                        <CourseEditPanel
+                          modules={course.modules}
+                          selectedModules={selectedModules}
+                          selectedLessons={selectedLessons}
+                          expandedModules={expandedModules}
+                          onToggleModuleExpand={toggleModuleExpand}
+                          onToggleModuleSelection={toggleModuleSelection}
+                          onToggleLessonSelection={toggleLessonSelection}
+                          onSave={handleSaveCourseEdit}
+                          onCancel={handleCancelCourseEdit}
+                        />
+                      )}
                     />
                   );
                 })}
               </div>
             )}
-            <DayCourseSelector
-              currentAssignments={courseAssignments}
-              onChange={handleCourseAssignmentsChange}
-              availableCourses={availableCourses}
+
+            {/* Course selection dropdown */}
+            <ResourceLinkDropdown
+              placeholder="Add a course..."
+              icon={GraduationCap}
+              groups={[
+                {
+                  label: 'Available Courses',
+                  items: unassignedCourses.map(c => ({ id: c.id, title: c.title })),
+                  iconClassName: 'text-brand-accent',
+                },
+              ]}
+              onSelect={handleCourseSelect}
             />
+
+            {/* New course selection panel */}
+            {selectedCourseId && (() => {
+              const course = getCourse(selectedCourseId);
+              if (!course) return null;
+              return (
+                <div className="p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-2xl shadow-sm border border-[#e1ddd8] dark:border-[#262b35] space-y-4">
+                  {/* Course preview */}
+                  <div className="flex items-start gap-3 p-3 bg-white dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                    {course.coverImageUrl && (
+                      <img
+                        src={course.coverImageUrl}
+                        alt={course.title}
+                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                        {course.title}
+                      </h4>
+                      {course.shortDescription && (
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] line-clamp-2 font-albert mt-1">
+                          {course.shortDescription.replace(/<[^>]*>/g, '')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Module/lesson selection */}
+                  {course.modules && course.modules.length > 0 && (
+                    <>
+                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        Select specific content (leave empty for full course)
+                      </p>
+                      <div className="max-h-64 overflow-y-auto space-y-1 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-2 bg-white dark:bg-[#11141b]">
+                        {course.modules.map((module) => (
+                          <div key={module.id}>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => toggleModuleExpand(module.id)}
+                                className="p-1 hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded"
+                              >
+                                {expandedModules.has(module.id) ? (
+                                  <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                                )}
+                              </button>
+                              <div
+                                className="flex items-center gap-2 flex-1 cursor-pointer"
+                                onClick={() => toggleModuleSelection(module)}
+                              >
+                                <BrandedCheckbox
+                                  checked={selectedModules.has(module.id)}
+                                  onChange={() => {}}
+                                />
+                                <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                                  {module.title}
+                                </span>
+                                <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                                  ({module.lessons?.length || 0} lessons)
+                                </span>
+                              </div>
+                            </div>
+                            {expandedModules.has(module.id) && module.lessons && (
+                              <div className="ml-8 mt-1 space-y-1">
+                                {module.lessons.map((lesson) => (
+                                  <div
+                                    key={lesson.id}
+                                    className="flex items-center gap-2 py-1 cursor-pointer"
+                                    onClick={() => toggleLessonSelection(lesson.id, module.id, module)}
+                                  >
+                                    <BrandedCheckbox
+                                      checked={selectedLessons.has(lesson.id)}
+                                      onChange={() => {}}
+                                    />
+                                    <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                                      {lesson.title}
+                                    </span>
+                                    {lesson.durationMinutes && (
+                                      <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                                        {lesson.durationMinutes}min
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Add/Cancel buttons */}
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelCourseSelect}
+                      className="px-3 py-1.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors font-albert"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddCourse}
+                      className="px-3 py-1.5 text-sm bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors font-albert"
+                    >
+                      Add Course
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {assignmentsByType.course.length === 0 && unassignedCourses.length === 0 && !selectedCourseId && (
+              <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190] italic mt-3 text-center">
+                No courses available
+              </p>
+            )}
           </div>
         )}
 
@@ -791,7 +1331,7 @@ export function UnifiedResourcesTabs({
                     key={assignment.id}
                     assignment={assignment}
                     title={getTitle(assignment, availableQuestionnaires)}
-                    icon={FileQuestion}
+                    icon={ClipboardList}
                     onRemove={() => removeResource(assignment.id)}
                     onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
                     includeWeekends={includeWeekends}
@@ -802,7 +1342,7 @@ export function UnifiedResourcesTabs({
             )}
             <ResourceLinkDropdown
               placeholder="Add a questionnaire..."
-              icon={FileQuestion}
+              icon={ClipboardList}
               groups={[
                 {
                   label: 'Available Forms',

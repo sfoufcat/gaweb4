@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { type Habit } from '@/types';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface HabitCheckInModalProps {
@@ -83,6 +83,7 @@ export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-[500px] p-0">
+          <DialogTitle className="sr-only">Habit Check-in</DialogTitle>
           {content}
         </DialogContent>
       </Dialog>

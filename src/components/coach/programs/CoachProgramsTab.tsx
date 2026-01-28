@@ -5073,7 +5073,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   return (
                     <ModuleEditor
                       module={moduleToEdit}
-                      weeks={programWeeks.filter(w => w.moduleId === selectedModule.id)}
+                      weeks={sidebarWeeks.filter(w => w.moduleId === selectedModule.id)}
                       readOnly={false} // Instance mode is editable
                       programId={selectedProgram?.id}
                       instanceId={isInstanceMode ? instanceId : null}

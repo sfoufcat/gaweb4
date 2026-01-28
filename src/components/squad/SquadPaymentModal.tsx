@@ -256,9 +256,13 @@ function SavedCardsSelection({
       </button>
 
       {/* Security note */}
-      <p className="text-center text-xs text-[#a7a39e] dark:text-[#7d8190] flex items-center justify-center gap-1">
-        <Shield className="w-3 h-3" />
-        Secure payment powered by Stripe. Cancel anytime.
+      <p className="text-center text-xs text-[#a7a39e] dark:text-[#7d8190] flex items-center justify-center gap-1.5">
+        <img
+          src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FIcon.jpeg?alt=media&token=a0b3f96f-af0e-4f5e-87a8-50d4ddce4080"
+          alt="Coachful"
+          className="w-4 h-4 rounded-sm"
+        />
+        Secured by Coachful. Cancel anytime.
       </p>
     </div>
   );
@@ -421,9 +425,13 @@ function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, basePriceIn
       </button>
 
       {/* Security note */}
-      <p className="text-center text-xs text-[#a7a39e] dark:text-[#7d8190] flex items-center justify-center gap-1">
-        <Shield className="w-3 h-3" />
-        Secure payment powered by Stripe. Cancel anytime.
+      <p className="text-center text-xs text-[#a7a39e] dark:text-[#7d8190] flex items-center justify-center gap-1.5">
+        <img
+          src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FIcon.jpeg?alt=media&token=a0b3f96f-af0e-4f5e-87a8-50d4ddce4080"
+          alt="Coachful"
+          className="w-4 h-4 rounded-sm"
+        />
+        Secured by Coachful. Cancel anytime.
       </p>
     </form>
   );

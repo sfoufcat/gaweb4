@@ -537,11 +537,17 @@ export function DownsellStep({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="text-center text-text-tertiary text-xs mt-6"
+        className="text-center text-text-tertiary text-xs mt-6 flex flex-col items-center gap-1"
       >
-        Your payment method on file will be charged immediately.
-        <br />
-        Secure checkout powered by Stripe.
+        <span>Your payment method on file will be charged immediately.</span>
+        <span className="flex items-center gap-1.5">
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FIcon.jpeg?alt=media&token=a0b3f96f-af0e-4f5e-87a8-50d4ddce4080"
+            alt="Coachful"
+            className="w-4 h-4 rounded-sm"
+          />
+          Secured by Coachful
+        </span>
       </motion.p>
     </div>
   );
