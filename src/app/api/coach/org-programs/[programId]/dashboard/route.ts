@@ -17,11 +17,13 @@ interface MemberStats {
   name: string;
   avatarUrl?: string;
   currentWeek: number;
-  progressPercent: number;
+  taskCompletionPercent: number;
   streak: number;
   lastActiveAt?: string;
   daysIdle: number;
   enrollmentId: string;
+  tasksCompleted: number;
+  totalTasks: number;
 }
 
 interface ContentCompletionItem {
@@ -49,8 +51,8 @@ interface ProgramDashboardData {
   stats: {
     activeClients: number;
     newThisWeek: number;
-    avgProgress: number;
-    progressRange: { min: number; max: number };
+    avgTaskCompletion: number;
+    taskCompletionRange: { min: number; max: number };
     avgStreak: number;
     bestStreak: number;
     contentCompletion: number;
@@ -76,7 +78,10 @@ interface ProgramDashboardData {
     progress: number;
     streak: number;
     rank: number;
+    tasksCompleted: number;
+    totalTasks: number;
     contentCompleted: number;
+    totalContent: number;
     enrollmentId: string;
   }[];
   contentCompletion: ContentCompletionItem[];
@@ -270,6 +275,79 @@ export async function GET(
       }
     }
 
+    // Calculate total program tasks from instance or program weeks
+    // ProgramInstanceWeek has days[].tasks[], ProgramWeek has weeklyTasks[]
+    let totalProgramTasks = 0;
+    if (instance?.weeks) {
+      instance.weeks.forEach((week) => {
+        // Count tasks from days
+        week.days?.forEach((day) => {
+          totalProgramTasks += day.tasks?.length || 0;
+        });
+        // Also count weekly tasks
+        totalProgramTasks += week.weeklyTasks?.length || 0;
+      });
+    } else if (program.weeks) {
+      program.weeks.forEach((week) => {
+        totalProgramTasks += week.weeklyTasks?.length || 0;
+      });
+    }
+    const programWeekSource = instance?.weeks || program.weeks || [];
+
+    // Calculate total assigned content from uniqueResources (calculated later, but we need it now)
+    // Collect all assigned resources from instance or program weeks
+    const allAssignedResourcesForTotals: WeekResourceAssignment[] = [];
+    programWeekSource.forEach((week) => {
+      const resources = week.resourceAssignments || [];
+      const legacyCourses = week.courseAssignments || [];
+      resources.forEach((r) => {
+        if (r.resourceType === 'course' || r.resourceType === 'article') {
+          allAssignedResourcesForTotals.push(r);
+        }
+      });
+      legacyCourses.forEach((ca: { courseId?: string; title?: string }) => {
+        if (ca.courseId) {
+          allAssignedResourcesForTotals.push({
+            id: ca.courseId,
+            resourceType: 'course',
+            resourceId: ca.courseId,
+            title: ca.title,
+            dayTag: 'week',
+            order: 0,
+          } as WeekResourceAssignment);
+        }
+      });
+    });
+    const uniqueResourcesForTotals = new Map<string, WeekResourceAssignment>();
+    allAssignedResourcesForTotals.forEach((r) => {
+      if (!uniqueResourcesForTotals.has(r.resourceId)) {
+        uniqueResourcesForTotals.set(r.resourceId, r);
+      }
+    });
+    const totalAssignedContent = uniqueResourcesForTotals.size;
+
+    // Get task completions per user from tasks collection
+    const userTaskCompletionsMap = new Map<string, number>();
+    if (userIds.length > 0 && instanceId) {
+      const batchSize = 30;
+      for (let i = 0; i < userIds.length; i += batchSize) {
+        const batch = userIds.slice(i, i + batchSize);
+        const tasksSnapshot = await adminDb
+          .collection('tasks')
+          .where('userId', 'in', batch)
+          .where('instanceId', '==', instanceId)
+          .where('completed', '==', true)
+          .get();
+
+        tasksSnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          const userId = data.userId;
+          const current = userTaskCompletionsMap.get(userId) || 0;
+          userTaskCompletionsMap.set(userId, current + 1);
+        });
+      }
+    }
+
     // Calculate member stats
     const memberStats: MemberStats[] = enrollments.map((enrollment) => {
       const user = userMap.get(enrollment.userId) || { name: 'Unknown' };
@@ -279,11 +357,12 @@ export async function GET(
       const lastActiveAt = enrollment.updatedAt || enrollment.createdAt;
       const daysIdle = calculateDaysIdle(lastActiveAt);
 
-      // Calculate progress from content_progress
-      const userProgress = contentProgressMap.get(enrollment.userId) || [];
-      const completedItems = userProgress.filter((p) => p.status === 'completed').length;
-      const totalItems = userProgress.length || 1;
-      const progressPercent = Math.round((completedItems / totalItems) * 100) || 0;
+      // Calculate task completion percentage
+      const tasksCompleted = userTaskCompletionsMap.get(enrollment.userId) || 0;
+      const totalTasks = totalProgramTasks;
+      const taskCompletionPercent = totalTasks > 0
+        ? Math.round((tasksCompleted / totalTasks) * 100)
+        : 0;
 
       // Get streak from alignment summary
       const streak = streakMap.get(enrollment.userId) || 0;
@@ -293,11 +372,13 @@ export async function GET(
         name: user.name,
         avatarUrl: user.avatarUrl,
         currentWeek,
-        progressPercent,
+        taskCompletionPercent,
         streak,
         lastActiveAt,
         daysIdle,
         enrollmentId: enrollment.id,
+        tasksCompleted,
+        totalTasks,
       };
     });
 
@@ -308,13 +389,13 @@ export async function GET(
       return createdAt && new Date(createdAt) >= oneWeekAgo;
     }).length;
 
-    const progressValues = memberStats.map((m) => m.progressPercent);
-    const avgProgress = progressValues.length > 0
-      ? Math.round(progressValues.reduce((a, b) => a + b, 0) / progressValues.length)
+    const taskCompletionValues = memberStats.map((m) => m.taskCompletionPercent);
+    const avgTaskCompletion = taskCompletionValues.length > 0
+      ? Math.round(taskCompletionValues.reduce((a, b) => a + b, 0) / taskCompletionValues.length)
       : 0;
-    const progressRange = {
-      min: progressValues.length > 0 ? Math.min(...progressValues) : 0,
-      max: progressValues.length > 0 ? Math.max(...progressValues) : 0,
+    const taskCompletionRange = {
+      min: taskCompletionValues.length > 0 ? Math.min(...taskCompletionValues) : 0,
+      max: taskCompletionValues.length > 0 ? Math.max(...taskCompletionValues) : 0,
     };
 
     const streakValues = memberStats.map((m) => m.streak);
@@ -378,22 +459,22 @@ export async function GET(
       }
     }
 
-    // Identify members needing attention (< 50% progress OR idle > 2 days)
+    // Identify members needing attention (< 50% task completion OR idle > 2 days)
     const needsAttention = memberStats
-      .filter((m) => m.progressPercent < 50 || m.daysIdle > 2)
+      .filter((m) => m.taskCompletionPercent < 50 || m.daysIdle > 2)
       .map((m) => {
-        const reason = (m.progressPercent < 50 && m.daysIdle > 2
+        const reason = (m.taskCompletionPercent < 50 && m.daysIdle > 2
           ? 'both'
-          : m.progressPercent < 50
+          : m.taskCompletionPercent < 50
           ? 'low_progress'
           : 'idle') as 'low_progress' | 'idle' | 'both';
 
         // Generate metric string based on reason
         let metric = '';
         if (reason === 'both') {
-          metric = `${m.progressPercent}% progress, ${m.daysIdle} days idle`;
+          metric = `${m.taskCompletionPercent}% tasks, ${m.daysIdle} days idle`;
         } else if (reason === 'low_progress') {
-          metric = `${m.progressPercent}% progress`;
+          metric = `${m.taskCompletionPercent}% tasks`;
         } else {
           metric = `${m.daysIdle} days idle`;
         }
@@ -403,7 +484,7 @@ export async function GET(
           name: m.name,
           avatarUrl: m.avatarUrl,
           currentWeek: m.currentWeek,
-          progress: m.progressPercent,
+          progress: m.taskCompletionPercent,
           daysInactive: m.daysIdle,
           lastActive: m.lastActiveAt,
           reason,
@@ -414,31 +495,45 @@ export async function GET(
       .sort((a, b) => a.progress - b.progress)
       .slice(0, 5);
 
-    // Top performers (sorted by progress, then streak)
-    const topPerformers = memberStats
+    // Top performers (sorted by combined progress, then streak)
+    // First, calculate combined progress for each member
+    const membersWithCombinedProgress = memberStats.map((m) => {
+      const userProgress = contentProgressMap.get(m.userId) || [];
+      const contentCompleted = userProgress.filter(p => p.status === 'completed').length;
+      const contentPercent = totalAssignedContent > 0
+        ? Math.round((contentCompleted / totalAssignedContent) * 100)
+        : 0;
+      const combinedProgress = Math.round((m.taskCompletionPercent + contentPercent) / 2);
+
+      return {
+        ...m,
+        contentCompleted,
+        contentPercent,
+        combinedProgress,
+      };
+    });
+
+    const topPerformers = membersWithCombinedProgress
       .sort((a, b) => {
-        if (b.progressPercent !== a.progressPercent) {
-          return b.progressPercent - a.progressPercent;
+        if (b.combinedProgress !== a.combinedProgress) {
+          return b.combinedProgress - a.combinedProgress;
         }
         return b.streak - a.streak;
       })
       .slice(0, 3)
-      .map((m, index) => {
-        // Get content completed count for this user
-        const userProgress = contentProgressMap.get(m.userId) || [];
-        const contentCompleted = userProgress.filter(p => p.status === 'completed').length;
-
-        return {
-          userId: m.userId,
-          name: m.name,
-          avatarUrl: m.avatarUrl,
-          progress: m.progressPercent,
-          streak: m.streak,
-          rank: index + 1,
-          contentCompleted,
-          enrollmentId: m.enrollmentId,
-        };
-      });
+      .map((m, index) => ({
+        userId: m.userId,
+        name: m.name,
+        avatarUrl: m.avatarUrl,
+        progress: m.combinedProgress,
+        streak: m.streak,
+        rank: index + 1,
+        tasksCompleted: m.tasksCompleted,
+        totalTasks: m.totalTasks,
+        contentCompleted: m.contentCompleted,
+        totalContent: totalAssignedContent,
+        enrollmentId: m.enrollmentId,
+      }));
 
     // Content completion by item - build from ASSIGNED resources, not just tracked progress
     // This shows completion for all content the coach assigned, even if no one started it yet
@@ -446,22 +541,21 @@ export async function GET(
 
     // Collect all assigned resources from instance or program weeks
     const allAssignedResources: WeekResourceAssignment[] = [];
-    const weekSource = instance?.weeks || program.weeks || [];
 
     console.log('[DASHBOARD] Content completion debug:', {
       hasInstance: !!instance,
       instanceId: instance?.id,
       instanceWeeksCount: instance?.weeks?.length,
       programWeeksCount: program.weeks?.length,
-      weekSourceCount: weekSource.length,
-      weekSourceSample: weekSource[0] ? {
-        weekNumber: weekSource[0].weekNumber,
-        resourceAssignmentsCount: weekSource[0].resourceAssignments?.length || 0,
-        courseAssignmentsCount: weekSource[0].courseAssignments?.length || 0,
+      programWeekSourceCount: programWeekSource.length,
+      programWeekSourceSample: programWeekSource[0] ? {
+        weekNumber: programWeekSource[0].weekNumber,
+        resourceAssignmentsCount: programWeekSource[0].resourceAssignments?.length || 0,
+        courseAssignmentsCount: programWeekSource[0].courseAssignments?.length || 0,
       } : null,
     });
 
-    weekSource.forEach((week) => {
+    programWeekSource.forEach((week) => {
       // Get resources from both new and legacy formats
       const resources = week.resourceAssignments || [];
       const legacyCourses = week.courseAssignments || [];
@@ -649,8 +743,8 @@ export async function GET(
       stats: {
         activeClients,
         newThisWeek,
-        avgProgress,
-        progressRange,
+        avgTaskCompletion,
+        taskCompletionRange,
         avgStreak,
         bestStreak,
         contentCompletion,

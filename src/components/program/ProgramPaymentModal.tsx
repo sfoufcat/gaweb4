@@ -247,7 +247,7 @@ function SavedCardsSelection({
           alt="Coachful"
           className="w-4 h-4 rounded-sm"
         />
-        Secured by Coachful
+        Secured by Stripe
       </p>
     </div>
   );
@@ -407,7 +407,7 @@ function PaymentForm({ onSuccess, onCancel, programName, originalPriceCents, dis
           alt="Coachful"
           className="w-4 h-4 rounded-sm"
         />
-        Secured by Coachful
+        Secured by Stripe
       </p>
     </form>
   );

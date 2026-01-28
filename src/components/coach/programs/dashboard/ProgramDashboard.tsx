@@ -25,8 +25,8 @@ interface ProgramDashboardData {
   stats: {
     activeClients: number;
     newThisWeek: number;
-    avgProgress: number;
-    progressRange: { min: number; max: number };
+    avgTaskCompletion: number;
+    taskCompletionRange: { min: number; max: number };
     avgStreak: number;
     bestStreak: number;
     contentCompletion: number;
@@ -286,8 +286,18 @@ export function ProgramDashboard({
           {/* Stats row */}
           <DashboardStatsRow mode="program" stats={programData.stats} />
 
-          {/* Two-column layout for attention/performers */}
+          {/* Row 1: Upcoming + Top Performers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <UpcomingSection items={programData.upcoming} />
+            <TopPerformerCard
+              performers={programData.topPerformers}
+              onViewClient={handleViewClient}
+            />
+          </div>
+
+          {/* Row 2: Content Completion + Needs Attention */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ContentCompletionList items={programData.contentCompletion} />
             <NeedsAttentionCard
               members={programData.needsAttention}
               onNudge={handleNudge}
@@ -295,17 +305,7 @@ export function ProgramDashboard({
               isNudging={isNudging}
               nudgedUsers={nudgedUsers}
             />
-            <TopPerformerCard
-              performers={programData.topPerformers}
-              onViewClient={handleViewClient}
-            />
           </div>
-
-          {/* Content completion */}
-          <ContentCompletionList items={programData.contentCompletion} />
-
-          {/* Upcoming */}
-          <UpcomingSection items={programData.upcoming} />
         </div>
       )}
 
@@ -346,7 +346,19 @@ export function ProgramDashboard({
       {!isLoading && viewContext.mode === 'cohort' && programData && (
         <div className="space-y-6">
           <DashboardStatsRow mode="program" stats={programData.stats} />
+
+          {/* Row 1: Upcoming + Top Performers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <UpcomingSection items={programData.upcoming} />
+            <TopPerformerCard
+              performers={programData.topPerformers}
+              onViewClient={handleViewClient}
+            />
+          </div>
+
+          {/* Row 2: Content Completion + Needs Attention */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ContentCompletionList items={programData.contentCompletion} />
             <NeedsAttentionCard
               members={programData.needsAttention}
               onNudge={handleNudge}
@@ -354,13 +366,7 @@ export function ProgramDashboard({
               isNudging={isNudging}
               nudgedUsers={nudgedUsers}
             />
-            <TopPerformerCard
-              performers={programData.topPerformers}
-              onViewClient={handleViewClient}
-            />
           </div>
-          <ContentCompletionList items={programData.contentCompletion} />
-          <UpcomingSection items={programData.upcoming} />
         </div>
       )}
 

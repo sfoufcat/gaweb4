@@ -262,7 +262,7 @@ function SavedCardsSelection({
           alt="Coachful"
           className="w-4 h-4 rounded-sm"
         />
-        Secured by Coachful. Cancel anytime.
+        Secured by Stripe. Cancel anytime.
       </p>
     </div>
   );
@@ -431,7 +431,7 @@ function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, basePriceIn
           alt="Coachful"
           className="w-4 h-4 rounded-sm"
         />
-        Secured by Coachful. Cancel anytime.
+        Secured by Stripe. Cancel anytime.
       </p>
     </form>
   );

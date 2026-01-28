@@ -286,8 +286,8 @@ function SavedCardsForFunnel({
           className="w-4 h-4 rounded-sm"
         />
         {isRecurring
-          ? 'Secured by Coachful. Cancel anytime.'
-          : 'Secured by Coachful'
+          ? 'Secured by Stripe. Cancel anytime.'
+          : 'Secured by Stripe'
         }
       </p>
     </div>
@@ -518,8 +518,8 @@ function PaymentForm({ onSuccess, programName, priceInCents, basePriceInCents, c
           className="w-4 h-4 rounded-sm"
         />
         {isRecurring
-          ? 'Secured by Coachful. Cancel anytime.'
-          : 'Secured by Coachful'
+          ? 'Secured by Stripe. Cancel anytime.'
+          : 'Secured by Stripe'
         }
       </p>
     </form>

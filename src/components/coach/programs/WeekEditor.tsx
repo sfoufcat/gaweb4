@@ -940,6 +940,7 @@ export function WeekEditor({
     weeklyPrompt?: string;
     notes?: string[];
     manualNotes?: string;
+    resourceAssignments?: WeekResourceAssignment[];
   } | null>(null);
   // Track last registered data fingerprint to prevent infinite re-registration loops
   const lastRegisteredFingerprint = useRef<string | null>(null);

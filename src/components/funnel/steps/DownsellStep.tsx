@@ -546,7 +546,7 @@ export function DownsellStep({
             alt="Coachful"
             className="w-4 h-4 rounded-sm"
           />
-          Secured by Coachful
+          Secured by Stripe
         </span>
       </motion.p>
     </div>

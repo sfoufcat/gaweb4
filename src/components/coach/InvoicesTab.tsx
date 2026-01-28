@@ -1023,7 +1023,7 @@ function StripeConnectPanel({ isDemoMode, openSignupModal }: StripeConnectPanelP
       <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
         <div className="flex items-start gap-4">
           <Image
-            src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2Fstripe.webp?alt=media&token=03f87869-987a-47fb-a579-583bbcd921de"
+            src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FIcon.jpeg?alt=media&token=a0b3f96f-af0e-4f5e-87a8-50d4ddce4080"
             alt="Stripe"
             width={48}
             height={48}

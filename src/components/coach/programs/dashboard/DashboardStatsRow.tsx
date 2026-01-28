@@ -67,8 +67,8 @@ function StatCard({
 interface ProgramStats {
   activeClients: number;
   newThisWeek: number;
-  avgProgress: number;
-  progressRange?: { min: number; max: number };
+  avgTaskCompletion: number;
+  taskCompletionRange?: { min: number; max: number };
   avgStreak: number;
   bestStreak: number;
   contentCompletion: number;
@@ -111,11 +111,11 @@ export function DashboardStatsRow({ mode, stats, className }: DashboardStatsRowP
           trendValue={programStats.newThisWeek > 0 ? `+${programStats.newThisWeek}` : '0'}
         />
         <StatCard
-          label="Avg Progress"
-          value={`${programStats.avgProgress}%`}
+          label="Avg Task Completion"
+          value={`${programStats.avgTaskCompletion ?? 0}%`}
           subValue={
-            programStats.progressRange
-              ? `Range: ${programStats.progressRange.min}% - ${programStats.progressRange.max}%`
+            programStats.taskCompletionRange
+              ? `Range: ${programStats.taskCompletionRange.min}% - ${programStats.taskCompletionRange.max}%`
               : undefined
           }
           icon={TrendingUp}
@@ -124,16 +124,16 @@ export function DashboardStatsRow({ mode, stats, className }: DashboardStatsRowP
         />
         <StatCard
           label="Avg Streak"
-          value={`${programStats.avgStreak} days`}
-          subValue={`Best: ${programStats.bestStreak} days`}
+          value={`${programStats.avgStreak ?? 0} days`}
+          subValue={`Best: ${programStats.bestStreak ?? 0} days`}
           icon={Flame}
           iconColor="text-orange-600 dark:text-orange-400"
           iconBg="bg-orange-100 dark:bg-orange-900/30"
         />
         <StatCard
           label="Content Completion"
-          value={`${programStats.contentCompletion}%`}
-          subValue={`${programStats.completedContentItems}/${programStats.totalContentItems} items`}
+          value={`${programStats.contentCompletion ?? 0}%`}
+          subValue={`${programStats.completedContentItems ?? 0}/${programStats.totalContentItems ?? 0} items`}
           icon={BookOpen}
           iconColor="text-purple-600 dark:text-purple-400"
           iconBg="bg-purple-100 dark:bg-purple-900/30"
@@ -148,7 +148,7 @@ export function DashboardStatsRow({ mode, stats, className }: DashboardStatsRowP
     <div className={cn('grid grid-cols-2 lg:grid-cols-4 gap-3', className)}>
       <StatCard
         label="Overall Progress"
-        value={`${clientStats.overallProgress}%`}
+        value={`${clientStats.overallProgress ?? 0}%`}
         subValue={`Week ${clientStats.currentWeek} of ${clientStats.totalWeeks}`}
         icon={TrendingUp}
         iconColor="text-emerald-600 dark:text-emerald-400"
@@ -156,16 +156,16 @@ export function DashboardStatsRow({ mode, stats, className }: DashboardStatsRowP
       />
       <StatCard
         label="Current Streak"
-        value={`${clientStats.currentStreak} days`}
-        subValue={`Best: ${clientStats.bestStreak} days`}
+        value={`${clientStats.currentStreak ?? 0} days`}
+        subValue={`Best: ${clientStats.bestStreak ?? 0} days`}
         icon={Flame}
         iconColor="text-orange-600 dark:text-orange-400"
         iconBg="bg-orange-100 dark:bg-orange-900/30"
       />
       <StatCard
         label="Content Completion"
-        value={`${clientStats.contentCompletion}%`}
-        subValue={`${clientStats.completedContentItems}/${clientStats.totalContentItems} items`}
+        value={`${clientStats.contentCompletion ?? 0}%`}
+        subValue={`${clientStats.completedContentItems ?? 0}/${clientStats.totalContentItems ?? 0} items`}
         icon={BookOpen}
         iconColor="text-purple-600 dark:text-purple-400"
         iconBg="bg-purple-100 dark:bg-purple-900/30"

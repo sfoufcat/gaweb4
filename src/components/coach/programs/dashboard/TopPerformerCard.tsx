@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Trophy, Flame, TrendingUp, User, Crown } from 'lucide-react';
+import { Trophy, Flame, CheckSquare, BookOpen, User, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface TopPerformer {
@@ -12,7 +12,10 @@ export interface TopPerformer {
   progress: number;
   streak: number;
   rank: number;
+  tasksCompleted: number;
+  totalTasks: number;
   contentCompleted: number;
+  totalContent: number;
 }
 
 interface TopPerformerCardProps {
@@ -134,10 +137,14 @@ export function TopPerformerCard({
                 <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent transition-colors">
                   {performer.name}
                 </p>
-                <div className="flex items-center gap-3 mt-0.5">
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                    <TrendingUp className="w-3 h-3" />
-                    {performer.progress}%
+                    <CheckSquare className="w-3 h-3" />
+                    {performer.tasksCompleted}/{performer.totalTasks}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                    <BookOpen className="w-3 h-3" />
+                    {performer.contentCompleted}/{performer.totalContent}
                   </span>
                   <span className="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400">
                     <Flame className="w-3 h-3" />

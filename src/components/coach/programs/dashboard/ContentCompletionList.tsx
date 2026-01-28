@@ -115,40 +115,38 @@ export function ContentCompletionList({ items, className }: ContentCompletionLis
                       {item.completedCount}/{item.totalCount} completed
                     </span>
                   </div>
-                  {/* Progress bar */}
-                  <div className="mt-2">
-                    <div className="h-2 bg-[#f3f1ef] dark:bg-[#262b35] rounded-full overflow-hidden">
+                  {/* Progress bar with inline percentage */}
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="flex-1 h-3 bg-[#f3f1ef] dark:bg-[#262b35] rounded-full overflow-hidden shadow-inner">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
                         transition={{ duration: 0.5, ease: 'easeOut' }}
                         className={cn(
-                          'h-full rounded-full',
+                          'h-full rounded-full shadow-sm',
                           rate >= 100
-                            ? 'bg-green-500'
+                            ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
                             : rate >= 50
-                            ? 'bg-brand-accent'
+                            ? 'bg-gradient-to-r from-brand-accent/80 to-brand-accent'
                             : rate >= 25
-                            ? 'bg-amber-500'
-                            : 'bg-[#d1ccc6] dark:bg-[#4a5060]'
+                            ? 'bg-gradient-to-r from-amber-400 to-amber-500'
+                            : 'bg-gradient-to-r from-[#d1ccc6] to-[#c4bfb8] dark:from-[#4a5060] dark:to-[#5a6070]'
                         )}
                       />
                     </div>
+                    <span
+                      className={cn(
+                        'text-sm font-semibold font-albert w-10 text-right',
+                        rate >= 80
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : rate >= 50
+                          ? 'text-brand-accent'
+                          : 'text-amber-600 dark:text-amber-400'
+                      )}
+                    >
+                      {rate}%
+                    </span>
                   </div>
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <p
-                    className={cn(
-                      'text-lg font-bold font-albert',
-                      rate >= 80
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : rate >= 50
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-amber-600 dark:text-amber-400'
-                    )}
-                  >
-                    {rate}%
-                  </p>
                 </div>
               </div>
             </div>
