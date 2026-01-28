@@ -568,6 +568,8 @@ export interface ProgramTaskTemplate {
   taskId?: string; // Reference to the actual task document in the tasks collection
   deletedByClient?: boolean; // Whether the client has soft-deleted this task
   editedByClient?: boolean; // Whether the client has edited this task's title
+  // Resource-generated task marker
+  sourceResourceId?: string; // If set, task was auto-generated from a resource
 }
 
 /**
@@ -1546,6 +1548,9 @@ export interface WeekResourceAssignment {
 
   // For multi-day courses: maps lessonId to day number for auto-spreading
   lessonDayMapping?: Record<string, number>;
+
+  // Task generation
+  alsoCreateTask?: boolean;       // If true, generates a task with same dayTag
 }
 
 /**

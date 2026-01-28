@@ -34,6 +34,7 @@ import { InlineRecordingUpload } from '@/components/scheduling/InlineRecordingUp
 import { VideoPlayer } from '@/components/video/VideoPlayer';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
+import { generateTasksFromResources, mergeResourceTasks } from '@/lib/resource-tasks';
 
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -2231,10 +2232,39 @@ export function WeekEditor({
   };
 
   // Unified resource assignments handler (using UnifiedResourcesTabs)
+  // Also generates/removes tasks for resources with alsoCreateTask enabled
   const handleResourceAssignmentsChange = (assignments: WeekResourceAssignment[]) => {
+    // Build resource titles map from available resources
+    const resourceTitles = new Map<string, string>();
+    availableCourses.forEach(c => resourceTitles.set(c.id, c.title));
+    availableVideos.forEach(v => resourceTitles.set(v.id, v.title));
+    availableArticles.forEach(a => resourceTitles.set(a.id, a.title));
+    availableDownloads.forEach(d => resourceTitles.set(d.id, d.title));
+    availableLinks.forEach(l => resourceTitles.set(l.id, l.title));
+    availableQuestionnaires.forEach(q => resourceTitles.set(q.id, q.title));
+
+    // Build course data for per-lesson task generation
+    const courseData = new Map<string, { modules?: { id: string; title: string; lessons?: { id: string; title: string }[] }[] }>();
+    availableCourses.forEach(c => {
+      courseData.set(c.id, {
+        modules: c.modules?.map(m => ({
+          id: m.id,
+          title: m.title,
+          lessons: m.lessons?.map(l => ({ id: l.id, title: l.title })),
+        })),
+      });
+    });
+
+    // Generate tasks from resources that have alsoCreateTask enabled
+    const generatedTasks = generateTasksFromResources(assignments, resourceTitles, courseData);
+
+    // Merge with existing tasks (removes tasks for disabled resources, adds new ones)
+    const mergedTasks = mergeResourceTasks(formData.weeklyTasks, generatedTasks, assignments);
+
     setFormData({
       ...formData,
       resourceAssignments: assignments,
+      weeklyTasks: mergedTasks,
     });
   };
 

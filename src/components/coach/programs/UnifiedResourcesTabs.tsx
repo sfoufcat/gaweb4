@@ -16,6 +16,7 @@ import {
   Pencil,
   MoreVertical,
   Trash2,
+  ListChecks,
   LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { CourseModule } from '@/types/discover';
 import { ResourceCadenceModal, getResourceCadenceLabel } from './ResourceCadenceModal';
+import { AddAsTaskModal } from './AddAsTaskModal';
 import type { WeekResourceAssignment, ResourceDayTag } from '@/types';
 import type { DiscoverCourse, DiscoverVideo } from '@/types/discover';
 
@@ -142,6 +144,7 @@ function LinkedResourceItem({
   icon: Icon,
   onRemove,
   onDayTagChange,
+  onAlsoCreateTaskChange,
   includeWeekends,
   completion,
   courseInfo,
@@ -158,6 +161,7 @@ function LinkedResourceItem({
   icon: LucideIcon;
   onRemove: () => void;
   onDayTagChange: (dayTag: ResourceDayTag) => void;
+  onAlsoCreateTaskChange?: (enabled: boolean) => void;
   includeWeekends?: boolean;
   completion?: ContentCompletionData;
   courseInfo?: { totalLessons: number; title?: string };
@@ -169,6 +173,7 @@ function LinkedResourceItem({
   editPanelContent?: React.ReactNode;
 }) {
   const [cadenceModalOpen, setCadenceModalOpen] = useState(false);
+  const [addAsTaskModalOpen, setAddAsTaskModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 640px)');
 
@@ -240,6 +245,21 @@ function LinkedResourceItem({
                   </span>
                 )}
               </button>
+              {onAlsoCreateTaskChange && (
+                <button
+                  type="button"
+                  onClick={() => setAddAsTaskModalOpen(true)}
+                  className={cn(
+                    "p-1.5 transition-colors rounded-lg",
+                    assignment.alsoCreateTask
+                      ? "text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30"
+                      : "text-[#a7a39e] dark:text-[#7d8190] hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                  )}
+                  title={assignment.alsoCreateTask ? 'Task enabled' : 'Add as task'}
+                >
+                  <ListChecks className="w-4 h-4" />
+                </button>
+              )}
               {onEdit && (
                 <button
                   type="button"
@@ -292,6 +312,26 @@ function LinkedResourceItem({
                     )}
                   </span>
                 </DropdownMenuItem>
+                {onAlsoCreateTaskChange && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setAddAsTaskModalOpen(true);
+                    }}
+                    className="gap-2"
+                  >
+                    <ListChecks className={cn(
+                      "w-4 h-4",
+                      assignment.alsoCreateTask && "text-purple-600 dark:text-purple-400"
+                    )} />
+                    <span>
+                      Add as task
+                      {assignment.alsoCreateTask && (
+                        <span className="ml-1 text-purple-600 dark:text-purple-400">(on)</span>
+                      )}
+                    </span>
+                  </DropdownMenuItem>
+                )}
                 {onEdit && (
                   <DropdownMenuItem
                     onClick={() => {
@@ -338,6 +378,19 @@ function LinkedResourceItem({
         calendarStartDate={calendarStartDate}
         resourceType={assignment.resourceType}
       />
+
+      {onAlsoCreateTaskChange && (
+        <AddAsTaskModal
+          open={addAsTaskModalOpen}
+          onOpenChange={setAddAsTaskModalOpen}
+          resourceType={assignment.resourceType}
+          resourceTitle={title}
+          dayTag={assignment.dayTag}
+          calendarStartDate={calendarStartDate}
+          enabled={assignment.alsoCreateTask ?? false}
+          onToggle={onAlsoCreateTaskChange}
+        />
+      )}
     </>
   );
 }
@@ -626,6 +679,15 @@ export function UnifiedResourcesTabs({
 
         return { ...a, dayTag, lessonDayMapping };
       })
+    );
+  };
+
+  // Update alsoCreateTask flag
+  const updateAlsoCreateTask = (assignmentId: string, enabled: boolean) => {
+    onResourceAssignmentsChange(
+      resourceAssignments.map((a) =>
+        a.id === assignmentId ? { ...a, alsoCreateTask: enabled } : a
+      )
     );
   };
 
@@ -1002,6 +1064,7 @@ export function UnifiedResourcesTabs({
                       icon={GraduationCap}
                       onRemove={() => removeResource(assignment.id)}
                       onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
+                      onAlsoCreateTaskChange={(enabled) => updateAlsoCreateTask(assignment.id, enabled)}
                       includeWeekends={includeWeekends}
                       completion={contentCompletion?.get(assignment.resourceId)}
                       courseInfo={{ totalLessons, title: course?.title }}
@@ -1181,6 +1244,7 @@ export function UnifiedResourcesTabs({
                       icon={Video}
                       onRemove={() => removeResource(assignment.id)}
                       onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
+                      onAlsoCreateTaskChange={(enabled) => updateAlsoCreateTask(assignment.id, enabled)}
                       includeWeekends={includeWeekends}
                       completion={contentCompletion?.get(assignment.resourceId)}
                       calendarStartDate={calendarStartDate}
@@ -1231,6 +1295,7 @@ export function UnifiedResourcesTabs({
                     icon={FileText}
                     onRemove={() => removeResource(assignment.id)}
                     onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
+                    onAlsoCreateTaskChange={(enabled) => updateAlsoCreateTask(assignment.id, enabled)}
                     includeWeekends={includeWeekends}
                     completion={contentCompletion?.get(assignment.resourceId)}
                     calendarStartDate={calendarStartDate}
@@ -1280,6 +1345,7 @@ export function UnifiedResourcesTabs({
                     icon={Download}
                     onRemove={() => removeResource(assignment.id)}
                     onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
+                    onAlsoCreateTaskChange={(enabled) => updateAlsoCreateTask(assignment.id, enabled)}
                     includeWeekends={includeWeekends}
                     calendarStartDate={calendarStartDate}
                   />
@@ -1328,6 +1394,7 @@ export function UnifiedResourcesTabs({
                     icon={Link2}
                     onRemove={() => removeResource(assignment.id)}
                     onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
+                    onAlsoCreateTaskChange={(enabled) => updateAlsoCreateTask(assignment.id, enabled)}
                     includeWeekends={includeWeekends}
                     calendarStartDate={calendarStartDate}
                   />
@@ -1376,6 +1443,7 @@ export function UnifiedResourcesTabs({
                     icon={ClipboardList}
                     onRemove={() => removeResource(assignment.id)}
                     onDayTagChange={(dayTag) => updateDayTag(assignment.id, dayTag)}
+                    onAlsoCreateTaskChange={(enabled) => updateAlsoCreateTask(assignment.id, enabled)}
                     includeWeekends={includeWeekends}
                     calendarStartDate={calendarStartDate}
                   />

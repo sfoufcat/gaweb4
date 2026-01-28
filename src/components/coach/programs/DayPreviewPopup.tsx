@@ -16,6 +16,8 @@ import {
   Clock,
   Video,
   ClipboardList,
+  Link2,
+  GraduationCap,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type {
@@ -212,13 +214,33 @@ export function DayPreviewPopup({
   const focusTasks = (day.tasks || []).filter((t) => t.isPrimary !== false);
   const backlogTasks = (day.tasks || []).filter((t) => t.isPrimary === false);
 
+  // Check if task is resource-generated
+  const isResourceTask = (task: TaskData): boolean => {
+    return 'sourceResourceId' in task && !!task.sourceResourceId;
+  };
+
   // Get the source label for a task
   const getSourceLabel = (task: TaskData) => {
+    // Resource-generated tasks show "from resource"
+    if (isResourceTask(task)) {
+      return 'from resource';
+    }
     const dayTag = 'dayTag' in task ? task.dayTag : undefined;
     if (dayTag === 'daily') return 'daily';
     if (dayTag === 'spread') return 'spread';
     if (typeof dayTag === 'number') return `day ${dayTag}`;
     return 'auto';
+  };
+
+  // Get icon for resource-generated task based on label
+  const getResourceTaskIcon = (task: TaskData) => {
+    const label = task.label?.toLowerCase() || '';
+    if (label.startsWith('watch')) return Video;
+    if (label.startsWith('read')) return FileText;
+    if (label.startsWith('fill in')) return ClipboardList;
+    if (label.startsWith('download')) return Download;
+    if (label.startsWith('visit')) return Link2;
+    return BookOpen;
   };
 
   // Get day tag label for display
@@ -302,22 +324,38 @@ export function DayPreviewPopup({
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {focusTasks.map((task, idx) => (
-                        <div
-                          key={task.id || idx}
-                          className="flex items-start gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
-                        >
-                          <Circle className="w-4 h-4 text-[#c4c0bb] dark:text-[#4a4f5c] mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                              {task.label}
-                            </p>
-                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
-                              {getSourceLabel(task)}
-                            </p>
+                      {focusTasks.map((task, idx) => {
+                        const isResource = isResourceTask(task);
+                        const TaskIcon = isResource ? getResourceTaskIcon(task) : Circle;
+                        return (
+                          <div
+                            key={task.id || idx}
+                            className={`flex items-start gap-3 p-3 rounded-xl ${
+                              isResource
+                                ? 'bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/30'
+                                : 'bg-[#f7f5f3] dark:bg-[#11141b]'
+                            }`}
+                          >
+                            <TaskIcon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                              isResource
+                                ? 'text-purple-500 dark:text-purple-400'
+                                : 'text-[#c4c0bb] dark:text-[#4a4f5c]'
+                            }`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                                {task.label}
+                              </p>
+                              <p className={`text-xs mt-0.5 ${
+                                isResource
+                                  ? 'text-purple-500 dark:text-purple-400'
+                                  : 'text-[#a7a39e] dark:text-[#7d8190]'
+                              }`}>
+                                {getSourceLabel(task)}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </section>
@@ -623,17 +661,29 @@ export function DayPreviewPopup({
                       Backlog
                     </h4>
                     <div className="space-y-2">
-                      {backlogTasks.map((task, idx) => (
-                        <div
-                          key={task.id || idx}
-                          className="flex items-start gap-3 p-3 bg-[#f7f5f3]/60 dark:bg-[#11141b]/60 rounded-xl opacity-70"
-                        >
-                          <Circle className="w-4 h-4 text-[#c4c0bb] dark:text-[#4a4f5c] mt-0.5 flex-shrink-0" />
-                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                            {task.label}
-                          </p>
-                        </div>
-                      ))}
+                      {backlogTasks.map((task, idx) => {
+                        const isResource = isResourceTask(task);
+                        const TaskIcon = isResource ? getResourceTaskIcon(task) : Circle;
+                        return (
+                          <div
+                            key={task.id || idx}
+                            className={`flex items-start gap-3 p-3 rounded-xl opacity-70 ${
+                              isResource
+                                ? 'bg-purple-50/60 dark:bg-purple-900/5 border border-purple-100/60 dark:border-purple-800/20'
+                                : 'bg-[#f7f5f3]/60 dark:bg-[#11141b]/60'
+                            }`}
+                          >
+                            <TaskIcon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                              isResource
+                                ? 'text-purple-400 dark:text-purple-500'
+                                : 'text-[#c4c0bb] dark:text-[#4a4f5c]'
+                            }`} />
+                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                              {task.label}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </section>
                 )}
