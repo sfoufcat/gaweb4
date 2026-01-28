@@ -185,7 +185,7 @@ export async function GET(request: NextRequest) {
 
     // Filter out orphaned tasks from invalid instances
     // This prevents showing tasks from old/deleted instances
-    const validInstanceIds = await getUserValidInstanceIds(userId);
+    const validInstanceIds = await getUserValidInstanceIds(userId, organizationId || undefined);
     const filteredTasks = filterTasksByValidInstances(tasks, validInstanceIds);
 
     console.log(`[TASKS_GET] After filtering invalid instances: ${filteredTasks.length} tasks (filtered ${tasks.length - filteredTasks.length})`);

@@ -408,6 +408,33 @@ The following collections are fully deprecated:
 Old sync functions in `program-utils.ts` and `program-engine.ts` are deprecated.
 New sync uses direct instance updates via `/api/instances/[id]` endpoints
 
+### Task Sync Points (CRITICAL)
+
+**⚠️ Task sync to users' `tasks` collection must ONLY happen at these 4 points:**
+
+1. **Program Save** - When coach saves week/day content
+   - `PATCH /api/instances/[id]/weeks/[weekNum]`
+   - `PATCH /api/instances/[id]/days/[dayIndex]`
+   - `PATCH /api/coach/org-programs/.../week-content/[weekId]`
+
+2. **Cron Job** - Daily sync for upcoming program days
+   - `/api/cron/programs-daily-sync`
+
+3. **Enrollment** - When user enrolls in program (initial task sync)
+   - Handled by enrollment creation logic
+
+4. **Sync from Template** - Manual template sync
+   - `POST /api/instances/[id]/sync-template`
+
+**⛔ NEVER add lazy sync on read (e.g., GET endpoints should NOT sync tasks)**
+
+**Multi-tenancy requirement:** All task queries and operations MUST include `organizationId` filter.
+Tasks for client A in org 1 are completely separate from org 2.
+
+**Utility functions:**
+- `getUserValidInstanceIds(userId, organizationId?)` - Get valid instance IDs for filtering orphaned tasks
+- `filterTasksByValidInstances(tasks, validInstanceIds)` - Filter tasks to exclude orphaned ones
+
 ### Common Patterns
 
 **Authenticated API route:**

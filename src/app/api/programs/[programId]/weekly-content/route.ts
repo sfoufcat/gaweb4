@@ -7,90 +7,6 @@ import type { ProgramWeek, ProgramTaskTemplate, ProgramHabitTemplate, UnifiedEve
 import type { DiscoverCourse } from '@/types/discover';
 
 /**
- * Syncs tasks from instance to user's tasks collection.
- * Used after migration to ensure Daily Focus shows correct tasks.
- */
-async function syncMigratedTasksToUser(
-  instanceId: string,
-  userId: string,
-  days: ProgramInstanceDay[],
-  organizationId: string | undefined
-): Promise<void> {
-  const batch = adminDb.batch();
-  const now = new Date().toISOString();
-  let changes = 0;
-
-  for (const day of days) {
-    if (!day.calendarDate || !day.tasks?.length) continue;
-
-    const globalDayIndex = day.globalDayIndex;
-
-    // Get existing tasks for this instance + day + user
-    const existingTasksQuery = await adminDb.collection('tasks')
-      .where('userId', '==', userId)
-      .where('instanceId', '==', instanceId)
-      .where('dayIndex', '==', globalDayIndex)
-      .get();
-
-    const existingTasksByInstanceTaskId = new Map<string, string>();
-    for (const doc of existingTasksQuery.docs) {
-      const data = doc.data();
-      if (data.instanceTaskId) {
-        existingTasksByInstanceTaskId.set(data.instanceTaskId, doc.id);
-      }
-    }
-
-    // Create or update tasks
-    for (const task of day.tasks) {
-      const existingTaskId = existingTasksByInstanceTaskId.get(task.id);
-
-      if (existingTaskId) {
-        // Update existing task
-        const taskRef = adminDb.collection('tasks').doc(existingTaskId);
-        batch.update(taskRef, {
-          label: task.label,
-          title: task.label,
-          date: day.calendarDate,
-          updatedAt: now,
-        });
-        changes++;
-      } else {
-        // Create new task
-        const taskRef = adminDb.collection('tasks').doc();
-        batch.set(taskRef, {
-          userId,
-          instanceId,
-          instanceTaskId: task.id,
-          label: task.label,
-          title: task.label,
-          isPrimary: task.isPrimary,
-          type: task.type || 'task',
-          source: 'program',
-          sourceType: 'program',
-          listType: task.isPrimary ? 'focus' : 'backlog',
-          status: 'pending',
-          order: 0,
-          isPrivate: false,
-          dayIndex: globalDayIndex,
-          date: day.calendarDate,
-          completed: false,
-          completedAt: null,
-          createdAt: now,
-          updatedAt: now,
-          ...(organizationId && { organizationId }),
-        });
-        changes++;
-      }
-    }
-  }
-
-  if (changes > 0) {
-    await batch.commit();
-    console.log(`[WEEKLY_CONTENT] Synced ${changes} tasks to user's tasks collection`);
-  }
-}
-
-/**
  * Helper to convert task template to instance task
  */
 function toInstanceTask(task: ProgramTaskTemplate): ProgramInstanceDay['tasks'][0] {
@@ -460,18 +376,12 @@ export async function GET(
               updatedAt: new Date().toISOString()
             });
             console.log(`[WEEKLY_CONTENT] SYNC: Persisted updates to instance ${instanceDoc.id}`);
-
-            // Also sync tasks to user's tasks collection for Daily Focus
-            try {
-              await syncMigratedTasksToUser(
-                instanceDoc.id,
-                userId,
-                migratedDays,
-                organizationId || undefined
-              );
-            } catch (syncError) {
-              console.error('[WEEKLY_CONTENT] Task sync error (non-fatal):', syncError);
-            }
+            // NOTE: Task sync to user's tasks collection happens via:
+            // 1. Coach saving week content (distributeTasksNow)
+            // 2. Cron job for daily tasks
+            // 3. Enrollment creation
+            // 4. Sync-template endpoint
+            // NOT on client read - that would be wrong
           }
         }
 

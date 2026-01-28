@@ -1384,6 +1384,7 @@ export interface TemplateSyncOptions {
   syncNotes?: boolean;          // Sync notes array
   syncHabits?: boolean;         // Sync weeklyHabits
   syncPrompt?: boolean;         // Sync weeklyPrompt
+  syncResources?: boolean;      // Sync resourceAssignments and linkedXxxIds
   preserveClientLinks?: boolean;  // Keep client's linkedSummaryIds/linkedCallEventIds
   preserveManualNotes?: boolean;  // Keep client's manualNotes
   preserveRecordings?: boolean;   // Keep client's coachRecordingUrl/Notes

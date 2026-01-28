@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const allDates = searchParams.get('allDates') === 'true';
 
     // Get user's valid instance IDs
-    const validInstanceIds = await getUserValidInstanceIds(userId);
+    const validInstanceIds = await getUserValidInstanceIds(userId, undefined);
 
     // Get all tasks with instanceId
     let query = adminDb
@@ -88,7 +88,7 @@ export async function DELETE(request: NextRequest) {
     const allDates = searchParams.get('allDates') === 'true';
 
     // Get user's valid instance IDs
-    const validInstanceIds = await getUserValidInstanceIds(userId);
+    const validInstanceIds = await getUserValidInstanceIds(userId, undefined);
 
     // Get all tasks with instanceId
     let query = adminDb

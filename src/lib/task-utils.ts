@@ -14,43 +14,52 @@ import { adminDb } from '@/lib/firebase-admin';
  * This prevents orphaned tasks from old/deleted instances from appearing.
  *
  * @param userId - The user's ID
+ * @param organizationId - Optional organization ID to filter enrollments by org
  * @returns Set of valid instance IDs
  */
-export async function getUserValidInstanceIds(userId: string): Promise<Set<string>> {
+export async function getUserValidInstanceIds(
+  userId: string,
+  organizationId?: string
+): Promise<Set<string>> {
   const userInstanceIds = new Set<string>();
 
-  // Get user's active enrollments
-  const enrollmentsSnapshot = await adminDb
+  // Get user's active/upcoming enrollments (filtered by org if provided)
+  // Include both 'active' and 'upcoming' to support cohorts that haven't started yet
+  let enrollmentsQuery = adminDb
     .collection('program_enrollments')
     .where('userId', '==', userId)
-    .where('status', '==', 'active')
-    .get();
+    .where('status', 'in', ['active', 'upcoming']);
+
+  if (organizationId) {
+    enrollmentsQuery = enrollmentsQuery.where('organizationId', '==', organizationId);
+  }
+
+  const enrollmentsSnapshot = await enrollmentsQuery.get();
 
   for (const doc of enrollmentsSnapshot.docs) {
     const enrollment = doc.data();
     const enrollmentId = doc.id;
 
-    // Individual enrollment instance
-    const indivDoc = await adminDb
+    // Individual enrollment instance - get ALL instances for this enrollment
+    const indivDocs = await adminDb
       .collection('program_instances')
       .where('enrollmentId', '==', enrollmentId)
       .where('type', '==', 'individual')
-      .limit(1)
       .get();
-    if (!indivDoc.empty) {
-      userInstanceIds.add(indivDoc.docs[0].id);
+    for (const doc of indivDocs.docs) {
+      userInstanceIds.add(doc.id);
     }
 
-    // Cohort instance
+    // Cohort instance - get ALL instances for this cohort (there might be duplicates from migrations)
+    // Including all ensures tasks from any valid instance are shown
     if (enrollment.cohortId) {
-      const cohortDoc = await adminDb
+      const cohortDocs = await adminDb
         .collection('program_instances')
         .where('cohortId', '==', enrollment.cohortId)
         .where('type', '==', 'cohort')
-        .limit(1)
         .get();
-      if (!cohortDoc.empty) {
-        userInstanceIds.add(cohortDoc.docs[0].id);
+      for (const doc of cohortDocs.docs) {
+        userInstanceIds.add(doc.id);
       }
     }
   }

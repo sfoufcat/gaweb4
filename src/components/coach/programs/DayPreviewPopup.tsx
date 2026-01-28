@@ -15,7 +15,7 @@ import {
   CheckCircle2,
   Clock,
   Video,
-  FileQuestion,
+  ClipboardList,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type {
@@ -572,7 +572,7 @@ export function DayPreviewPopup({
                           key={assignment.id}
                           className="flex items-center gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
                         >
-                          <FileQuestion className="w-4 h-4 text-pink-500 flex-shrink-0" />
+                          <ClipboardList className="w-4 h-4 text-pink-500 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                               {assignment.title || 'Form'}

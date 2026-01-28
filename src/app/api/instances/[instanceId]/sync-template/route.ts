@@ -489,6 +489,21 @@ export async function POST(
       distribution?: string;
       startDayIndex?: number;
       endDayIndex?: number;
+      // Resource assignments
+      resourceAssignments?: Array<{
+        id: string;
+        resourceType: 'course' | 'article' | 'download' | 'link' | 'questionnaire' | 'video';
+        resourceId: string;
+        dayTag: 'week' | 'daily' | 'spread' | number | number[];
+        title?: string;
+        order?: number;
+        lessonDayMapping?: Record<string, number>;
+      }>;
+      linkedArticleIds?: string[];
+      linkedDownloadIds?: string[];
+      linkedLinkIds?: string[];
+      linkedCourseIds?: string[];
+      linkedQuestionnaireIds?: string[];
     }> = program.weeks || [];
 
     if (!templateWeeks.length) {
@@ -623,6 +638,23 @@ export async function POST(
         syncedWeek.notes = templateWeek.notes;
       } else if (existingWeek) {
         syncedWeek.notes = existingWeek.notes;
+      }
+
+      // Sync resourceAssignments (courses, articles, downloads, links, questionnaires, videos)
+      if (syncOptions.syncResources !== false) {
+        syncedWeek.resourceAssignments = templateWeek.resourceAssignments || [];
+        syncedWeek.linkedArticleIds = templateWeek.linkedArticleIds || [];
+        syncedWeek.linkedDownloadIds = templateWeek.linkedDownloadIds || [];
+        syncedWeek.linkedLinkIds = templateWeek.linkedLinkIds || [];
+        syncedWeek.linkedCourseIds = templateWeek.linkedCourseIds || [];
+        syncedWeek.linkedQuestionnaireIds = templateWeek.linkedQuestionnaireIds || [];
+      } else if (existingWeek) {
+        syncedWeek.resourceAssignments = existingWeek.resourceAssignments;
+        syncedWeek.linkedArticleIds = existingWeek.linkedArticleIds;
+        syncedWeek.linkedDownloadIds = existingWeek.linkedDownloadIds;
+        syncedWeek.linkedLinkIds = existingWeek.linkedLinkIds;
+        syncedWeek.linkedCourseIds = existingWeek.linkedCourseIds;
+        syncedWeek.linkedQuestionnaireIds = existingWeek.linkedQuestionnaireIds;
       }
 
       // Always preserve cohort/client-specific content unless explicitly overwritten
