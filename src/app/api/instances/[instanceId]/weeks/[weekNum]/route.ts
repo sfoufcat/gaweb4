@@ -850,6 +850,58 @@ export async function PATCH(
       }
     }
 
+    // Sync resourceAssignments from cohort instance to all individual instances
+    // This ensures users see resources immediately after coach saves them
+    if (data?.type === 'cohort' && data?.cohortId && body.resourceAssignments !== undefined) {
+      console.log(`[INSTANCE_WEEK_PATCH] Syncing resourceAssignments to individual instances for cohort ${data.cohortId}`);
+
+      // Find all individual instances for enrollments in this cohort
+      const enrollmentsSnap = await adminDb.collection('program_enrollments')
+        .where('cohortId', '==', data.cohortId)
+        .where('status', 'in', ['active', 'upcoming', 'completed'])
+        .get();
+
+      const enrollmentIds = enrollmentsSnap.docs.map(doc => doc.id);
+
+      if (enrollmentIds.length > 0) {
+        // Find individual instances for these enrollments
+        // Note: Firestore 'in' query has a limit of 30, so we batch if needed
+        const batchSize = 30;
+        for (let i = 0; i < enrollmentIds.length; i += batchSize) {
+          const batchIds = enrollmentIds.slice(i, i + batchSize);
+          const individualInstancesSnap = await adminDb.collection('program_instances')
+            .where('enrollmentId', 'in', batchIds)
+            .where('type', '==', 'individual')
+            .get();
+
+          await Promise.all(individualInstancesSnap.docs.map(async (indivDoc) => {
+            const indivData = indivDoc.data();
+            const indivWeeks = indivData.weeks || [];
+            const indivWeekIndex = indivWeeks.findIndex((w: { weekNumber: number }) => w.weekNumber === weekNumber);
+
+            if (indivWeekIndex !== -1) {
+              // Sync resourceAssignments and linked resource IDs to individual instance
+              indivWeeks[indivWeekIndex] = {
+                ...indivWeeks[indivWeekIndex],
+                resourceAssignments: updatedWeek.resourceAssignments || [],
+                linkedArticleIds: updatedWeek.linkedArticleIds || [],
+                linkedDownloadIds: updatedWeek.linkedDownloadIds || [],
+                linkedLinkIds: updatedWeek.linkedLinkIds || [],
+                linkedCourseIds: updatedWeek.linkedCourseIds || [],
+                linkedQuestionnaireIds: updatedWeek.linkedQuestionnaireIds || [],
+              };
+
+              await indivDoc.ref.update({
+                weeks: indivWeeks,
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+              console.log(`[INSTANCE_WEEK_PATCH] Synced resourceAssignments to individual instance ${indivDoc.id}`);
+            }
+          }));
+        }
+      }
+    }
+
     // Fetch the updated week to return
     const refreshedDoc = await adminDb.collection('program_instances').doc(instanceId).get();
     const refreshedWeeks: ProgramInstanceWeek[] = refreshedDoc.data()?.weeks || [];

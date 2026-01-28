@@ -232,15 +232,13 @@ export async function GET(
         const batch = userIds.slice(i, i + batchSize);
 
         // Build query with instanceId filter when available
-        let progressQuery = adminDb
+        const progressQuery = adminDb
           .collection('content_progress')
           .where('userId', 'in', batch)
           .where('organizationId', '==', organizationId);
 
-        // Filter by instanceId to show only progress for THIS program
-        if (instanceId) {
-          progressQuery = progressQuery.where('instanceId', '==', instanceId);
-        }
+        // Note: content scoping happens later via uniqueResources (from instance weeks)
+        // which filters by contentId during completion calculation
 
         const progressSnapshot = await progressQuery.get();
 

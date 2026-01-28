@@ -78,9 +78,32 @@ function useProgramResources(enrollment: ProgramEnrollmentWithDetails | null) {
 
     const { week, days, resourceAssignments, courses, articles, downloads, links, questionnaires, videos } = data;
 
-    // Get today's day index
+    // Get today's day index within the week (1-7)
+    // First try to find a day marked as today
     const todayDay = days?.find((d) => d.isToday);
-    const todayDayOfWeek = todayDay?.dayIndex ?? 1;
+    let todayDayOfWeek = todayDay?.dayIndex ?? 0;
+
+    // If no day is marked as today, calculate based on calendar dates
+    if (!todayDayOfWeek && days?.length && days[0]?.calendarDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+
+      // Find which day matches today's date
+      for (const day of days) {
+        if (day.calendarDate === todayStr) {
+          todayDayOfWeek = day.dayIndex;
+          break;
+        }
+      }
+
+      // If still not found, use day 1 as fallback
+      if (!todayDayOfWeek) {
+        todayDayOfWeek = 1;
+      }
+    } else if (!todayDayOfWeek) {
+      todayDayOfWeek = 1;
+    }
 
     // Filter resources for today
     const todayResources = week

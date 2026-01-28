@@ -188,6 +188,64 @@ export async function PATCH(
 
     console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Updated week ${weekId} in program ${programId}`);
 
+    // Sync updated week content to all instances of this program
+    // This ensures clients see the changes immediately without manual sync
+    const instancesSnapshot = await adminDb.collection('program_instances')
+      .where('programId', '==', programId)
+      .where('status', 'in', ['active', 'upcoming'])
+      .get();
+
+    if (!instancesSnapshot.empty) {
+      const weekNumber = updatedWeek.weekNumber;
+      console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Syncing week ${weekNumber} to ${instancesSnapshot.docs.length} instances`);
+
+      await Promise.all(instancesSnapshot.docs.map(async (instanceDoc) => {
+        const instanceData = instanceDoc.data();
+        const instanceWeeks = instanceData.weeks || [];
+        const instanceWeekIndex = instanceWeeks.findIndex((w: { weekNumber: number }) => w.weekNumber === weekNumber);
+
+        if (instanceWeekIndex !== -1) {
+          // Update the week in the instance with template content
+          // Preserve instance-specific fields (recordings, manual notes, etc.)
+          const existingInstanceWeek = instanceWeeks[instanceWeekIndex];
+          instanceWeeks[instanceWeekIndex] = {
+            ...existingInstanceWeek,
+            // Sync from template
+            name: updatedWeek.name,
+            theme: updatedWeek.theme,
+            description: updatedWeek.description,
+            weeklyPrompt: updatedWeek.weeklyPrompt,
+            weeklyTasks: updatedWeek.weeklyTasks,
+            weeklyHabits: updatedWeek.weeklyHabits,
+            currentFocus: updatedWeek.currentFocus,
+            notes: updatedWeek.notes,
+            distribution: updatedWeek.distribution,
+            // Sync resources
+            resourceAssignments: updatedWeek.resourceAssignments || [],
+            linkedArticleIds: updatedWeek.linkedArticleIds || [],
+            linkedDownloadIds: updatedWeek.linkedDownloadIds || [],
+            linkedLinkIds: updatedWeek.linkedLinkIds || [],
+            linkedCourseIds: updatedWeek.linkedCourseIds || [],
+            linkedQuestionnaireIds: updatedWeek.linkedQuestionnaireIds || [],
+            courseAssignments: updatedWeek.courseAssignments || [],
+            // Keep instance-specific fields
+            coachRecordingUrl: existingInstanceWeek.coachRecordingUrl,
+            coachRecordingNotes: existingInstanceWeek.coachRecordingNotes,
+            manualNotes: existingInstanceWeek.manualNotes,
+            linkedSummaryIds: existingInstanceWeek.linkedSummaryIds,
+            linkedCallEventIds: existingInstanceWeek.linkedCallEventIds,
+            days: existingInstanceWeek.days, // Preserve distributed tasks
+          };
+
+          await instanceDoc.ref.update({
+            weeks: instanceWeeks,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+          console.log(`[COACH_ORG_PROGRAM_WEEK_PATCH] Synced week ${weekNumber} to instance ${instanceDoc.id}`);
+        }
+      }));
+    }
+
     // Return the updated week with full context
     const responseWeek: ProgramWeek = {
       ...updatedWeek,
@@ -198,6 +256,7 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       week: responseWeek,
+      instancesUpdated: instancesSnapshot.docs.length,
       message: 'Week updated successfully',
     });
   } catch (error) {
