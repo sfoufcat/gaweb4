@@ -16,6 +16,8 @@ export interface UseProgramWeeklyContentReturn {
   articles: WeeklyContentResponse['articles'];
   downloads: WeeklyContentResponse['downloads'];
   links: WeeklyContentResponse['links'];
+  questionnaires: WeeklyContentResponse['questionnaires'];
+  videos: WeeklyContentResponse['videos'];
   summaries: WeeklyContentResponse['summaries'];
   isLoading: boolean;
   error: string | null;
@@ -93,6 +95,8 @@ export function useProgramWeeklyContent(
       resourceAssignments: [],
       downloads: [],
       links: [],
+      questionnaires: [],
+      videos: [],
       summaries: [],
       success: true,
     } as WeeklyContentResponse;
@@ -130,6 +134,8 @@ export function useProgramWeeklyContent(
       articles: demoContent.articles,
       downloads: demoContent.downloads,
       links: demoContent.links,
+      questionnaires: demoContent.questionnaires,
+      videos: demoContent.videos,
       summaries: demoContent.summaries,
       isLoading: false,
       error: null,
@@ -147,6 +153,8 @@ export function useProgramWeeklyContent(
     articles: data?.articles ?? [],
     downloads: data?.downloads ?? [],
     links: data?.links ?? [],
+    questionnaires: data?.questionnaires ?? [],
+    videos: data?.videos ?? [],
     summaries: data?.summaries ?? [],
     isLoading: isLoading && !data,
     error: error?.message ?? null,

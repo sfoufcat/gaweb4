@@ -171,6 +171,8 @@ export function ProgramDetailView({
     articles: weeklyArticles,
     downloads: weeklyDownloads,
     links: weeklyLinks,
+    questionnaires: weeklyQuestionnaires,
+    videos: weeklyVideos,
     isLoading: weeklyContentLoading,
     mutate: mutateWeeklyContent,
   } = useProgramWeeklyContent(program.id);
@@ -746,8 +748,10 @@ export function ProgramDetailView({
         const displayDownloads = weeklyDownloads.length > 0 ? weeklyDownloads : downloads;
         const displayLinks = weeklyLinks.length > 0 ? weeklyLinks : links;
         const displayEvents = weeklyEvents;
+        const displayQuestionnaires = weeklyQuestionnaires;
+        const displayVideos = weeklyVideos;
 
-        const hasAnyResources = displayCourses.length > 0 || displayArticles.length > 0 || displayDownloads.length > 0 || displayLinks.length > 0 || displayEvents.length > 0;
+        const hasAnyResources = displayCourses.length > 0 || displayArticles.length > 0 || displayDownloads.length > 0 || displayLinks.length > 0 || displayEvents.length > 0 || displayQuestionnaires.length > 0 || displayVideos.length > 0;
 
         if (!hasAnyResources) return null;
 
@@ -759,6 +763,8 @@ export function ProgramDetailView({
               downloads={displayDownloads}
               links={displayLinks}
               events={displayEvents}
+              questionnaires={displayQuestionnaires}
+              videos={displayVideos}
               enrollmentId={enrollment?.id}
             />
           </div>

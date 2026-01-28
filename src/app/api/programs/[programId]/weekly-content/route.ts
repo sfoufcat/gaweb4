@@ -135,6 +135,8 @@ export interface WeeklyContentResponse {
   articles: DiscoverArticle[];
   downloads: Array<{ id: string; title: string; fileUrl: string; fileType?: string; }>;
   links: Array<{ id: string; title: string; url: string; description?: string; }>;
+  questionnaires: Array<{ id: string; title: string; slug?: string; }>;
+  videos: Array<{ id: string; title: string; thumbnailUrl?: string; }>;
   summaries: CallSummary[];
 }
 
@@ -605,6 +607,7 @@ export async function GET(
     const allLinkedCourseIds = new Set<string>();
     const allLinkedSummaryIds = new Set<string>();
     const allLinkedQuestionnaireIds = new Set<string>();
+    const allLinkedVideoIds = new Set<string>();
 
     // First, collect week-level resources
     weekLinkedCallEventIds.forEach(id => allLinkedEventIds.add(id));
@@ -625,6 +628,10 @@ export async function GET(
         allLinkedDownloadIds.add(assignment.resourceId);
       } else if (assignment.resourceType === 'link') {
         allLinkedLinkIds.add(assignment.resourceId);
+      } else if (assignment.resourceType === 'questionnaire') {
+        allLinkedQuestionnaireIds.add(assignment.resourceId);
+      } else if (assignment.resourceType === 'video') {
+        allLinkedVideoIds.add(assignment.resourceId);
       }
     }
 
@@ -640,12 +647,14 @@ export async function GET(
     }
 
     // Fetch linked resources
-    const [events, courses, articles, downloads, links, summaries] = await Promise.all([
+    const [events, courses, articles, downloads, links, questionnaires, videos, summaries] = await Promise.all([
       fetchDocsByIds<UnifiedEvent>('events', Array.from(allLinkedEventIds)),
       fetchDocsByIds<DiscoverCourse>('courses', Array.from(allLinkedCourseIds)),
       fetchDocsByIds<DiscoverArticle>('articles', Array.from(allLinkedArticleIds)),
       fetchDocsByIds<{ id: string; title: string; fileUrl: string; fileType?: string; }>('downloads', Array.from(allLinkedDownloadIds)),
       fetchDocsByIds<{ id: string; title: string; url: string; description?: string; }>('links', Array.from(allLinkedLinkIds)),
+      fetchDocsByIds<{ id: string; title: string; slug?: string; }>('questionnaires', Array.from(allLinkedQuestionnaireIds)),
+      fetchDocsByIds<{ id: string; title: string; thumbnailUrl?: string; }>('videos', Array.from(allLinkedVideoIds)),
       fetchDocsByIds<CallSummary>('call_summaries', Array.from(allLinkedSummaryIds)),
     ]);
 
@@ -659,6 +668,8 @@ export async function GET(
       articles,
       downloads,
       links,
+      questionnaires,
+      videos,
       summaries,
     } as WeeklyContentResponse);
 

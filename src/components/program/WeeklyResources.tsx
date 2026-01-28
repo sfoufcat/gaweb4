@@ -10,6 +10,8 @@ import {
   Link2,
   ExternalLink,
   Video,
+  ClipboardList,
+  PlayCircle,
 } from 'lucide-react';
 import type { WeeklyContentResponse } from '@/hooks/useProgramWeeklyContent';
 
@@ -19,10 +21,12 @@ interface WeeklyResourcesProps {
   downloads: WeeklyContentResponse['downloads'];
   links: WeeklyContentResponse['links'];
   events: WeeklyContentResponse['events'];
+  questionnaires: WeeklyContentResponse['questionnaires'];
+  videos: WeeklyContentResponse['videos'];
   enrollmentId?: string;
 }
 
-type ResourceType = 'course' | 'article' | 'download' | 'link' | 'event';
+type ResourceType = 'course' | 'article' | 'download' | 'link' | 'event' | 'questionnaire' | 'video';
 
 interface ResourceItem {
   id: string;
@@ -51,6 +55,8 @@ export function WeeklyResources({
   downloads,
   links,
   events,
+  questionnaires,
+  videos,
   enrollmentId,
 }: WeeklyResourcesProps) {
   const hasContent =
@@ -58,7 +64,9 @@ export function WeeklyResources({
     articles.length > 0 ||
     downloads.length > 0 ||
     links.length > 0 ||
-    events.length > 0;
+    events.length > 0 ||
+    questionnaires.length > 0 ||
+    videos.length > 0;
 
   if (!hasContent) return null;
 
@@ -86,6 +94,19 @@ export function WeeklyResources({
       title: event.title,
       href: `/discover/events/${event.id}`,
       subtitle: event.date ? new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (event.startTime ? ` · ${event.startTime}` : '') : undefined,
+    })),
+    ...videos.map(video => ({
+      id: video.id,
+      type: 'video' as ResourceType,
+      title: video.title,
+      href: `/discover/videos/${video.id}`,
+      imageUrl: video.thumbnailUrl,
+    })),
+    ...questionnaires.map(q => ({
+      id: q.id,
+      type: 'questionnaire' as ResourceType,
+      title: q.title,
+      href: `/q/${q.slug || q.id}`,
     })),
   ];
 
@@ -146,6 +167,20 @@ export function WeeklyResources({
           bgColor: 'bg-slate-50 dark:bg-slate-900/20',
           textColor: 'text-slate-600 dark:text-slate-400',
         };
+      case 'questionnaire':
+        return {
+          label: 'Questionnaire',
+          icon: ClipboardList,
+          bgColor: 'bg-pink-50 dark:bg-pink-900/20',
+          textColor: 'text-pink-600 dark:text-pink-400',
+        };
+      case 'video':
+        return {
+          label: 'Video',
+          icon: PlayCircle,
+          bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
+          textColor: 'text-indigo-600 dark:text-indigo-400',
+        };
     }
   };
 
@@ -171,7 +206,7 @@ export function WeeklyResources({
               <Link
                 key={`${resource.type}-${resource.id}`}
                 href={resource.href}
-                className="flex-shrink-0 w-[200px] bg-white dark:bg-[#171b22] rounded-[16px] overflow-hidden hover:shadow-lg dark:hover:shadow-black/30 transition-shadow"
+                className="flex-shrink-0 w-[200px] bg-white dark:bg-[#171b22] rounded-[16px] overflow-hidden shadow-sm hover:shadow-md transition-shadow"
               >
                 {/* Cover Image or Icon Placeholder */}
                 <div className={`relative h-[100px] w-full ${config.bgColor}`}>
@@ -188,24 +223,22 @@ export function WeeklyResources({
                       <Icon className={`w-8 h-8 ${config.textColor} opacity-50`} />
                     </div>
                   )}
-                  {/* Type Badge */}
-                  <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${config.bgColor} backdrop-blur-sm`}>
-                    <span className={`font-sans text-[10px] font-semibold ${config.textColor} uppercase tracking-wide`}>
-                      {config.label}
-                    </span>
-                  </div>
                 </div>
 
                 {/* Content */}
                 <div className="p-3">
+                  {/* Type label - styled like schedule resources header */}
+                  <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">
+                    {config.label}
+                  </span>
+                  <p className="font-albert text-[15px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.3px] leading-[1.3] line-clamp-2 mt-1">
+                    {resource.title}
+                  </p>
                   {resource.subtitle && (
-                    <span className="font-sans text-[11px] text-text-muted dark:text-[#7d8190] block mb-1">
+                    <span className="font-sans text-[11px] text-text-muted dark:text-[#7d8190] block mt-0.5">
                       {resource.subtitle}
                     </span>
                   )}
-                  <p className="font-albert text-[15px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.3px] leading-[1.3] line-clamp-2">
-                    {resource.title}
-                  </p>
                 </div>
               </Link>
             );
