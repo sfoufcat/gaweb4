@@ -2014,7 +2014,7 @@ export function DashboardPage() {
       </div>
 
       {/* Resources & Sessions Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-6 mt-10">
         <DashboardResourcesSection
           enrollments={[...programEnrollments.active, ...programEnrollments.upcoming]}
           isLoading={enrollmentsLoading}
@@ -2023,7 +2023,7 @@ export function DashboardPage() {
       </div>
 
       {/* My Program Section - Horizontal Carousel */}
-      <div className="mt-8">
+      <div className="mt-10">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px]">
             My Program

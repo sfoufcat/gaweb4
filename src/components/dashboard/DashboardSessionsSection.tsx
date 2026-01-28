@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Calendar, Clock, Video } from 'lucide-react';
 import { useUpcomingEvents } from '@/hooks/useEvents';
+import { CalendarModal } from '@/components/scheduling/CalendarModal';
 import type { UnifiedEvent } from '@/types';
 
 interface DashboardSessionsSectionProps {
@@ -103,6 +105,7 @@ function SessionCard({ event, isLast }: { event: UnifiedEvent; isLast: boolean }
 export function DashboardSessionsSection({
   maxDisplay = 4,
 }: DashboardSessionsSectionProps) {
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const { events, loading } = useUpcomingEvents(maxDisplay + 2);
 
   // Filter to truly upcoming events
@@ -159,12 +162,12 @@ export function DashboardSessionsSection({
           <p className="font-albert text-[15px] text-text-secondary leading-[1.4]">
             No upcoming sessions
           </p>
-          <Link
-            href="/calendar"
+          <button
+            onClick={() => setIsCalendarOpen(true)}
             className="font-sans text-[13px] text-brand-accent hover:opacity-80 transition-opacity mt-2"
           >
             View calendar
-          </Link>
+          </button>
         </div>
       ) : (
         <div className="bg-white dark:bg-surface rounded-[20px] p-2">
@@ -177,6 +180,12 @@ export function DashboardSessionsSection({
           ))}
         </div>
       )}
+
+      {/* Calendar Modal */}
+      <CalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
+      />
     </div>
   );
 }

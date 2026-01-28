@@ -79,29 +79,19 @@ function redistributeTasksForPartialWeek(
       }
     }
   } else {
-    // 'spread'
+    // 'spread' - use same formula as distributeTasksToDays for consistency
+    // Formula: offset = round(i * (activeRange - 1) / (numTasks - 1))
+    // This maps tasks 0..N-1 to days 0..R-1, allowing multiple tasks per day
     const numTasks = weeklyTasks.length;
-    if (numTasks >= activeRange) {
-      let taskIdx = 0;
-      for (let d = activeStartIdx; d <= activeEndIdx; d++) {
-        const remainingDays = activeEndIdx - d + 1;
-        const remainingTasks = numTasks - taskIdx;
-        const count = Math.ceil(remainingTasks / remainingDays);
-        for (let j = 0; j < count && taskIdx < numTasks; j++) {
-          updatedDays[d].tasks.push(toInstanceTask(weeklyTasks[taskIdx++]));
-        }
+    for (let i = 0; i < numTasks; i++) {
+      let targetDayIdx: number;
+      if (numTasks === 1) {
+        targetDayIdx = activeStartIdx;
+      } else {
+        const offset = Math.round(i * (activeRange - 1) / (numTasks - 1));
+        targetDayIdx = activeStartIdx + offset;
       }
-    } else {
-      for (let i = 0; i < numTasks; i++) {
-        let targetDayIdx: number;
-        if (numTasks === 1) {
-          targetDayIdx = activeStartIdx;
-        } else {
-          const offset = Math.round(i * (activeRange - 1) / (numTasks - 1));
-          targetDayIdx = activeStartIdx + offset;
-        }
-        updatedDays[targetDayIdx].tasks.push(toInstanceTask(weeklyTasks[i]));
-      }
+      updatedDays[targetDayIdx].tasks.push(toInstanceTask(weeklyTasks[i]));
     }
   }
 

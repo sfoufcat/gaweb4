@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import useSWR from 'swr';
 import {
   BookOpen,
@@ -11,8 +12,6 @@ import {
   ClipboardList,
   PlayCircle,
 } from 'lucide-react';
-import { getResourcesForDay } from '@/lib/program-utils-client';
-import type { WeekResourceAssignment } from '@/types';
 import type { ProgramEnrollmentWithDetails } from '@/hooks/useDashboard';
 import type { WeeklyContentResponse } from '@/hooks/useProgramWeeklyContent';
 import { useDemoMode } from '@/contexts/DemoModeContext';
@@ -30,6 +29,7 @@ interface ResolvedResource {
   href: string;
   external?: boolean;
   programId: string;
+  imageUrl?: string;
 }
 
 const RESOURCE_ICONS = {
@@ -76,139 +76,86 @@ function useProgramResources(enrollment: ProgramEnrollmentWithDetails | null) {
   return useMemo(() => {
     if (!data || !enrollment) return { resources: [], isLoading };
 
-    const { week, days, resourceAssignments, courses, articles, downloads, links, questionnaires, videos } = data;
+    const { courses, articles, downloads, links, questionnaires, videos } = data;
 
-    // Get today's day index within the week (1-7)
-    // First try to find a day marked as today
-    const todayDay = days?.find((d) => d.isToday);
-    let todayDayOfWeek = todayDay?.dayIndex ?? 0;
-
-    // If no day is marked as today, calculate based on calendar dates
-    if (!todayDayOfWeek && days?.length && days[0]?.calendarDate) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
-
-      // Find which day matches today's date
-      for (const day of days) {
-        if (day.calendarDate === todayStr) {
-          todayDayOfWeek = day.dayIndex;
-          break;
-        }
-      }
-
-      // If still not found, use day 1 as fallback
-      if (!todayDayOfWeek) {
-        todayDayOfWeek = 1;
-      }
-    } else if (!todayDayOfWeek) {
-      todayDayOfWeek = 1;
-    }
-
-    // Filter resources for today
-    // resourceAssignments is a top-level field in the API response, not dependent on week
-    const todayResources = getResourcesForDay({ resourceAssignments: resourceAssignments || [] }, todayDayOfWeek);
-
-    // Resolve resources to display data
+    // Directly use all week resources (same as ProgramDetailView)
+    // This ensures dashboard shows same resources as program page
     const resolvedResources: ResolvedResource[] = [];
 
-    todayResources.forEach((assignment: WeekResourceAssignment) => {
-      const type = assignment.resourceType;
-      let resource: ResolvedResource | null = null;
+    // Add courses
+    courses?.forEach((course) => {
+      resolvedResources.push({
+        id: course.id,
+        type: 'course',
+        title: course.title,
+        subtitle: course.category,
+        href: `/discover/courses/${course.id}?enrollmentId=${enrollment.id}`,
+        programId: enrollment.programId,
+        imageUrl: course.coverImageUrl,
+      });
+    });
 
-      switch (type) {
-        case 'course': {
-          const course = courses?.find((c) => c.id === assignment.resourceId);
-          if (course) {
-            resource = {
-              id: assignment.resourceId,
-              type: 'course',
-              title: assignment.title || course.title,
-              subtitle: course.category,
-              href: `/discover/courses/${course.id}?enrollmentId=${enrollment.id}`,
-              programId: enrollment.programId,
-            };
-          }
-          break;
-        }
-        case 'article': {
-          const article = articles?.find((a) => a.id === assignment.resourceId);
-          if (article) {
-            resource = {
-              id: assignment.resourceId,
-              type: 'article',
-              title: assignment.title || article.title,
-              subtitle: article.readingTimeMinutes
-                ? `${article.readingTimeMinutes} min read`
-                : undefined,
-              href: `/discover/articles/${article.id}`,
-              programId: enrollment.programId,
-            };
-          }
-          break;
-        }
-        case 'download': {
-          const download = downloads?.find((d) => d.id === assignment.resourceId);
-          if (download) {
-            resource = {
-              id: assignment.resourceId,
-              type: 'download',
-              title: assignment.title || download.title,
-              subtitle: download.fileType?.toUpperCase(),
-              href: download.fileUrl,
-              external: true,
-              programId: enrollment.programId,
-            };
-          }
-          break;
-        }
-        case 'link': {
-          const link = links?.find((l) => l.id === assignment.resourceId);
-          if (link) {
-            resource = {
-              id: assignment.resourceId,
-              type: 'link',
-              title: assignment.title || link.title,
-              href: link.url,
-              external: true,
-              programId: enrollment.programId,
-            };
-          }
-          break;
-        }
-        case 'questionnaire': {
-          const questionnaire = questionnaires?.find(
-            (q) => q.id === assignment.resourceId
-          );
-          if (questionnaire) {
-            resource = {
-              id: assignment.resourceId,
-              type: 'questionnaire',
-              title: assignment.title || questionnaire.title,
-              href: `/q/${questionnaire.slug || questionnaire.id}`,
-              programId: enrollment.programId,
-            };
-          }
-          break;
-        }
-        case 'video': {
-          const video = videos?.find((v) => v.id === assignment.resourceId);
-          if (video) {
-            resource = {
-              id: assignment.resourceId,
-              type: 'video',
-              title: assignment.title || video.title,
-              href: `/discover/videos/${video.id}`,
-              programId: enrollment.programId,
-            };
-          }
-          break;
-        }
-      }
+    // Add articles
+    articles?.forEach((article) => {
+      resolvedResources.push({
+        id: article.id,
+        type: 'article',
+        title: article.title,
+        subtitle: article.readingTimeMinutes
+          ? `${article.readingTimeMinutes} min read`
+          : undefined,
+        href: `/discover/articles/${article.id}`,
+        programId: enrollment.programId,
+        imageUrl: article.coverImageUrl,
+      });
+    });
 
-      if (resource) {
-        resolvedResources.push(resource);
-      }
+    // Add questionnaires
+    questionnaires?.forEach((questionnaire) => {
+      resolvedResources.push({
+        id: questionnaire.id,
+        type: 'questionnaire',
+        title: questionnaire.title,
+        href: `/q/${questionnaire.slug || questionnaire.id}`,
+        programId: enrollment.programId,
+      });
+    });
+
+    // Add videos
+    videos?.forEach((video) => {
+      resolvedResources.push({
+        id: video.id,
+        type: 'video',
+        title: video.title,
+        href: `/discover/videos/${video.id}`,
+        programId: enrollment.programId,
+        imageUrl: video.thumbnailUrl,
+      });
+    });
+
+    // Add downloads
+    downloads?.forEach((download) => {
+      resolvedResources.push({
+        id: download.id,
+        type: 'download',
+        title: download.title,
+        subtitle: download.fileType?.toUpperCase(),
+        href: download.fileUrl,
+        external: true,
+        programId: enrollment.programId,
+      });
+    });
+
+    // Add links
+    links?.forEach((link) => {
+      resolvedResources.push({
+        id: link.id,
+        type: 'link',
+        title: link.title,
+        href: link.url,
+        external: true,
+        programId: enrollment.programId,
+      });
     });
 
     return { resources: resolvedResources, isLoading };
@@ -219,9 +166,9 @@ export function DashboardResourcesSection({
   enrollments,
   isLoading: enrollmentsLoading,
 }: DashboardResourcesSectionProps) {
-  // Only show active enrollments
+  // Show active and upcoming enrollments (both can have resources to show)
   const activeEnrollments = useMemo(
-    () => enrollments.filter((e) => e.status === 'active'),
+    () => enrollments.filter((e) => e.status === 'active' || e.status === 'upcoming'),
     [enrollments]
   );
 
@@ -304,7 +251,7 @@ export function DashboardResourcesSection({
           Your resources
         </h2>
         <Link
-          href="/programs"
+          href="/program"
           className="font-sans text-[12px] text-brand-accent hover:opacity-80 transition-opacity leading-[1.2]"
         >
           All
@@ -320,9 +267,21 @@ export function DashboardResourcesSection({
             <div className={`flex items-center gap-3 p-3 rounded-2xl hover:bg-[#f3f1ef] dark:hover:bg-[#181d28] transition-colors ${
               index < allResources.length - 1 ? 'border-b border-[#f3f1ef] dark:border-[#262b35]' : ''
             }`}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorClass}`}>
-                <Icon className="w-5 h-5" />
-              </div>
+              {resource.imageUrl ? (
+                <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0">
+                  <Image
+                    src={resource.imageUrl}
+                    alt={resource.title}
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorClass}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="font-albert text-[16px] font-medium text-text-primary tracking-[-0.3px] truncate">
                   {resource.title}

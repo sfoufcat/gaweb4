@@ -2496,17 +2496,21 @@ export function WeekEditor({
     }
 
     // Spread tasks evenly across ACTIVE days only
+    // IMPORTANT: This must match program-instances.ts distributeTasksToDays() calculation exactly.
+    // The formula: offset = round(taskIdx * (activeRange - 1) / (numTasks - 1))
+    // Maps task indices 0..N-1 to day indices 0..R-1, where multiple tasks can land on same day.
     if (tasksToSpread.length > 0 && activeRange > 0) {
-      for (let taskIdx = 0; taskIdx < tasksToSpread.length; taskIdx++) {
-        let targetDayIdx: number;
-        if (tasksToSpread.length === 1) {
-          targetDayIdx = activeStartIdx;
+      const numTasks = tasksToSpread.length;
+      for (let taskIdx = 0; taskIdx < numTasks; taskIdx++) {
+        let activeIdx: number;
+        if (numTasks === 1) {
+          activeIdx = 0;
         } else {
-          // Spread within active range
-          const offset = Math.round(taskIdx * (activeRange - 1) / (tasksToSpread.length - 1));
-          targetDayIdx = activeStartIdx + offset;
+          // Spread within active range - same formula as distributeTasksToDays
+          activeIdx = Math.round(taskIdx * (activeRange - 1) / (numTasks - 1));
         }
-        computedDays[targetDayIdx].tasks.push({ ...tasksToSpread[taskIdx], source: 'week' as const });
+        const calendarIdx = activeStartIdx + activeIdx;
+        computedDays[calendarIdx].tasks.push({ ...tasksToSpread[taskIdx], source: 'week' as const });
       }
     }
 
