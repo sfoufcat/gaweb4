@@ -153,6 +153,38 @@ function ContextStateSync({ stateRef, onSaveSuccess }: ContextStateSyncProps) {
   return null;
 }
 
+// Component that syncs full structure save options to context
+// This enables "save all weeks + modules" behavior when saving
+interface FullStructureSaveSyncProps {
+  programId: string | undefined;
+  viewContext: 'template' | 'cohort' | 'client';
+  clientContextId: string | undefined; // cohortId or enrollmentId
+  instanceId: string | null;
+}
+
+function FullStructureSaveSync({ programId, viewContext, clientContextId, instanceId }: FullStructureSaveSyncProps) {
+  const context = useProgramEditorOptional();
+
+  React.useEffect(() => {
+    if (!context?.setFullStructureSaveOptions || !programId) return;
+
+    // Enable full structure save for all views
+    context.setFullStructureSaveOptions({
+      programId,
+      viewContext,
+      clientContextId,
+      instanceId: instanceId || undefined,
+    });
+
+    // Cleanup: disable full structure save when unmounting
+    return () => {
+      context.setFullStructureSaveOptions(null);
+    };
+  }, [context, programId, viewContext, clientContextId, instanceId]);
+
+  return null;
+}
+
 // Component that renders the unsaved changes dialog for browser back/forward navigation
 // This dialog is triggered by the context's showUnsavedDialog state (set by popstate listener)
 function ContextUnsavedDialog() {
@@ -4998,6 +5030,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             <ProgramEditorProvider programId={selectedProgram?.id}>
               <ContextStateSync stateRef={editorContextRef} onSaveSuccess={handleSaveSuccess} />
               <ContextUnsavedDialog />
+              <FullStructureSaveSync
+                programId={selectedProgram?.id}
+                viewContext={
+                  selectedProgram?.type === 'group' && cohortViewContext.mode === 'cohort'
+                    ? 'cohort'
+                    : selectedProgram?.type === 'individual' && clientViewContext.mode === 'client'
+                      ? 'client'
+                      : 'template'
+                }
+                clientContextId={
+                  cohortViewContext.mode === 'cohort'
+                    ? cohortViewContext.cohortId
+                    : clientViewContext.mode === 'client'
+                      ? clientViewContext.enrollmentId
+                      : undefined
+                }
+                instanceId={instanceId}
+              />
               <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
                 <div className="flex flex-col lg:flex-row lg:items-start">
                   {/* Sidebar Navigation - glassmorphism style with constrained height */}

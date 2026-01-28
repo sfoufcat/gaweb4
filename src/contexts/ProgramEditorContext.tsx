@@ -43,6 +43,14 @@ export interface SaveResult {
   }>;
 }
 
+// Full structure save options
+export interface FullStructureSaveOptions {
+  programId: string;
+  viewContext: PendingViewContext;
+  clientContextId?: string; // cohortId or enrollmentId
+  instanceId?: string; // for cohort/client views
+}
+
 interface ProgramEditorContextType {
   // Current program being edited (for scoping changes)
   currentProgramId: string | null;
@@ -71,6 +79,10 @@ interface ProgramEditorContextType {
   requestNavigation: (navFn: () => void) => void;
   confirmNavigation: () => void;
   cancelNavigation: () => void;
+
+  // Full structure save config - when set, saveAllChanges will save entire structure
+  fullStructureSaveOptions: FullStructureSaveOptions | null;
+  setFullStructureSaveOptions: (options: FullStructureSaveOptions | null) => void;
 
   // Actions
   registerChange: (change: PendingChange) => void;
@@ -126,6 +138,9 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
   // Saved states - stores data that was just saved, until API refreshes week prop
   // This survives component unmounts, unlike refs in individual editors
   const [savedStates, setSavedStates] = useState<Map<string, Record<string, unknown>>>(new Map());
+
+  // Full structure save options - when set, saveAllChanges saves entire program structure
+  const [fullStructureSaveOptions, setFullStructureSaveOptions] = useState<FullStructureSaveOptions | null>(null);
 
   // Navigation blocking state (for in-app unsaved changes dialog)
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -317,10 +332,6 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
   }, [pendingChanges.size]);
 
   const saveAllChanges = useCallback(async (): Promise<SaveResult> => {
-    if (pendingChanges.size === 0) {
-      return { success: true, savedCount: 0, errors: [] };
-    }
-
     setIsSaving(true);
     setSaveError(null);
 
@@ -330,13 +341,159 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
       errors: [],
     };
 
+    // Clone pending changes so we can add to it
+    const allChanges = new Map(pendingChanges);
+
+    // If full structure save is enabled, fetch and register all weeks + modules
+    if (fullStructureSaveOptions) {
+      const { programId, viewContext, clientContextId, instanceId } = fullStructureSaveOptions;
+      console.log('[ProgramEditor] Full structure save enabled', { programId, viewContext, clientContextId, instanceId });
+
+      try {
+        if (viewContext === 'template') {
+          // Fetch template program with embedded weeks
+          const [programResponse, modulesResponse] = await Promise.all([
+            fetch(`/api/coach/org-programs/${programId}`),
+            fetch(`/api/coach/org-programs/${programId}/modules`),
+          ]);
+
+          if (programResponse.ok) {
+            const data = await programResponse.json();
+            const program = data.program;
+
+            // Register all weeks that aren't already in pending changes
+            if (program?.weeks && Array.isArray(program.weeks)) {
+              for (const week of program.weeks) {
+                const weekKey = generateChangeKey('week', week.id, undefined);
+                if (!allChanges.has(weekKey)) {
+                  // Check if there's a pending change we should preserve
+                  const existingChange = pendingChanges.get(weekKey);
+                  if (existingChange) {
+                    allChanges.set(weekKey, existingChange);
+                  } else {
+                    // Register unchanged week for full structure save
+                    allChanges.set(weekKey, {
+                      entityType: 'week',
+                      entityId: week.id,
+                      weekNumber: week.weekNumber,
+                      viewContext: 'template',
+                      clientContextId: undefined,
+                      originalData: week,
+                      pendingData: week,
+                      apiEndpoint: `/api/coach/org-programs/${programId}/weeks/${week.id}`,
+                      httpMethod: 'PATCH',
+                    });
+                  }
+                }
+              }
+            }
+          }
+
+          // Register modules from separate endpoint
+          if (modulesResponse.ok) {
+            const modulesData = await modulesResponse.json();
+            if (modulesData.modules && Array.isArray(modulesData.modules)) {
+              for (const module of modulesData.modules) {
+                const moduleKey = generateChangeKey('module', module.id, undefined);
+                if (!allChanges.has(moduleKey)) {
+                  const existingChange = pendingChanges.get(moduleKey);
+                  if (existingChange) {
+                    allChanges.set(moduleKey, existingChange);
+                  } else {
+                    allChanges.set(moduleKey, {
+                      entityType: 'module',
+                      entityId: module.id,
+                      viewContext: 'template',
+                      clientContextId: undefined,
+                      originalData: module,
+                      pendingData: module,
+                      apiEndpoint: `/api/coach/org-programs/${programId}/modules/${module.id}`,
+                      httpMethod: 'PATCH',
+                    });
+                  }
+                }
+              }
+            }
+          }
+        } else if (instanceId) {
+          // Fetch instance with embedded weeks for cohort/client view
+          const response = await fetch(`/api/instances/${instanceId}`);
+          if (response.ok) {
+            const data = await response.json();
+            const instance = data.instance;
+
+            // Register all weeks that aren't already in pending changes
+            if (instance?.weeks && Array.isArray(instance.weeks)) {
+              for (const week of instance.weeks) {
+                const weekKey = generateChangeKey('week', week.id || `week-${week.weekNumber}`, clientContextId);
+                if (!allChanges.has(weekKey)) {
+                  const existingChange = pendingChanges.get(weekKey);
+                  if (existingChange) {
+                    allChanges.set(weekKey, existingChange);
+                  } else {
+                    // Register unchanged week for full structure save
+                    allChanges.set(weekKey, {
+                      entityType: 'week',
+                      entityId: week.id || `week-${week.weekNumber}`,
+                      weekNumber: week.weekNumber,
+                      viewContext,
+                      clientContextId,
+                      instanceId,
+                      originalData: week,
+                      pendingData: week,
+                      apiEndpoint: `/api/instances/${instanceId}/weeks/${week.weekNumber}`,
+                      httpMethod: 'PATCH',
+                    });
+                  }
+                }
+              }
+            }
+
+            // Register instance modules
+            if (instance?.modules && Array.isArray(instance.modules)) {
+              for (const module of instance.modules) {
+                const moduleKey = generateChangeKey('instanceModule', module.templateModuleId || module.id, clientContextId);
+                if (!allChanges.has(moduleKey)) {
+                  const existingChange = pendingChanges.get(moduleKey);
+                  if (existingChange) {
+                    allChanges.set(moduleKey, existingChange);
+                  } else {
+                    allChanges.set(moduleKey, {
+                      entityType: 'instanceModule',
+                      entityId: module.templateModuleId || module.id,
+                      viewContext,
+                      clientContextId,
+                      instanceId,
+                      originalData: module,
+                      pendingData: module,
+                      apiEndpoint: `/api/instances/${instanceId}/modules/${module.templateModuleId || module.id}`,
+                      httpMethod: 'PATCH',
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+        console.log(`[ProgramEditor] After full structure fetch: ${allChanges.size} total items to save`);
+      } catch (err) {
+        console.error('[ProgramEditor] Failed to fetch full structure:', err);
+        // Continue with existing pending changes
+      }
+    }
+
+    if (allChanges.size === 0) {
+      setIsSaving(false);
+      return { success: true, savedCount: 0, errors: [] };
+    }
+
     // Group changes by type for ordered saving
     const moduleChanges: PendingChange[] = [];
     const instanceModuleChanges: PendingChange[] = [];
     const weekChanges: PendingChange[] = [];
     const dayChanges: PendingChange[] = [];
 
-    pendingChanges.forEach((change) => {
+    allChanges.forEach((change) => {
       switch (change.entityType) {
         case 'module':
           moduleChanges.push(change);
@@ -676,7 +833,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
 
     console.log(`[ProgramEditor] Save complete: ${result.savedCount} saved, ${result.errors.length} errors`);
     return result;
-  }, [pendingChanges]);
+  }, [pendingChanges, fullStructureSaveOptions]);
 
   const value = useMemo<ProgramEditorContextType>(() => ({
     currentProgramId,
@@ -693,6 +850,8 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     requestNavigation,
     confirmNavigation,
     cancelNavigation,
+    fullStructureSaveOptions,
+    setFullStructureSaveOptions,
     registerChange,
     updateChange,
     discardChange,
@@ -718,6 +877,7 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
     requestNavigation,
     confirmNavigation,
     cancelNavigation,
+    fullStructureSaveOptions,
     registerChange,
     updateChange,
     discardChange,
