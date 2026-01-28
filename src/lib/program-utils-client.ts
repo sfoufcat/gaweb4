@@ -48,8 +48,14 @@ export function getResourcesForDay(
       return tag.includes(dayOfWeek);
     }
 
-    // 'spread' tag shows on all active days (lesson filtering happens separately)
+    // 'spread' tag - for courses, only show on days that have lessons in the mapping
     if (tag === 'spread') {
+      // If there's a lessonDayMapping, only show on days that have lessons
+      if (assignment.lessonDayMapping && Object.keys(assignment.lessonDayMapping).length > 0) {
+        const daysWithLessons = new Set(Object.values(assignment.lessonDayMapping));
+        return daysWithLessons.has(dayOfWeek);
+      }
+      // No mapping (non-course or no lessons) - show on all days
       return true;
     }
 

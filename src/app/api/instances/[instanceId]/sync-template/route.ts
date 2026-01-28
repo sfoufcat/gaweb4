@@ -77,29 +77,32 @@ function toInstanceTask(task: ProgramTaskTemplate): ProgramInstanceDay['tasks'][
 
 /**
  * Distribute weekly tasks to days based on distribution setting
- * 
+ *
+ * IMPORTANT: The days array only contains ACTIVE program days (not a full calendar week).
+ * For partial weeks (e.g., Tue start), the array has 4 elements for Tue-Fri, not 5 for Mon-Fri.
+ * activeStartDay/activeEndDay parameters are now UNUSED - kept for backward compatibility
+ * but the entire days array is considered active.
+ *
  * @param weeklyTasks - Tasks to distribute
- * @param days - Days to distribute tasks into
+ * @param days - Days to distribute tasks into (only active days, not full week)
  * @param distribution - Distribution setting ('spread', 'all_days', 'first_day')
- * @param activeStartDay - For partial weeks: first active day (1-based). E.g., 2 for Tue enrollment.
- * @param activeEndDay - For partial weeks: last active day (1-based). E.g., 3 for program ending Wed.
+ * @param _activeStartDay - DEPRECATED: days array only contains active days
+ * @param _activeEndDay - DEPRECATED: days array only contains active days
  */
 function distributeTasksToDays(
   weeklyTasks: ProgramTaskTemplate[],
   days: ProgramInstanceDay[],
   distribution?: string,
-  activeStartDay?: number,
-  activeEndDay?: number
+  _activeStartDay?: number,  // DEPRECATED
+  _activeEndDay?: number     // DEPRECATED
 ): ProgramInstanceDay[] {
   const numDays = days.length;
   if (numDays === 0 || weeklyTasks.length === 0) return days;
 
-  // Calculate active range (0-indexed)
-  // For onboarding: activeStartDay=2 (Tue) → activeStartIdx=1, activeEndIdx=4 (Tue-Fri)
-  // For closing ending Wed: activeStartDay=1, activeEndDay=3 → indices 0-2 (Mon-Wed)
-  const activeStartIdx = Math.max(0, (activeStartDay || 1) - 1);
-  const activeEndIdx = Math.min(numDays - 1, (activeEndDay || numDays) - 1);
-  const activeRange = activeEndIdx - activeStartIdx + 1;
+  // The entire days array is active (we only create active days now)
+  const activeStartIdx = 0;
+  const activeEndIdx = numDays - 1;
+  const activeRange = numDays;
 
   // Clone days and clear tasks for re-distribution
   const updatedDays = days.map(d => ({ ...d, tasks: [] as ProgramInstanceDay['tasks'] }));
@@ -645,10 +648,29 @@ export async function POST(
         const numDays = weekEndDay - weekStartDay + 1;
         const days: ProgramInstanceDay[] = [];
 
+        // Calculate calendar dates for each day
+        // For partial weeks (e.g., Tue start), actualStartDayOfWeek=2 means we offset from Monday
+        const actualStartDayOfWeek = calendarWeek?.actualStartDayOfWeek || 1;
+        const actualStartOffset = actualStartDayOfWeek - 1; // 0 for Mon, 1 for Tue, etc.
+
+        // Get the week's calendar start date (Monday of this week)
+        const weekCalendarStartDate = calendarWeek?.startDate || syncedWeek.calendarStartDate;
+
         for (let i = 0; i < numDays; i++) {
+          // Calculate calendar date for this day
+          let calendarDate: string | undefined;
+          if (weekCalendarStartDate) {
+            const baseDate = new Date(weekCalendarStartDate);
+            // Offset from Monday by actualStartOffset + i
+            // e.g., Tue start (offset=1), i=0 → Mon+1=Tue, i=1 → Mon+2=Wed
+            baseDate.setDate(baseDate.getDate() + actualStartOffset + i);
+            calendarDate = baseDate.toISOString().split('T')[0];
+          }
+
           days.push({
             dayIndex: i + 1,
             globalDayIndex: weekStartDay + i,
+            calendarDate,
             tasks: [],
             habits: [],
           });

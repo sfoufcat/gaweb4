@@ -72,28 +72,31 @@ async function fetchAndConvertModules(programId: string): Promise<ProgramInstanc
  * Distributes weeklyTasks to days based on each task's dayTag and the week's distribution setting.
  * This is used during instance creation to pre-populate days with tasks.
  *
+ * IMPORTANT: The days array only contains ACTIVE program days (not a full calendar week).
+ * For partial weeks (e.g., Tue start), the array has 4 elements for Tue-Fri, not 5 for Mon-Fri.
+ * activeStartDay/activeEndDay parameters are now UNUSED - kept for backward compatibility
+ * but the entire days array is considered active.
+ *
  * @param weeklyTasks - Tasks to distribute
- * @param days - Days to distribute tasks into
+ * @param days - Days to distribute tasks into (only active days, not full week)
  * @param distribution - Distribution setting ('spread', 'all_days', 'first_day')
- * @param activeStartDay - For partial weeks: first active day (1-based). E.g., 3 for Wed enrollment.
- * @param activeEndDay - For partial weeks: last active day (1-based). E.g., 3 for program ending Wed.
+ * @param _activeStartDay - DEPRECATED: days array only contains active days
+ * @param _activeEndDay - DEPRECATED: days array only contains active days
  */
 function distributeTasksToDays(
   weeklyTasks: Array<{ id?: string; label: string; dayTag?: 'auto' | 'spread' | 'daily' | number; [key: string]: unknown }>,
   days: ProgramInstanceDay[],
   distribution: string | undefined,
-  activeStartDay?: number,
-  activeEndDay?: number
+  _activeStartDay?: number,  // DEPRECATED
+  _activeEndDay?: number     // DEPRECATED
 ): ProgramInstanceDay[] {
   const numDays = days.length;
   if (numDays === 0 || weeklyTasks.length === 0) return days;
 
-  // Calculate active range (0-indexed)
-  // For onboarding: activeStartDay=3 (Wed) → activeStartIdx=2, activeEndIdx=4 (Wed-Fri = indices 2-4)
-  // For closing ending Wed: activeStartDay=1, activeEndDay=3 → indices 0-2 (Mon-Wed)
-  const activeStartIdx = Math.max(0, (activeStartDay || 1) - 1);
-  const activeEndIdx = Math.min(numDays - 1, (activeEndDay || numDays) - 1);
-  const activeRange = activeEndIdx - activeStartIdx + 1;
+  // The entire days array is active (we only create active days now)
+  const activeStartIdx = 0;
+  const activeEndIdx = numDays - 1;
+  const activeRange = numDays;
 
   // Helper to create a day task from a weekly task template
   const createDayTask = (task: typeof weeklyTasks[0]) => ({
@@ -424,20 +427,27 @@ export async function GET(request: NextRequest) {
                 const startDayIndex = calendarWeek.startDayIndex;
                 const endDayIndex = calendarWeek.endDayIndex;
 
-                // Helper to get calendar date for each day
+                // For partial weeks (e.g., Tue start), actualStartDayOfWeek=2 means we offset from Monday
+                const actualStartDayOfWeek = calendarWeek.actualStartDayOfWeek || 1;
+                const actualStartOffset = actualStartDayOfWeek - 1; // 0 for Mon, 1 for Tue, etc.
+
+                // Helper to get calendar date for each day (offset by actualStartDayOfWeek)
                 const getCalendarDateForDay = (dayOffset: number): string | undefined => {
                   if (!calendarWeek.startDate) return undefined;
                   const startDate = new Date(calendarWeek.startDate);
-                  startDate.setDate(startDate.getDate() + dayOffset);
+                  // Offset from Monday by actualStartOffset + dayOffset
+                  // e.g., Tue start (offset=1), day 0 → Mon+1=Tue, day 1 → Mon+2=Wed
+                  startDate.setDate(startDate.getDate() + actualStartOffset + dayOffset);
                   return startDate.toISOString().split('T')[0];
                 };
 
-                // For UI: use displayDaysCount if available (for partial weeks showing full week)
-                const daysToCreate = calendarWeek.displayDaysCount || (endDayIndex - startDayIndex + 1);
+                // Create only ACTIVE program days (not displayDaysCount which is for UI blur)
+                // endDayIndex - startDayIndex + 1 = actual program days in this week
+                const activeDaysCount = endDayIndex - startDayIndex + 1;
                 let days: ProgramInstanceDay[] = [];
-                for (let i = 0; i < daysToCreate; i++) {
+                for (let i = 0; i < activeDaysCount; i++) {
                   days.push({
-                    dayIndex: i + 1,
+                    dayIndex: i + 1,  // 1-based program day within this week
                     globalDayIndex: startDayIndex + i,
                     calendarDate: getCalendarDateForDay(i),
                     tasks: [],
@@ -451,15 +461,12 @@ export async function GET(request: NextRequest) {
                   id: t.id || crypto.randomUUID(),
                 }));
 
-                // Distribute tasks to days based on dayTag and distribution setting
-                // Pass actualStartDayOfWeek/actualEndDayOfWeek for partial weeks
+                // Distribute tasks to days
                 if (weeklyTasks.length > 0) {
                   days = distributeTasksToDays(
                     weeklyTasks,
                     days,
-                    templateWeek?.distribution,
-                    calendarWeek.actualStartDayOfWeek,
-                    calendarWeek.actualEndDayOfWeek
+                    templateWeek?.distribution
                   );
                 }
 
@@ -533,20 +540,27 @@ export async function GET(request: NextRequest) {
                 const startDayIndex = calendarWeek.startDayIndex;
                 const endDayIndex = calendarWeek.endDayIndex;
 
-                // Helper to get calendar date for each day
+                // For partial weeks (e.g., Tue start), actualStartDayOfWeek=2 means we offset from Monday
+                const actualStartDayOfWeek = calendarWeek.actualStartDayOfWeek || 1;
+                const actualStartOffset = actualStartDayOfWeek - 1; // 0 for Mon, 1 for Tue, etc.
+
+                // Helper to get calendar date for each day (offset by actualStartDayOfWeek)
                 const getCalendarDateForDay = (dayOffset: number): string | undefined => {
                   if (!calendarWeek.startDate) return undefined;
                   const startDate = new Date(calendarWeek.startDate);
-                  startDate.setDate(startDate.getDate() + dayOffset);
+                  // Offset from Monday by actualStartOffset + dayOffset
+                  // e.g., Tue start (offset=1), day 0 → Mon+1=Tue, day 1 → Mon+2=Wed
+                  startDate.setDate(startDate.getDate() + actualStartOffset + dayOffset);
                   return startDate.toISOString().split('T')[0];
                 };
 
-                // For UI: use displayDaysCount if available (for partial weeks showing full week)
-                const daysToCreate = calendarWeek.displayDaysCount || (endDayIndex - startDayIndex + 1);
+                // Create only ACTIVE program days (not displayDaysCount which is for UI blur)
+                // endDayIndex - startDayIndex + 1 = actual program days in this week
+                const activeDaysCount = endDayIndex - startDayIndex + 1;
                 let days: ProgramInstanceDay[] = [];
-                for (let i = 0; i < daysToCreate; i++) {
+                for (let i = 0; i < activeDaysCount; i++) {
                   days.push({
-                    dayIndex: i + 1,
+                    dayIndex: i + 1,  // 1-based program day within this week
                     globalDayIndex: startDayIndex + i,
                     calendarDate: getCalendarDateForDay(i),
                     tasks: [],
@@ -560,15 +574,12 @@ export async function GET(request: NextRequest) {
                   id: t.id || crypto.randomUUID(),
                 }));
 
-                // Distribute tasks to days based on dayTag and distribution setting
-                // Pass actualStartDayOfWeek/actualEndDayOfWeek for partial weeks
+                // Distribute tasks to days
                 if (weeklyTasks.length > 0) {
                   days = distributeTasksToDays(
                     weeklyTasks,
                     days,
-                    weekData?.distribution,
-                    calendarWeek.actualStartDayOfWeek,
-                    calendarWeek.actualEndDayOfWeek
+                    weekData?.distribution
                   );
                 }
 
@@ -761,20 +772,27 @@ export async function GET(request: NextRequest) {
                 const startDayIndex = calendarWeek.startDayIndex;
                 const endDayIndex = calendarWeek.endDayIndex;
 
-                // Helper to get calendar date for each day
+                // For partial weeks (e.g., Tue start), actualStartDayOfWeek=2 means we offset from Monday
+                const actualStartDayOfWeek = calendarWeek.actualStartDayOfWeek || 1;
+                const actualStartOffset = actualStartDayOfWeek - 1; // 0 for Mon, 1 for Tue, etc.
+
+                // Helper to get calendar date for each day (offset by actualStartDayOfWeek)
                 const getCalendarDateForDay = (dayOffset: number): string | undefined => {
                   if (!calendarWeek.startDate) return undefined;
                   const startDate = new Date(calendarWeek.startDate);
-                  startDate.setDate(startDate.getDate() + dayOffset);
+                  // Offset from Monday by actualStartOffset + dayOffset
+                  // e.g., Tue start (offset=1), day 0 → Mon+1=Tue, day 1 → Mon+2=Wed
+                  startDate.setDate(startDate.getDate() + actualStartOffset + dayOffset);
                   return startDate.toISOString().split('T')[0];
                 };
 
-                // For UI: use displayDaysCount if available (for partial weeks showing full week)
-                const daysToCreate = calendarWeek.displayDaysCount || (endDayIndex - startDayIndex + 1);
+                // Create only ACTIVE program days (not displayDaysCount which is for UI blur)
+                // endDayIndex - startDayIndex + 1 = actual program days in this week
+                const activeDaysCount = endDayIndex - startDayIndex + 1;
                 let days: ProgramInstanceDay[] = [];
-                for (let i = 0; i < daysToCreate; i++) {
+                for (let i = 0; i < activeDaysCount; i++) {
                   days.push({
-                    dayIndex: i + 1,
+                    dayIndex: i + 1,  // 1-based program day within this week
                     globalDayIndex: startDayIndex + i,
                     calendarDate: getCalendarDateForDay(i),
                     tasks: [],
@@ -788,15 +806,12 @@ export async function GET(request: NextRequest) {
                   id: t.id || crypto.randomUUID(),
                 }));
 
-                // Distribute tasks to days based on dayTag and distribution setting
-                // Pass actualStartDayOfWeek/actualEndDayOfWeek for partial weeks
+                // Distribute tasks to days
                 if (weeklyTasks.length > 0) {
                   days = distributeTasksToDays(
                     weeklyTasks,
                     days,
-                    templateWeek?.distribution,
-                    calendarWeek.actualStartDayOfWeek,
-                    calendarWeek.actualEndDayOfWeek
+                    templateWeek?.distribution
                   );
                 }
 
@@ -870,20 +885,27 @@ export async function GET(request: NextRequest) {
                 const startDayIndex = calendarWeek.startDayIndex;
                 const endDayIndex = calendarWeek.endDayIndex;
 
-                // Helper to get calendar date for each day
+                // For partial weeks (e.g., Tue start), actualStartDayOfWeek=2 means we offset from Monday
+                const actualStartDayOfWeek = calendarWeek.actualStartDayOfWeek || 1;
+                const actualStartOffset = actualStartDayOfWeek - 1; // 0 for Mon, 1 for Tue, etc.
+
+                // Helper to get calendar date for each day (offset by actualStartDayOfWeek)
                 const getCalendarDateForDay = (dayOffset: number): string | undefined => {
                   if (!calendarWeek.startDate) return undefined;
                   const startDate = new Date(calendarWeek.startDate);
-                  startDate.setDate(startDate.getDate() + dayOffset);
+                  // Offset from Monday by actualStartOffset + dayOffset
+                  // e.g., Tue start (offset=1), day 0 → Mon+1=Tue, day 1 → Mon+2=Wed
+                  startDate.setDate(startDate.getDate() + actualStartOffset + dayOffset);
                   return startDate.toISOString().split('T')[0];
                 };
 
-                // For UI: use displayDaysCount if available (for partial weeks showing full week)
-                const daysToCreate = calendarWeek.displayDaysCount || (endDayIndex - startDayIndex + 1);
+                // Create only ACTIVE program days (not displayDaysCount which is for UI blur)
+                // endDayIndex - startDayIndex + 1 = actual program days in this week
+                const activeDaysCount = endDayIndex - startDayIndex + 1;
                 let days: ProgramInstanceDay[] = [];
-                for (let i = 0; i < daysToCreate; i++) {
+                for (let i = 0; i < activeDaysCount; i++) {
                   days.push({
-                    dayIndex: i + 1,
+                    dayIndex: i + 1,  // 1-based program day within this week
                     globalDayIndex: startDayIndex + i,
                     calendarDate: getCalendarDateForDay(i),
                     tasks: [],
@@ -897,15 +919,12 @@ export async function GET(request: NextRequest) {
                   id: t.id || crypto.randomUUID(),
                 }));
 
-                // Distribute tasks to days based on dayTag and distribution setting
-                // Pass actualStartDayOfWeek/actualEndDayOfWeek for partial weeks
+                // Distribute tasks to days
                 if (weeklyTasks.length > 0) {
                   days = distributeTasksToDays(
                     weeklyTasks,
                     days,
-                    weekData?.distribution,
-                    calendarWeek.actualStartDayOfWeek,
-                    calendarWeek.actualEndDayOfWeek
+                    weekData?.distribution
                   );
                 }
 

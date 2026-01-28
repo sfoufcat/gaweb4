@@ -14,6 +14,8 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import type { WeeklyContentResponse } from '@/hooks/useProgramWeeklyContent';
+import type { WeekResourceAssignment } from '@/types';
+import { getLessonsForDay } from '@/lib/program-utils-client';
 
 interface WeeklyResourcesProps {
   courses: WeeklyContentResponse['courses'];
@@ -23,6 +25,8 @@ interface WeeklyResourcesProps {
   events: WeeklyContentResponse['events'];
   questionnaires: WeeklyContentResponse['questionnaires'];
   videos: WeeklyContentResponse['videos'];
+  resourceAssignments?: WeekResourceAssignment[];
+  days?: WeeklyContentResponse['days'];
   enrollmentId?: string;
 }
 
@@ -57,8 +61,40 @@ export function WeeklyResources({
   events,
   questionnaires,
   videos,
+  resourceAssignments = [],
+  days = [],
   enrollmentId,
 }: WeeklyResourcesProps) {
+  // Find today's day to determine which lessons should be linked
+  const todayDay = days.find(d => d.isToday);
+  const todayDayOfWeek = todayDay?.dayIndex ?? 1;
+
+  // Helper to get the lesson URL for a course if specific lessons are assigned today
+  const getCourseHref = (courseId: string) => {
+    const course = courses.find(c => c.id === courseId);
+    const assignment = resourceAssignments.find(
+      a => a.resourceType === 'course' && a.resourceId === courseId
+    );
+
+    if (assignment && course) {
+      // First check lessonDayMapping for lessons assigned to today
+      const lessonsForToday = getLessonsForDay(assignment, todayDayOfWeek, course);
+      if (lessonsForToday.length > 0) {
+        // Link to the first lesson assigned for today
+        const baseUrl = `/discover/courses/${courseId}/lessons/${lessonsForToday[0].id}`;
+        return enrollmentId ? `${baseUrl}?enrollmentId=${enrollmentId}` : baseUrl;
+      }
+
+      // If no lessonDayMapping but lessonIds has exactly one lesson, link directly to it
+      if (assignment.lessonIds && assignment.lessonIds.length === 1) {
+        const baseUrl = `/discover/courses/${courseId}/lessons/${assignment.lessonIds[0]}`;
+        return enrollmentId ? `${baseUrl}?enrollmentId=${enrollmentId}` : baseUrl;
+      }
+    }
+
+    // Default: link to course overview
+    return `/discover/courses/${courseId}${enrollmentId ? `?enrollmentId=${enrollmentId}` : ''}`;
+  };
   const hasContent =
     courses.length > 0 ||
     articles.length > 0 ||
@@ -76,7 +112,7 @@ export function WeeklyResources({
       id: course.id,
       type: 'course' as ResourceType,
       title: course.title,
-      href: `/discover/courses/${course.id}${enrollmentId ? `?enrollmentId=${enrollmentId}` : ''}`,
+      href: getCourseHref(course.id),
       imageUrl: course.coverImageUrl,
       subtitle: course.category,
     })),

@@ -765,6 +765,8 @@ export function ProgramDetailView({
               events={displayEvents}
               questionnaires={displayQuestionnaires}
               videos={displayVideos}
+              resourceAssignments={weeklyResourceAssignments}
+              days={weeklyDays}
               enrollmentId={enrollment?.id}
             />
           </div>

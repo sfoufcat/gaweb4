@@ -155,16 +155,12 @@ export function ProgramSchedule({
                       : day.isToday
                         ? 'bg-brand-accent text-white'
                         : isSelected
-                          ? 'text-brand-accent'
+                          ? 'bg-brand-accent/20 dark:bg-brand-accent/25 text-brand-accent'
                           : 'text-zinc-700 dark:text-zinc-300'
                     }
                   `}>
                     {dayNum}
                   </div>
-                  {/* Selection underline */}
-                  {isSelected && !day.isToday && (
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-brand-accent" />
-                  )}
                   {/* Content indicator (only when not selected) */}
                   {hasItems && !day.isToday && !isInactive && !isSelected && (
                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-brand-accent/50" />
@@ -236,13 +232,19 @@ export function ProgramSchedule({
                             const lessonsForDay = getLessonsForDay(assignment, selectedDayOfWeek, course);
                             const hasLessons = lessonsForDay.length > 0;
 
+                            // Build URL - link to first lesson if lessons exist for this day
+                            const baseUrl = hasLessons
+                              ? `/discover/courses/${assignment.resourceId}/lessons/${lessonsForDay[0].id}`
+                              : `/discover/courses/${assignment.resourceId}`;
+                            const courseHref = enrollmentId ? `${baseUrl}?enrollmentId=${enrollmentId}` : baseUrl;
+
                             return (
                               <ResourceCard
                                 key={assignment.id}
                                 icon={<GraduationCap className="w-4 h-4 text-brand-accent" />}
                                 label={course.title}
                                 sublabel={hasLessons ? `${lessonsForDay.length} lesson${lessonsForDay.length > 1 ? 's' : ''} today` : undefined}
-                                href={`/discover/courses/${assignment.resourceId}${enrollmentId ? `?enrollmentId=${enrollmentId}` : ''}`}
+                                href={courseHref}
                               />
                             );
                           });

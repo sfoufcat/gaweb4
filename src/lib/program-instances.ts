@@ -14,21 +14,26 @@ import type { ProgramInstanceDay, Program, ProgramCohort } from '@/types';
 /**
  * Distributes weeklyTasks to days based on each task's dayTag and the week's distribution setting.
  * This is used during instance creation to pre-populate days with tasks.
+ *
+ * IMPORTANT: The days array only contains ACTIVE program days (not a full calendar week).
+ * For partial weeks (e.g., Tue start), the array has 4 elements for Tue-Fri, not 5 for Mon-Fri.
+ * activeStartDay/activeEndDay parameters are now UNUSED - kept for backward compatibility
+ * but the entire days array is considered active.
  */
 function distributeTasksToDays(
   weeklyTasks: Array<{ id?: string; label: string; dayTag?: 'auto' | 'spread' | 'daily' | number; [key: string]: unknown }>,
   days: ProgramInstanceDay[],
   distribution: string | undefined,
-  activeStartDay?: number,
-  activeEndDay?: number
+  _activeStartDay?: number,  // DEPRECATED: days array only contains active days
+  _activeEndDay?: number     // DEPRECATED: days array only contains active days
 ): ProgramInstanceDay[] {
   const numDays = days.length;
   if (numDays === 0 || weeklyTasks.length === 0) return days;
 
-  // Calculate active range (0-indexed)
-  const activeStartIdx = Math.max(0, (activeStartDay || 1) - 1);
-  const activeEndIdx = Math.min(numDays - 1, (activeEndDay || numDays) - 1);
-  const activeRange = activeEndIdx - activeStartIdx + 1;
+  // The entire days array is active (we only create active days now)
+  const activeStartIdx = 0;
+  const activeEndIdx = numDays - 1;
+  const activeRange = numDays;
 
   // Helper to create a day task from a weekly task template
   const createDayTask = (task: typeof weeklyTasks[0]) => ({
@@ -176,18 +181,26 @@ function buildInstanceWeeks(
     const startDayIndex = calendarWeek.startDayIndex;
     const endDayIndex = calendarWeek.endDayIndex;
 
-    const getCalendarDateForDay = (dayOffset: number): string | undefined => {
+    // For partial weeks (e.g., Tue start), actualStartDayOfWeek=2
+    // calendarWeek.startDate is always Monday, so we offset by (actualStartDayOfWeek - 1)
+    const actualStartOffset = (calendarWeek.actualStartDayOfWeek || 1) - 1;
+
+    const getCalendarDateForDay = (programDayIndex: number): string | undefined => {
       if (!calendarWeek.startDate) return undefined;
       const startDate = new Date(calendarWeek.startDate);
-      startDate.setDate(startDate.getDate() + dayOffset);
+      // Offset from Monday by actualStartOffset + programDayIndex
+      // e.g., Tue start (offset=1), day 0 → Mon+1=Tue, day 1 → Mon+2=Wed
+      startDate.setDate(startDate.getDate() + actualStartOffset + programDayIndex);
       return startDate.toISOString().split('T')[0];
     };
 
-    const daysToCreate = calendarWeek.displayDaysCount || (endDayIndex - startDayIndex + 1);
+    // Create only ACTIVE program days (not displayDaysCount which is for UI blur)
+    // endDayIndex - startDayIndex + 1 = actual program days in this week
+    const activeDaysCount = endDayIndex - startDayIndex + 1;
     let days: ProgramInstanceDay[] = [];
-    for (let i = 0; i < daysToCreate; i++) {
+    for (let i = 0; i < activeDaysCount; i++) {
       days.push({
-        dayIndex: i + 1,
+        dayIndex: i + 1,  // 1-based program day within this week (1=first active day)
         globalDayIndex: startDayIndex + i,
         calendarDate: getCalendarDateForDay(i),
         tasks: [],

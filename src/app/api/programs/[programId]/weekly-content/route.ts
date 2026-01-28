@@ -310,22 +310,23 @@ export async function GET(
         // MIGRATION: Check if this partial week has tasks on inactive days (stale distribution)
         const hasPartialStart = targetWeek.actualStartDayOfWeek && targetWeek.actualStartDayOfWeek > 1;
         const hasPartialEnd = targetWeek.actualEndDayOfWeek && targetWeek.actualEndDayOfWeek < daysPerWeek;
-        
+
         let migratedDays: ProgramInstanceDay[] = targetWeek.days || [];
-        
+        let needsPersist = false;
+
         if ((hasPartialStart || hasPartialEnd) && targetWeek.weeklyTasks?.length && migratedDays.length) {
           const activeStartIdx = (targetWeek.actualStartDayOfWeek || 1) - 1;
           const activeEndIdx = (targetWeek.actualEndDayOfWeek || daysPerWeek) - 1;
-          
+
           // Check if any tasks exist on inactive days
-          const hasTasksOnInactiveDays = migratedDays.some((day: ProgramInstanceDay, idx: number) => 
+          const hasTasksOnInactiveDays = migratedDays.some((day: ProgramInstanceDay, idx: number) =>
             (idx < activeStartIdx || idx > activeEndIdx) && day.tasks && day.tasks.length > 0
           );
-          
+
           if (hasTasksOnInactiveDays) {
             console.log(`[WEEKLY_CONTENT] MIGRATION: Fixing stale task distribution in week ${targetWeek.weekNumber}`);
             console.log(`[WEEKLY_CONTENT] Active range: ${activeStartIdx + 1}-${activeEndIdx + 1}, daysPerWeek: ${daysPerWeek}`);
-            
+
             // Re-distribute tasks to only active days
             migratedDays = redistributeTasksForPartialWeek(
               targetWeek.weeklyTasks,
@@ -334,24 +335,39 @@ export async function GET(
               targetWeek.actualStartDayOfWeek || 1,
               targetWeek.actualEndDayOfWeek || daysPerWeek
             );
-            
-            // Persist the fix to Firestore (update just this week in the instance)
-            const instanceDoc = instanceSnapshot.docs[0];
-            const instanceData = instanceDoc.data();
-            const weekIndex = instanceData.weeks.findIndex((w: { weekNumber: number }) => w.weekNumber === targetWeek.weekNumber);
-            if (weekIndex !== -1) {
-              instanceData.weeks[weekIndex].days = migratedDays;
-              await instanceDoc.ref.update({ 
-                weeks: instanceData.weeks,
-                updatedAt: new Date().toISOString()
-              });
-              console.log(`[WEEKLY_CONTENT] MIGRATION: Persisted fix to instance ${instanceDoc.id}`);
-            }
+            needsPersist = true;
           }
         }
 
-        // Collect resource assignments (with lessonDayMapping for courses)
+        // SYNC: If instance has empty resourceAssignments but template has them, sync from template
         weekResourceAssignments = targetWeek.resourceAssignments || [];
+        if (weekResourceAssignments.length === 0) {
+          // Find this week in template
+          const templateWeeks = program.weeks || [];
+          const templateWeek = templateWeeks.find((tw: ProgramWeek) => tw.weekNumber === targetWeek.weekNumber);
+          if (templateWeek?.resourceAssignments?.length) {
+            console.log(`[WEEKLY_CONTENT] SYNC: Copying resourceAssignments from template to instance week ${targetWeek.weekNumber}`);
+            weekResourceAssignments = templateWeek.resourceAssignments;
+            targetWeek.resourceAssignments = templateWeek.resourceAssignments;
+            needsPersist = true;
+          }
+        }
+
+        // Persist any migrations/syncs to Firestore
+        if (needsPersist) {
+          const instanceDoc = instanceSnapshot.docs[0];
+          const instanceData = instanceDoc.data();
+          const weekIndex = instanceData.weeks.findIndex((w: { weekNumber: number }) => w.weekNumber === targetWeek.weekNumber);
+          if (weekIndex !== -1) {
+            instanceData.weeks[weekIndex].days = migratedDays;
+            instanceData.weeks[weekIndex].resourceAssignments = weekResourceAssignments;
+            await instanceDoc.ref.update({
+              weeks: instanceData.weeks,
+              updatedAt: new Date().toISOString()
+            });
+            console.log(`[WEEKLY_CONTENT] SYNC: Persisted updates to instance ${instanceDoc.id}`);
+          }
+        }
 
         weekData = {
           weekNumber: targetWeek.weekNumber,
@@ -773,6 +789,8 @@ function getDemoWeeklyContent(): WeeklyContentResponse {
     resourceAssignments: [],
     downloads: [],
     links: [],
+    questionnaires: [],
+    videos: [],
     summaries: [],
   };
 }

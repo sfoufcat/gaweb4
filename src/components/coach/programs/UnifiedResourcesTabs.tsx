@@ -221,10 +221,20 @@ function LinkedResourceItem({
               <button
                 type="button"
                 onClick={() => setCadenceModalOpen(true)}
-                className="p-1.5 text-[#a7a39e] dark:text-[#7d8190] hover:text-brand-accent hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] rounded-lg transition-all"
+                className={cn(
+                  "flex items-center gap-1 rounded-lg transition-all px-2 py-1",
+                  assignment.dayTag === 'week'
+                    ? "text-[#a7a39e] dark:text-[#7d8190] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-[#1e222a]"
+                    : "text-brand-accent bg-brand-accent/10 hover:bg-brand-accent/20"
+                )}
                 title="Change cadence"
               >
                 <Calendar className="w-4 h-4" />
+                {assignment.dayTag !== 'week' && (
+                  <span className="text-xs font-medium">
+                    {getResourceCadenceLabel(assignment.dayTag, calendarStartDate)}
+                  </span>
+                )}
               </button>
               {onEdit && (
                 <button
@@ -269,7 +279,14 @@ function LinkedResourceItem({
                   className="gap-2"
                 >
                   <Calendar className="w-4 h-4" />
-                  <span>Cadence</span>
+                  <span>
+                    Cadence
+                    {assignment.dayTag !== 'week' && (
+                      <span className="ml-1 text-brand-accent">
+                        ({getResourceCadenceLabel(assignment.dayTag, calendarStartDate)})
+                      </span>
+                    )}
+                  </span>
                 </DropdownMenuItem>
                 {onEdit && (
                   <DropdownMenuItem
@@ -587,8 +604,11 @@ export function UnifiedResourcesTabs({
             const allDays = Array.from({ length: daysInWeek }, (_, i) => i + 1);
             lessonDayMapping = generateLessonDayMapping(a.resourceId, allDays);
           } else if (Array.isArray(dayTag) && dayTag.length >= 1) {
-            // Specific days selected
+            // Multiple specific days selected
             lessonDayMapping = generateLessonDayMapping(a.resourceId, dayTag);
+          } else if (typeof dayTag === 'number') {
+            // Single day selected - wrap in array for mapping generation
+            lessonDayMapping = generateLessonDayMapping(a.resourceId, [dayTag]);
           }
           // For 'week' or 'daily', no lesson mapping (entire course available)
         }

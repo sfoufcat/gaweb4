@@ -43,6 +43,8 @@ import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useAuthHint } from '@/contexts/AuthHintContext';
 import { DEMO_USER } from '@/lib/demo-utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { DashboardResourcesSection } from '@/components/dashboard/DashboardResourcesSection';
+import { DashboardSessionsSection } from '@/components/dashboard/DashboardSessionsSection';
 
 /**
  * Homepage / Dashboard
@@ -2009,6 +2011,15 @@ export function DashboardPage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Resources & Sessions Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <DashboardResourcesSection
+          enrollments={[...programEnrollments.active, ...programEnrollments.upcoming]}
+          isLoading={enrollmentsLoading}
+        />
+        <DashboardSessionsSection maxDisplay={4} />
       </div>
 
       {/* My Program Section - Horizontal Carousel */}

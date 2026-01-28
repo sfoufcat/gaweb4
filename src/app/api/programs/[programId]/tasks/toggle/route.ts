@@ -55,7 +55,7 @@ export async function POST(
     }
 
     const enrollment = enrollmentDoc.data();
-    if (enrollment?.clerkUserId !== userId) {
+    if (enrollment?.userId !== userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
