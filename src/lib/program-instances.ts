@@ -82,9 +82,15 @@ function distributeTasksToDays(
   }
 
   // Add specific-day tasks to their designated day (only if within active range)
+  // For partial weeks, dayTag is the absolute day-of-week (1=Mon, 3=Wed, etc.)
+  // The days array only contains ACTIVE days, so we offset by the first day's dayIndex
+  const actualStartDayOfWeek = days[0]?.dayIndex || 1;
   for (const [dayNum, tasks] of specificDayTasks) {
-    const dayIdx = dayNum - 1;
-    if (dayIdx >= activeStartIdx && dayIdx <= activeEndIdx) {
+    // Map absolute day-of-week to array index
+    // e.g., for partial week starting Tue (actualStartDayOfWeek=2):
+    //   dayNum=2 (Tue) → dayIdx=0, dayNum=3 (Wed) → dayIdx=1
+    const dayIdx = dayNum - actualStartDayOfWeek;
+    if (dayIdx >= 0 && dayIdx < numDays) {
       for (const task of tasks) {
         updatedDays[dayIdx].tasks.push(createDayTask(task));
       }

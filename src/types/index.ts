@@ -6235,6 +6235,7 @@ export interface ProgramInstanceTask {
   tag?: string;
   source?: TaskSource;           // 'week' | 'day' | 'manual' | 'sync'
   dayTag?: 'auto' | 'spread' | 'daily' | number | number[]; // Per-task distribution override
+  sourceResourceId?: string;     // If set, task was auto-generated from a resource
 }
 
 /**

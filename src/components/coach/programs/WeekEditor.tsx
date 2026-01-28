@@ -2077,6 +2077,7 @@ export function WeekEditor({
       // (Uses same format as early exit check above)
       lastRegisteredFingerprint.current = stateFingerprint;
 
+
       currentEditorContext.registerChange({
         entityType: 'week',
         entityId: week.id,
@@ -3202,7 +3203,7 @@ export function WeekEditor({
           title="Tasks & Focus"
           icon={ListTodo}
           defaultOpen={true}
-          hasContent={formData.weeklyTasks.length > 0}
+          hasContent={formData.weeklyTasks.filter(t => !t.sourceResourceId).length > 0}
         >
           {/* Weekly Tasks */}
           <div>
@@ -3216,10 +3217,10 @@ export function WeekEditor({
                 onDragEnd={handleTaskDragEnd}
               >
                 <SortableContext
-                  items={formData.weeklyTasks.map(t => t.id || t.label)}
+                  items={formData.weeklyTasks.filter(t => !t.sourceResourceId).map(t => t.id || t.label)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {formData.weeklyTasks.map((task, index) => {
+                  {formData.weeklyTasks.filter(t => !t.sourceResourceId).map((task, index) => {
                     const taskKey = task.id || task.label;
                     const cohortCompletion = cohortId
                       ? (task.id && cohortWeeklyTaskCompletion.get(task.id)) || cohortWeeklyTaskCompletion.get(task.label)

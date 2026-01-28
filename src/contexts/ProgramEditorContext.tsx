@@ -474,16 +474,9 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
         delete body._createCohortContentAfter;
         delete body._cohortId;
         
-        // Include distribution flags if:
-        // - Weekly tasks changed (add OR remove), OR
-        // - It's a new week with tasks, OR
-        // - It's a CLIENT week with tasks (always distribute to ensure sync works)
-        // - It's a COHORT week with tasks (always distribute for cohort sync)
-        // This ensures distribution happens when tasks are added, modified, OR cleared
-        const shouldDistribute = hasTaskChanges || 
-          (isNewWeek && hasTasks) || 
-          (isClientWeek && hasTasks) ||
-          (isCohortWeek && hasTasks);
+        // ONLY distribute for cohort/client (instance) week saves, NEVER for templates
+        // Template saves should NOT auto-sync to user tasks - only manual sync does that
+        const shouldDistribute = (isClientWeek || isCohortWeek) && (hasTaskChanges || (isNewWeek && hasTasks));
           
         if (shouldDistribute) {
           body.distributeTasksNow = true;
@@ -505,9 +498,9 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
           pendingTasksCount: pendingTasks.length,
           viewContext: change.viewContext,
           createCohortContentAfter,
-          // Add task details for debugging
-          weeklyTasks: Array.isArray(body.weeklyTasks) 
-            ? (body.weeklyTasks as Array<{ id?: string; label?: string }>).map(t => ({ id: t.id, label: t.label }))
+          // Add task details for debugging - include sourceResourceId to track resource tasks
+          weeklyTasks: Array.isArray(body.weeklyTasks)
+            ? (body.weeklyTasks as Array<{ id?: string; label?: string; sourceResourceId?: string }>).map(t => ({ id: t.id, label: t.label, sourceResourceId: t.sourceResourceId }))
             : undefined,
         });
 

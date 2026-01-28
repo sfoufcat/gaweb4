@@ -207,23 +207,8 @@ export async function POST(
       updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
     } as ProgramDay;
 
-    // Trigger cohort sync for group programs
-    // Must await to complete before response - serverless functions terminate after response
-    const program = programDoc.data();
-    if (program?.type === 'group' && tasks.length > 0) {
-      const dayIndex = body.dayIndex;
-      try {
-        const syncResult = await syncProgramTasksToAllCohorts({
-          programId,
-          specificDayIndex: dayIndex,
-          mode: 'override-program-sourced',
-        });
-        console.log(`[COHORT_SYNC] Sync completed:`, JSON.stringify(syncResult));
-      } catch (err) {
-        console.error('[COHORT_SYNC] Sync failed:', err);
-        // Don't fail the request if sync fails
-      }
-    }
+    // NOTE: Template day saves do NOT auto-sync to user tasks.
+    // Sync only happens via manual "Sync to Cohort" button or daily cron job.
 
     return NextResponse.json({ 
       success: true, 

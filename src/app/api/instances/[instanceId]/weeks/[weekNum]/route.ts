@@ -427,6 +427,10 @@ export async function PATCH(
     const weekNumber = parseInt(weekNum, 10);
     const body = await request.json();
 
+    console.log(`\n\n========== [INSTANCE_WEEK_PATCH] START ==========`);
+    console.log(`[INSTANCE_WEEK_PATCH] instanceId: ${instanceId}, weekNumber: ${weekNumber}`);
+    console.log(`[INSTANCE_WEEK_PATCH] body.weeklyTasks count:`, body.weeklyTasks?.length ?? 'undefined');
+    console.log(`[INSTANCE_WEEK_PATCH] body.distributeTasksNow:`, body.distributeTasksNow);
     console.log(`[INSTANCE_WEEK_PATCH] Received body for week ${weekNumber}:`, {
       hasDescription: body.description !== undefined,
       description: body.description,
@@ -495,6 +499,10 @@ export async function PATCH(
     // Update weekly tasks
     if (body.weeklyTasks !== undefined) {
       updatedWeek.weeklyTasks = processTasksWithIds(body.weeklyTasks);
+      console.log(`[INSTANCE_WEEK_PATCH] Received weeklyTasks:`, body.weeklyTasks.map((t: { id?: string; label?: string; sourceResourceId?: string }) => ({ id: t.id, label: t.label, sourceResourceId: t.sourceResourceId })));
+      console.log(`[INSTANCE_WEEK_PATCH] Processed weeklyTasks:`, updatedWeek.weeklyTasks.map(t => ({ id: t.id, label: t.label, sourceResourceId: t.sourceResourceId })));
+    } else {
+      console.log(`[INSTANCE_WEEK_PATCH] No weeklyTasks in body - body keys:`, Object.keys(body));
     }
 
     // Update days if provided - merge day tasks with existing week tasks
@@ -614,6 +622,11 @@ export async function PATCH(
       const activeRange = numDays;
 
       console.log(`[INSTANCE_WEEK_PATCH] Distribution: ${distribution.type}, tasks: ${weeklyTasks.length}, days: ${numDays}, active range: ${activeStartIdx}-${activeEndIdx} (${activeRange} days)`);
+      console.log(`[INSTANCE_WEEK_PATCH] Tasks to distribute:`, weeklyTasks.map(t => ({ id: t.id, label: t.label, dayTag: t.dayTag, sourceResourceId: t.sourceResourceId })));
+
+      if (numDays === 0) {
+        console.warn(`[INSTANCE_WEEK_PATCH] WARNING: No days in week ${weekNumber} - cannot distribute tasks!`);
+      }
 
       // Distribute tasks based on per-task dayTag (overrides) or program distribution (default)
       // IMPORTANT: Always clear old 'week' source tasks from days first
@@ -687,15 +700,26 @@ export async function PATCH(
       }
 
       // Step 4: Add specific-day tasks to their designated day (only if within active range)
+      // For partial weeks, dayTag is the absolute day-of-week (1=Mon, 3=Wed, etc.)
+      // The days array only contains ACTIVE days, so we need to offset by actualStartDayOfWeek
+      const actualStartDayOfWeek = updatedWeek.actualStartDayOfWeek || 1;
       for (const [dayNum, tasks] of specificDayTasks) {
-        const dayIdx = dayNum - 1; // dayTag is 1-based, array is 0-based
-        if (dayIdx >= activeStartIdx && dayIdx <= activeEndIdx) {
+        // Map absolute day-of-week to array index
+        // e.g., for partial week starting Wed (actualStartDayOfWeek=3):
+        //   dayNum=3 (Wed) → dayIdx=0, dayNum=4 (Thu) → dayIdx=1, dayNum=5 (Fri) → dayIdx=2
+        const dayIdx = dayNum - actualStartDayOfWeek;
+        console.log(`[INSTANCE_WEEK_PATCH] Distributing ${tasks.length} tasks with dayTag ${dayNum} -> dayIdx ${dayIdx} (actualStartDayOfWeek=${actualStartDayOfWeek})`);
+        console.log(`[INSTANCE_WEEK_PATCH]   daysToUpdate structure:`, daysToUpdate.map((d, i) => ({ idx: i, dayIndex: d.dayIndex, globalDayIndex: d.globalDayIndex, calendarDate: d.calendarDate })));
+        if (dayIdx >= 0 && dayIdx < numDays) {
+          console.log(`[INSTANCE_WEEK_PATCH]   Adding tasks to daysToUpdate[${dayIdx}] which has dayIndex=${daysToUpdate[dayIdx]?.dayIndex}, calendarDate=${daysToUpdate[dayIdx]?.calendarDate}`);
           for (const task of tasks) {
             daysToUpdate[dayIdx].tasks = [
               ...daysToUpdate[dayIdx].tasks,
               { ...task, source: 'week' as const },
             ];
           }
+        } else {
+          console.log(`[INSTANCE_WEEK_PATCH]   SKIPPED: dayIdx ${dayIdx} outside range [0, ${numDays - 1}]`);
         }
       }
 
@@ -752,6 +776,13 @@ export async function PATCH(
         }
       }
 
+      // Log distributed tasks per day
+      console.log(`[INSTANCE_WEEK_PATCH] Distributed tasks to days:`);
+      for (let i = 0; i < daysToUpdate.length; i++) {
+        const day = daysToUpdate[i];
+        console.log(`  Day ${i} (globalDayIndex: ${day.globalDayIndex}, calendarDate: ${day.calendarDate}): ${day.tasks?.length || 0} tasks`, day.tasks?.map(t => ({ id: t.id, label: t.label, source: t.source })));
+      }
+
       // Save the distributed tasks
       updatedWeeks[weekIndex] = {
         ...updatedWeek,
@@ -764,6 +795,7 @@ export async function PATCH(
       });
 
       // Sync distributed tasks to users' tasks collection
+      console.log(`[INSTANCE_WEEK_PATCH] Sync check: type=${data?.type}, userId=${data?.userId}, cohortId=${data?.cohortId}`);
       if (data?.type === 'individual' && data?.userId) {
         // Individual instance - sync to the single user
         for (const day of daysToUpdate) {
@@ -847,6 +879,8 @@ export async function PATCH(
             }
           })
         );
+      } else {
+        console.log(`[INSTANCE_WEEK_PATCH] NO SYNC - instance type '${data?.type}' is neither 'individual' nor 'cohort', or missing required data`);
       }
     }
 

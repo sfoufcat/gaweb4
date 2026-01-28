@@ -80,7 +80,7 @@ export function ProgramSchedule({
     (day.linkedQuestionnaireIds?.length ?? 0) > 0;
 
   // Check resourceAssignments for the selected day (new cadence-based system)
-  const selectedDayOfWeek = selectedIdx + 1;
+  const selectedDayOfWeek = selectedDay.dayIndex;
   const selectedDayResources = getResourcesForDay({ resourceAssignments }, selectedDayOfWeek);
   const hasAssignedResources = selectedDayResources.length > 0;
 
@@ -112,7 +112,7 @@ export function ProgramSchedule({
             const dayNum = date?.getDate() || '';
             const dayName = day.isToday ? 'Today' : day.dayName.slice(0, 3);
             // Check both legacy linked resources and new resourceAssignments for content indicator
-            const dayOfWeek = idx + 1;
+            const dayOfWeek = day.dayIndex;
             const dayAssignedResources = getResourcesForDay({ resourceAssignments }, dayOfWeek);
             const hasItems = day.tasks.length > 0 || hasLinkedResources(day) || dayAssignedResources.length > 0;
             
