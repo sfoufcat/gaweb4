@@ -343,6 +343,7 @@ export async function GET(
 
     // Format dates as ISO strings (YYYY-MM-DD) for comparison with task.date field
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
 
     // Get enrollment IDs for fallback query (legacy tasks without instanceId)
     const enrollmentIds = enrollments.map(e => e.id);
@@ -401,6 +402,9 @@ export async function GET(
           const data = doc.data();
           const userId = data.userId;
           const taskDate = data.date as string; // YYYY-MM-DD
+
+          // Skip future tasks (only count tasks up to today)
+          if (taskDate > todayStr) return;
 
           // Get or create user's daily map
           if (!userDailyTasksMap.has(userId)) {
