@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 import { Calendar, X } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { usePendingProposals, useSchedulingEvents } from '@/hooks/useScheduling';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { CalendarContent } from './CalendarContent';
 
@@ -73,6 +74,9 @@ export function CalendarModal({ isOpen, onClose }: CalendarModalProps) {
           className="max-w-[420px] p-0 overflow-hidden"
           hideCloseButton
         >
+          <VisuallyHidden.Root>
+            <DialogTitle>My Calendar</DialogTitle>
+          </VisuallyHidden.Root>
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#262b35]">
             {header}
