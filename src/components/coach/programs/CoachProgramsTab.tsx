@@ -4148,6 +4148,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           }
                         }}
                         loading={loadingEnrollments}
+                        context={viewMode === 'overview' ? 'overview' : 'content'}
                       />
                     ) : selectedProgram?.type === 'group' ? (
                       <CohortSelector
@@ -4163,6 +4164,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         }}
                         onCreateCohort={() => handleOpenCohortModal()}
                         loading={loadingDetails}
+                        context={viewMode === 'overview' ? 'overview' : 'content'}
+                        programType="cohort"
                       />
                     ) : null}
                   </div>
@@ -4269,6 +4272,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         }}
                         loading={loadingEnrollments}
                         className="max-w-[200px] flex-shrink-0"
+                        context={viewMode === 'overview' ? 'overview' : 'content'}
                       />
                     ) : selectedProgram?.type === 'group' ? (
                       <CohortSelector
@@ -4283,6 +4287,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         onCreateCohort={() => handleOpenCohortModal()}
                         loading={loadingDetails}
                         className="max-w-[200px] flex-shrink-0"
+                        context={viewMode === 'overview' ? 'overview' : 'content'}
+                        programType="cohort"
                       />
                     ) : null}
                   </div>

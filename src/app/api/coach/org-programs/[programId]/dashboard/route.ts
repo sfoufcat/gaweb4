@@ -161,6 +161,7 @@ export async function GET(
     // This ensures we only show progress for THIS program, not other programs
     let instanceId: string | null = instanceIdParam;
     let instance: (ProgramInstance & { id: string }) | null = null;
+    let allInstanceIds: string[] = []; // For "All Cohorts" view - aggregate across all instances
 
     if (!instanceId && cohortId) {
       // Look up instance by cohortId and programId
@@ -181,8 +182,19 @@ export async function GET(
         instanceId = sortedInstances[0].id;
         instance = { id: sortedInstances[0].id, ...sortedInstances[0].data() } as ProgramInstance & { id: string };
       }
-    } else if (!instanceId && enrollments.length === 1) {
-      // For individual programs, look up by enrollment
+    } else if (!instanceId && !cohortId) {
+      // "All Cohorts" / "All Clients" view - get ALL instances for this program
+      const allInstancesSnap = await adminDb
+        .collection('program_instances')
+        .where('programId', '==', programId)
+        .get();
+
+      allInstanceIds = allInstancesSnap.docs.map(doc => doc.id);
+      console.log('[DASHBOARD] All instances for program:', { programId, instanceCount: allInstanceIds.length, instanceIds: allInstanceIds });
+    }
+
+    if (!instanceId && enrollments.length === 1 && allInstanceIds.length === 0) {
+      // For individual programs with single enrollment, look up by enrollment
       const instanceSnap = await adminDb
         .collection('program_instances')
         .where('enrollmentId', '==', enrollments[0].id)
@@ -348,25 +360,49 @@ export async function GET(
     // Get enrollment IDs for fallback query (legacy tasks without instanceId)
     const enrollmentIds = enrollments.map(e => e.id);
 
-    console.log('[DASHBOARD] Task query params:', { userIds, instanceId, enrollmentIds, sevenDaysAgoStr });
+    console.log('[DASHBOARD] Task query params:', { userIds, instanceId, allInstanceIds, enrollmentIds, sevenDaysAgoStr });
 
     if (userIds.length > 0) {
       const batchSize = 30;
       for (let i = 0; i < userIds.length; i += batchSize) {
         const batch = userIds.slice(i, i + batchSize);
 
-        // Query tasks - try instanceId first, fall back to programEnrollmentId
+        // Query tasks based on context:
+        // 1. Single instanceId (specific cohort/client)
+        // 2. Multiple instanceIds (All Cohorts view)
+        // 3. Fall back to programEnrollmentId (legacy)
         let tasksSnapshot;
+
         if (instanceId) {
+          // Specific cohort/client view - query by single instanceId
           tasksSnapshot = await adminDb
             .collection('tasks')
             .where('userId', 'in', batch)
             .where('instanceId', '==', instanceId)
             .where('date', '>=', sevenDaysAgoStr)
             .get();
+        } else if (allInstanceIds.length > 0) {
+          // "All Cohorts" view - query by all instanceIds for this program
+          // Firestore 'in' limit is 30, so batch if needed
+          const instanceBatchSize = 30;
+          const allTaskDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+
+          for (let j = 0; j < allInstanceIds.length; j += instanceBatchSize) {
+            const instanceBatch = allInstanceIds.slice(j, j + instanceBatchSize);
+            const batchSnap = await adminDb
+              .collection('tasks')
+              .where('userId', 'in', batch)
+              .where('instanceId', 'in', instanceBatch)
+              .where('date', '>=', sevenDaysAgoStr)
+              .get();
+            allTaskDocs.push(...batchSnap.docs);
+          }
+
+          // Create a fake snapshot-like object
+          tasksSnapshot = { docs: allTaskDocs, size: allTaskDocs.length, empty: allTaskDocs.length === 0 };
         }
 
-        // If no tasks found with instanceId, try programEnrollmentId (legacy)
+        // If no tasks found with instanceId(s), try programEnrollmentId (legacy)
         if (!tasksSnapshot || tasksSnapshot.empty) {
           const batchEnrollmentIds = enrollments
             .filter(e => batch.includes(e.userId))

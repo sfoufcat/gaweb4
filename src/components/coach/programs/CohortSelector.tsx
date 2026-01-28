@@ -26,6 +26,10 @@ interface CohortSelectorProps {
   loading?: boolean;
   className?: string;
   size?: 'default' | 'large';
+  /** Context determines label: 'content' = "Template", 'overview' = "All Cohorts" */
+  context?: 'content' | 'overview';
+  /** For 1:1 programs in overview mode, shows "All Clients" instead of "All Cohorts" */
+  programType?: 'individual' | 'cohort';
 }
 
 export function CohortSelector({
@@ -36,14 +40,31 @@ export function CohortSelector({
   loading = false,
   className = '',
   size = 'default',
+  context = 'content',
+  programType = 'cohort',
 }: CohortSelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Get template label based on context
+  const templateLabel = useMemo(() => {
+    if (context === 'overview') {
+      return programType === 'individual' ? 'All Clients' : 'All Cohorts';
+    }
+    return 'Template';
+  }, [context, programType]);
+
+  const templateSubtitle = useMemo(() => {
+    if (context === 'overview') {
+      return 'View all members';
+    }
+    return 'Master content';
+  }, [context]);
+
   // Get display info for current selection
   const currentDisplay = useMemo(() => {
     if (value.mode === 'template') {
-      return { name: 'Template', subtitle: 'Master content', isTemplate: true };
+      return { name: templateLabel, subtitle: templateSubtitle, isTemplate: true };
     }
     const cohort = cohorts.find(c => c.id === value.cohortId);
     if (cohort) {
@@ -55,7 +76,7 @@ export function CohortSelector({
       };
     }
     return { name: 'Select view...', subtitle: '', enrollmentCount: undefined, isTemplate: false };
-  }, [value, cohorts]);
+  }, [value, cohorts, templateLabel, templateSubtitle]);
 
   // Filter cohorts by search term
   const filteredCohorts = useMemo(() =>
@@ -185,10 +206,10 @@ export function CohortSelector({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Template
+                  {templateLabel}
                 </div>
                 <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Edit master content for all cohorts
+                  {context === 'overview' ? 'View all members' : 'Edit master content for all cohorts'}
                 </div>
               </div>
             </button>

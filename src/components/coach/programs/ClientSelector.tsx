@@ -36,6 +36,8 @@ interface ClientSelectorProps {
   loading?: boolean;
   className?: string;
   size?: 'default' | 'large';
+  /** Context determines label: 'content' = "Template", 'overview' = "All Clients" */
+  context?: 'content' | 'overview';
 }
 
 export function ClientSelector({
@@ -45,6 +47,7 @@ export function ClientSelector({
   loading = false,
   className = '',
   size = 'default',
+  context = 'content',
 }: ClientSelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,10 +63,13 @@ export function ClientSelector({
     return enrollment.user?.email || 'Unknown Client';
   };
 
+  // Get template label based on context
+  const templateLabel = context === 'overview' ? 'All Clients' : 'Template';
+
   // Get display info for current selection
   const currentDisplay = useMemo(() => {
     if (value.mode === 'template') {
-      return { name: 'Template', subtitle: '', imageUrl: null, isTemplate: true };
+      return { name: templateLabel, subtitle: '', imageUrl: null, isTemplate: true };
     }
     const enrollment = enrollments.find(e => e.id === value.enrollmentId);
     if (enrollment) {
@@ -75,7 +81,7 @@ export function ClientSelector({
       };
     }
     return { name: 'Select view...', subtitle: '', imageUrl: null, isTemplate: false };
-  }, [value, enrollments]);
+  }, [value, enrollments, templateLabel]);
 
   // Count enrollments by status category
   const activeCount = useMemo(() =>
@@ -201,7 +207,7 @@ export function ClientSelector({
             <ChevronDown className={`shrink-0 opacity-50 ${isLarge ? 'ml-2 h-4 w-4' : 'ml-1.5 sm:ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4'}`} />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <PopoverContent className={`p-0 ${isLarge ? 'w-[var(--radix-popover-trigger-width)]' : 'w-[320px]'}`} align="start">
           {/* Search input */}
           <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
             <input
@@ -276,10 +282,10 @@ export function ClientSelector({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Template
+                  {templateLabel}
                 </div>
                 <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Edit master content for all clients
+                  {context === 'overview' ? 'View all members' : 'Edit master content for all clients'}
                 </div>
               </div>
             </button>
