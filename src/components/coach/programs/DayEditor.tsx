@@ -180,12 +180,13 @@ export function DayEditor({
 
   // Fetch member breakdown for a task (lazy load)
   // Uses refs for taskMemberData/loadingTasks to avoid infinite loops
-  const fetchTaskMembers = useCallback(async (taskId: string, taskLabel: string) => {
+  // IMPORTANT: cacheKey should match what's used to read from the Map (task.id || task.label)
+  const fetchTaskMembers = useCallback(async (taskId: string, cacheKey: string) => {
     // Check via refs to avoid dependency on state that changes during fetch
     if (!isCohortMode || !cohortIdValue) return;
-    if (taskMemberDataRef.current.has(taskLabel) || loadingTasksRef.current.has(taskLabel)) return;
+    if (taskMemberDataRef.current.has(cacheKey) || loadingTasksRef.current.has(cacheKey)) return;
 
-    setLoadingTasks(prev => new Set(prev).add(taskLabel));
+    setLoadingTasks(prev => new Set(prev).add(cacheKey));
 
     try {
       const params = new URLSearchParams();
@@ -194,19 +195,19 @@ export function DayEditor({
       }
 
       const response = await fetch(
-        `/api/coach/cohort-tasks/${cohortIdValue}/task/${encodeURIComponent(taskId || taskLabel)}?${params.toString()}`
+        `/api/coach/cohort-tasks/${cohortIdValue}/task/${encodeURIComponent(taskId)}?${params.toString()}`
       );
 
       if (response.ok) {
         const data = await response.json();
-        setTaskMemberData(prev => new Map(prev).set(taskLabel, data.memberBreakdown || []));
+        setTaskMemberData(prev => new Map(prev).set(cacheKey, data.memberBreakdown || []));
       }
     } catch (err) {
       console.error('Error fetching task members:', err);
     } finally {
       setLoadingTasks(prev => {
         const next = new Set(prev);
-        next.delete(taskLabel);
+        next.delete(cacheKey);
         return next;
       });
     }
@@ -280,10 +281,11 @@ export function DayEditor({
   // Fetch members when task is expanded
   // Uses refs for taskMemberData/loadingTasks checks to avoid infinite loops
   useEffect(() => {
-    expandedTasks.forEach(taskLabel => {
-      const task = formData.tasks.find(t => t.label === taskLabel);
+    expandedTasks.forEach(taskKey => {
+      const task = formData.tasks.find(t => (t.id || t.label) === taskKey);
       if (task) {
-        fetchTaskMembers(task.id || taskLabel, taskLabel);
+        const cacheKey = task.id || task.label;
+        fetchTaskMembers(task.id || task.label, cacheKey);
       }
     });
     // Note: fetchTaskMembers uses refs internally to check if already loaded/loading
@@ -733,9 +735,10 @@ export function DayEditor({
             const cohortCompletion = isCohortMode
               ? (task.id && cohortTaskCompletion.get(task.id)) || cohortTaskCompletion.get(task.label)
               : undefined;
-            const isTaskExpanded = expandedTasks.has(task.label);
-            const isLoading = loadingTasks.has(task.label);
-            const members = taskMemberData.get(task.label) || [];
+            const taskKey = task.id || task.label;
+            const isTaskExpanded = expandedTasks.has(taskKey);
+            const isLoading = loadingTasks.has(taskKey);
+            const members = taskMemberData.get(taskKey) || [];
             // Derive completion data from members array if cohortCompletion not available
             // This ensures we show accurate counts even when lazy-loading member data
             const hasMemberData = members.length > 0;
@@ -777,7 +780,7 @@ export function DayEditor({
                   {isCohortMode ? (
                     <button
                       type="button"
-                      onClick={() => toggleTaskExpanded(task.label)}
+                      onClick={() => toggleTaskExpanded(task.id || task.label)}
                       className="shrink-0 flex items-center gap-1"
                     >
                       {isTaskExpanded ? (

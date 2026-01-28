@@ -162,17 +162,23 @@ export async function GET(
     let instance: (ProgramInstance & { id: string }) | null = null;
 
     if (!instanceId && cohortId) {
-      // Look up instance by cohortId
+      // Look up instance by cohortId and programId
+      // Fetch all matching and pick the most recently updated (handles duplicate instances)
       const instanceSnap = await adminDb
         .collection('program_instances')
         .where('cohortId', '==', cohortId)
         .where('programId', '==', programId)
-        .limit(1)
         .get();
 
       if (!instanceSnap.empty) {
-        instanceId = instanceSnap.docs[0].id;
-        instance = { id: instanceSnap.docs[0].id, ...instanceSnap.docs[0].data() } as ProgramInstance & { id: string };
+        // Pick the most recently updated instance
+        const sortedInstances = instanceSnap.docs.sort((a, b) => {
+          const aUpdated = a.data().updatedAt?.toMillis?.() || a.data().updatedAt || 0;
+          const bUpdated = b.data().updatedAt?.toMillis?.() || b.data().updatedAt || 0;
+          return bUpdated - aUpdated; // desc order
+        });
+        instanceId = sortedInstances[0].id;
+        instance = { id: sortedInstances[0].id, ...sortedInstances[0].data() } as ProgramInstance & { id: string };
       }
     } else if (!instanceId && enrollments.length === 1) {
       // For individual programs, look up by enrollment

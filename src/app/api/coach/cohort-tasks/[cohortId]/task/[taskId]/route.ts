@@ -87,10 +87,10 @@ export async function GET(
     }
 
     // Get the program instance for this cohort
+    // Fetch all instances and pick the most recently updated one (handles duplicate instances)
     const instanceQuery = await adminDb
       .collection('program_instances')
       .where('cohortId', '==', cohortId)
-      .limit(1)
       .get();
 
     if (instanceQuery.empty) {
@@ -106,15 +106,24 @@ export async function GET(
       } as TaskMemberResponse);
     }
 
-    const instanceId = instanceQuery.docs[0].id;
+    // Pick the most recently updated instance (handles duplicate instances case)
+    const sortedInstances = instanceQuery.docs.sort((a, b) => {
+      const aUpdated = a.data().updatedAt?.toMillis?.() || a.data().updatedAt || 0;
+      const bUpdated = b.data().updatedAt?.toMillis?.() || b.data().updatedAt || 0;
+      return bUpdated - aUpdated; // desc order
+    });
+    const instanceId = sortedInstances[0].id;
+    console.log(`[COHORT_TASK] Using instance ${instanceId} for cohort ${cohortId} (picked from ${instanceQuery.docs.length} instances)`);
 
     // Get all tasks for this instance and template task ID
     // This queries the 'tasks' collection directly (new system)
+    console.log(`[COHORT_TASK] Querying tasks with instanceId=${instanceId}, instanceTaskId=${taskId}`);
     const tasksQuery = await adminDb
       .collection('tasks')
       .where('instanceId', '==', instanceId)
       .where('instanceTaskId', '==', taskId)
       .get();
+    console.log(`[COHORT_TASK] Found ${tasksQuery.docs.length} tasks matching query`);
 
     // Map tasks to member status
     const taskStatusMap = new Map<string, { status: 'pending' | 'completed'; completedAt?: string }>();
@@ -136,6 +145,7 @@ export async function GET(
       .get();
 
     const memberIds = enrollmentsSnapshot.docs.map(doc => doc.data().userId);
+    console.log(`[COHORT_TASK] Found ${enrollmentsSnapshot.docs.length} enrollments, memberIds: ${memberIds.join(', ')}`);
     
     // Fetch user profiles from Clerk
     const memberProfiles = new Map<string, { firstName: string; lastName: string; imageUrl: string }>();

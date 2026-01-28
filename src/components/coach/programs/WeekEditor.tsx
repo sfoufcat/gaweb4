@@ -1359,11 +1359,12 @@ export function WeekEditor({
 
   // Fetch member breakdown for a task (lazy load)
   // Uses refs for taskMemberData/loadingTasks to avoid infinite loops
-  const fetchTaskMembers = useCallback(async (taskId: string, taskLabel: string) => {
+  // IMPORTANT: cacheKey should match what's used to read from the Map (task.id || task.label)
+  const fetchTaskMembers = useCallback(async (taskId: string, cacheKey: string) => {
     // Check via refs to avoid dependency on state that changes during fetch
-    if (taskMemberDataRef.current.has(taskLabel) || loadingTasksRef.current.has(taskLabel) || !cohortId) return;
+    if (taskMemberDataRef.current.has(cacheKey) || loadingTasksRef.current.has(cacheKey) || !cohortId) return;
 
-    setLoadingTasks(prev => new Set(prev).add(taskLabel));
+    setLoadingTasks(prev => new Set(prev).add(cacheKey));
 
     try {
       // For weekly tasks, fetch without date filter to get aggregated data across all dates
@@ -1371,14 +1372,14 @@ export function WeekEditor({
 
       if (response.ok) {
         const data = await response.json();
-        setTaskMemberData(prev => new Map(prev).set(taskLabel, data.memberBreakdown || []));
+        setTaskMemberData(prev => new Map(prev).set(cacheKey, data.memberBreakdown || []));
       }
     } catch (error) {
       console.error('[WeekEditor] Failed to fetch task members:', error);
     } finally {
       setLoadingTasks(prev => {
         const next = new Set(prev);
-        next.delete(taskLabel);
+        next.delete(cacheKey);
         return next;
       });
     }
@@ -2522,10 +2523,11 @@ export function WeekEditor({
   // Fetch members when task is expanded
   // Uses refs for taskMemberData/loadingTasks checks to avoid infinite loops
   useEffect(() => {
-    expandedTasks.forEach(taskLabel => {
-      const task = formData.weeklyTasks.find(t => t.label === taskLabel);
+    expandedTasks.forEach(taskKey => {
+      const task = formData.weeklyTasks.find(t => (t.id || t.label) === taskKey);
       if (task) {
-        fetchTaskMembers(task.id || taskLabel, taskLabel);
+        const cacheKey = task.id || task.label;
+        fetchTaskMembers(task.id || task.label, cacheKey);
       }
     });
     // Note: fetchTaskMembers uses refs internally to check if already loaded/loading
@@ -2537,7 +2539,8 @@ export function WeekEditor({
   useEffect(() => {
     if (!cohortId || formData.weeklyTasks.length === 0) return;
     formData.weeklyTasks.forEach(task => {
-      fetchTaskMembers(task.id || task.label, task.label);
+      const cacheKey = task.id || task.label;
+      fetchTaskMembers(task.id || task.label, cacheKey);
     });
     // Note: fetchTaskMembers uses refs internally to check if already loaded/loading
     // eslint-disable-next-line react-hooks/exhaustive-deps

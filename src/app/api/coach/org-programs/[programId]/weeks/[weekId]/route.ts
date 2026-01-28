@@ -190,9 +190,9 @@ export async function PATCH(
 
     // Sync updated week content to all instances of this program
     // This ensures clients see the changes immediately without manual sync
+    // Query all instances for this program (status field may not exist on older instances)
     const instancesSnapshot = await adminDb.collection('program_instances')
       .where('programId', '==', programId)
-      .where('status', 'in', ['active', 'upcoming'])
       .get();
 
     if (!instancesSnapshot.empty) {

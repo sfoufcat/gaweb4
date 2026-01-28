@@ -349,10 +349,42 @@ export async function GET(
           }
         }
 
-        // SYNC: If instance has empty resourceAssignments but template has them, sync from template
+        // SYNC: For cohort enrollments, ALWAYS use cohort instance resources (they're the source of truth)
+        // For non-cohort enrollments, use individual instance resources or sync from template
         weekResourceAssignments = targetWeek.resourceAssignments || [];
+
+        // If enrollment is in a cohort, check cohort instance for latest resources
+        if (enrollment.cohortId) {
+          const cohortInstanceSnap = await adminDb
+            .collection('program_instances')
+            .where('programId', '==', programId)
+            .where('cohortId', '==', enrollment.cohortId)
+            .where('type', '==', 'cohort')
+            .limit(1)
+            .get();
+
+          if (!cohortInstanceSnap.empty) {
+            const cohortInstance = cohortInstanceSnap.docs[0].data();
+            const cohortWeeks = cohortInstance.weeks || [];
+            const cohortWeek = cohortWeeks.find((cw: { weekNumber: number; resourceAssignments?: WeekResourceAssignment[] }) =>
+              cw.weekNumber === targetWeek.weekNumber
+            );
+            if (cohortWeek?.resourceAssignments?.length) {
+              // Cohort has resources - use them (even if individual instance has different ones)
+              const cohortResourcesJson = JSON.stringify(cohortWeek.resourceAssignments);
+              const individualResourcesJson = JSON.stringify(weekResourceAssignments);
+              if (cohortResourcesJson !== individualResourcesJson) {
+                console.log(`[WEEKLY_CONTENT] SYNC: Using cohort instance resourceAssignments for week ${targetWeek.weekNumber}`);
+                weekResourceAssignments = cohortWeek.resourceAssignments;
+                targetWeek.resourceAssignments = cohortWeek.resourceAssignments;
+                needsPersist = true;
+              }
+            }
+          }
+        }
+
+        // If still empty (no cohort or cohort has no resources), try template
         if (weekResourceAssignments.length === 0) {
-          // Find this week in template
           const templateWeeks = program.weeks || [];
           const templateWeek = templateWeeks.find((tw: ProgramWeek) => tw.weekNumber === targetWeek.weekNumber);
           if (templateWeek?.resourceAssignments?.length) {

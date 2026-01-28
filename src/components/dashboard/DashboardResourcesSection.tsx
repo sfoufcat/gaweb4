@@ -106,9 +106,8 @@ function useProgramResources(enrollment: ProgramEnrollmentWithDetails | null) {
     }
 
     // Filter resources for today
-    const todayResources = week
-      ? getResourcesForDay({ resourceAssignments: resourceAssignments || [] }, todayDayOfWeek)
-      : [];
+    // resourceAssignments is a top-level field in the API response, not dependent on week
+    const todayResources = getResourcesForDay({ resourceAssignments: resourceAssignments || [] }, todayDayOfWeek);
 
     // Resolve resources to display data
     const resolvedResources: ResolvedResource[] = [];
