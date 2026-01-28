@@ -309,7 +309,7 @@ export async function GET(
         const hasPartialStart = targetWeek.actualStartDayOfWeek && targetWeek.actualStartDayOfWeek > 1;
         const hasPartialEnd = targetWeek.actualEndDayOfWeek && targetWeek.actualEndDayOfWeek < daysPerWeek;
         
-        let migratedDays = targetWeek.days || [];
+        let migratedDays: ProgramInstanceDay[] = targetWeek.days || [];
         
         if ((hasPartialStart || hasPartialEnd) && targetWeek.weeklyTasks?.length && migratedDays.length) {
           const activeStartIdx = (targetWeek.actualStartDayOfWeek || 1) - 1;
@@ -614,6 +614,19 @@ export async function GET(
     weekLinkedCourseIds.forEach(id => allLinkedCourseIds.add(id));
     weekLinkedSummaryIds.forEach(id => allLinkedSummaryIds.add(id));
     weekLinkedQuestionnaireIds.forEach(id => allLinkedQuestionnaireIds.add(id));
+
+    // Collect resource IDs from resourceAssignments (new cadence system)
+    for (const assignment of weekResourceAssignments) {
+      if (assignment.resourceType === 'course') {
+        allLinkedCourseIds.add(assignment.resourceId);
+      } else if (assignment.resourceType === 'article') {
+        allLinkedArticleIds.add(assignment.resourceId);
+      } else if (assignment.resourceType === 'download') {
+        allLinkedDownloadIds.add(assignment.resourceId);
+      } else if (assignment.resourceType === 'link') {
+        allLinkedLinkIds.add(assignment.resourceId);
+      }
+    }
 
     // Then collect from days (day-level resources)
     for (const day of daysData) {

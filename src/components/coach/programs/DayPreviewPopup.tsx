@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Clock,
   Video,
+  FileQuestion,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type {
@@ -169,6 +170,10 @@ export function DayPreviewPopup({
   );
   const linkAssignments = useMemo(
     () => getResourcesByType(dayResources, 'link'),
+    [dayResources]
+  );
+  const questionnaireAssignments = useMemo(
+    () => getResourcesByType(dayResources, 'questionnaire'),
     [dayResources]
   );
 
@@ -544,6 +549,33 @@ export function DayPreviewPopup({
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                               {assignment.title || 'Link'}
+                            </p>
+                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                              {getDayTagLabel(assignment)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Forms/Questionnaires */}
+                {questionnaireAssignments.length > 0 && (
+                  <section>
+                    <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+                      Forms
+                    </h4>
+                    <div className="space-y-2">
+                      {questionnaireAssignments.map((assignment) => (
+                        <div
+                          key={assignment.id}
+                          className="flex items-center gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
+                        >
+                          <FileQuestion className="w-4 h-4 text-pink-500 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                              {assignment.title || 'Form'}
                             </p>
                             <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
                               {getDayTagLabel(assignment)}

@@ -6244,6 +6244,7 @@ export interface ProgramInstanceDay {
   linkedEventIds?: string[];           // UnifiedEvent IDs linked to this day
   linkedSummaryIds?: string[];         // CallSummary IDs linked to this day
   linkedArticleIds?: string[];         // DiscoverArticle IDs
+  linkedCourseIds?: string[];          // DiscoverCourse IDs
   linkedDownloadIds?: string[];        // DiscoverDownload IDs
   linkedLinkIds?: string[];            // DiscoverLink IDs
   linkedQuestionnaireIds?: string[];   // Questionnaire IDs

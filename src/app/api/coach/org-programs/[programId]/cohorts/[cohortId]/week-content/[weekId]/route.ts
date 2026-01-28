@@ -939,6 +939,7 @@ export async function PUT(
       weeklyHabits: body.weeklyHabits || [],
       weeklyPrompt: body.weeklyPrompt?.trim() || undefined,
       distribution: body.distribution || undefined,
+      resourceAssignments: body.resourceAssignments || weeks[weekIndex].resourceAssignments || [],
       updatedAt: now,
     };
 
@@ -1221,6 +1222,9 @@ export async function PATCH(
     }
     if (body.theme !== undefined) {
       updatedWeek.theme = body.theme?.trim() || undefined;
+    }
+    if (body.resourceAssignments !== undefined) {
+      updatedWeek.resourceAssignments = body.resourceAssignments || [];
     }
 
     // Ensure days have calendar dates (fix for existing instances created before calendar date fix)

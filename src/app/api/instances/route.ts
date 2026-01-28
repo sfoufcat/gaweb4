@@ -404,6 +404,9 @@ export async function GET(request: NextRequest) {
                   linkedLinkIds?: string[];
                   linkedQuestionnaireIds?: string[];
                   linkedSummaryIds?: string[];
+                  // Resource assignments with cadence
+                  resourceAssignments?: unknown[];
+                  courseAssignments?: unknown[];
                 };
 
                 let templateWeek: TemplateWeek | undefined;
@@ -492,6 +495,9 @@ export async function GET(request: NextRequest) {
                   linkedLinkIds: templateWeek?.linkedLinkIds,
                   linkedQuestionnaireIds: templateWeek?.linkedQuestionnaireIds,
                   linkedSummaryIds: templateWeek?.linkedSummaryIds,
+                  // Resource assignments with cadence and lesson mapping
+                  resourceAssignments: templateWeek?.resourceAssignments || [],
+                  courseAssignments: templateWeek?.courseAssignments || [],
                 };
               });
             } else {
@@ -598,6 +604,9 @@ export async function GET(request: NextRequest) {
                   linkedLinkIds: weekData?.linkedLinkIds,
                   linkedQuestionnaireIds: weekData?.linkedQuestionnaireIds,
                   linkedSummaryIds: weekData?.linkedSummaryIds,
+                  // Resource assignments with cadence and lesson mapping
+                  resourceAssignments: weekData?.resourceAssignments || [],
+                  courseAssignments: weekData?.courseAssignments || [],
                 };
               });
             }
@@ -732,6 +741,9 @@ export async function GET(request: NextRequest) {
                   linkedLinkIds?: string[];
                   linkedQuestionnaireIds?: string[];
                   linkedSummaryIds?: string[];
+                  // Resource assignments with cadence
+                  resourceAssignments?: unknown[];
+                  courseAssignments?: unknown[];
                 };
 
                 let templateWeek: TemplateWeek | undefined;
@@ -820,6 +832,9 @@ export async function GET(request: NextRequest) {
                   linkedLinkIds: templateWeek?.linkedLinkIds,
                   linkedQuestionnaireIds: templateWeek?.linkedQuestionnaireIds,
                   linkedSummaryIds: templateWeek?.linkedSummaryIds,
+                  // Resource assignments with cadence and lesson mapping
+                  resourceAssignments: templateWeek?.resourceAssignments || [],
+                  courseAssignments: templateWeek?.courseAssignments || [],
                 };
               });
             } else {
@@ -926,6 +941,9 @@ export async function GET(request: NextRequest) {
                   linkedLinkIds: weekData?.linkedLinkIds,
                   linkedQuestionnaireIds: weekData?.linkedQuestionnaireIds,
                   linkedSummaryIds: weekData?.linkedSummaryIds,
+                  // Resource assignments with cadence and lesson mapping
+                  resourceAssignments: weekData?.resourceAssignments || [],
+                  courseAssignments: weekData?.courseAssignments || [],
                 };
               });
             }

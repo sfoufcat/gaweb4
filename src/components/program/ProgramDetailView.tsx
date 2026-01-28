@@ -414,154 +414,6 @@ export function ProgramDetailView({
 
       </div>
 
-      {/* Program Overview Section - Glass Card */}
-      <div className="relative rounded-[20px] p-6 overflow-hidden bg-white/70 dark:bg-[#1c2026]/70 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent dark:from-white/5 pointer-events-none" />
-        <div className="relative space-y-4">
-          <div className="flex items-center gap-3">
-            <h2 className="font-albert text-[20px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
-              Program overview
-            </h2>
-            {/* Enrolled Badge - matches week badge style */}
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100/80 dark:bg-green-500/20 border border-green-200/60 dark:border-green-500/30">
-              <span className="font-sans text-[12px] font-semibold text-green-700 dark:text-green-300 tracking-[-0.2px]">
-                Enrolled
-              </span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4 flex-wrap">
-            {isGroup ? (
-              /* Group Program Overview */
-              <>
-                {/* Stacked Avatars + Group Info */}
-                <div className="flex items-center gap-3">
-                  {squadMembers && squadMembers.length > 0 && (
-                    <div className="flex items-center -space-x-3">
-                      {squadMembers.slice(0, 3).map((member) => (
-                        <div
-                          key={member.id}
-                          className="w-[38px] h-[38px] rounded-full border-2 border-white dark:border-[#1c2026] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
-                        >
-                          {member.imageUrl ? (
-                            <Image
-                              src={member.imageUrl}
-                              alt={`${member.firstName} ${member.lastName}`}
-                              width={38}
-                              height={38}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="text-xs font-medium text-white">
-                                {member.firstName?.[0] || member.lastName?.[0] || 'M'}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex flex-col">
-                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
-                      Group program
-                    </span>
-                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
-                      {memberCount} member{memberCount !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Coach Avatar + Info */}
-                <div className="flex items-center gap-3">
-                  <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-brand-accent/10">
-                    {program.coachImageUrl ? (
-                      <Image
-                        src={program.coachImageUrl}
-                        alt={program.coachName}
-                        width={38}
-                        height={38}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="font-albert font-semibold text-sm text-brand-accent">
-                          {program.coachName[0]}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
-                      {program.coachName}
-                    </span>
-                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
-                      Program coach
-                    </span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              /* 1:1 Program Overview */
-              <>
-                {/* Next Session Info */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-5 h-5 text-brand-accent" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
-                      Next session
-                    </span>
-                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
-                      {nextCall?.datetime ? (
-                        new Date(nextCall.datetime).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })
-                      ) : (
-                        'Not scheduled'
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Coach Avatar + Info */}
-                <div className="flex items-center gap-3">
-                  <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-brand-accent/10">
-                    {(coachingCoach?.imageUrl || program.coachImageUrl) ? (
-                      <Image
-                        src={coachingCoach?.imageUrl || program.coachImageUrl || ''}
-                        alt={coachingCoach?.name || program.coachName}
-                        width={38}
-                        height={38}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="font-albert font-semibold text-sm text-brand-accent">
-                          {(coachingCoach?.name || program.coachName)?.[0] || 'C'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
-                      {coachingCoach?.name || program.coachName}
-                    </span>
-                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
-                      Program coach
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Join Community Card (for 1:1 programs with community enabled but not joined) */}
       {showJoinCommunityCard && (
         <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-[20px] p-5 space-y-3 border border-purple-100 dark:border-purple-800/30">
@@ -886,20 +738,6 @@ export function ProgramDetailView({
         </div>
       )}
 
-      {/* Weekly Outcomes */}
-      {weeklyWeek && (
-        <div className="mt-6">
-          <WeeklyOutcomes week={weeklyWeek} />
-        </div>
-      )}
-
-      {/* Coach Notes */}
-      {weeklyWeek && (
-        <div className="mt-6">
-          <CoachNotes week={weeklyWeek} coachName={program.coachName} />
-        </div>
-      )}
-
       {/* Resources Section - Show weekly resources if available, otherwise program-level resources */}
       {(() => {
         // Prefer weekly resources, fall back to program-level
@@ -926,6 +764,168 @@ export function ProgramDetailView({
           </div>
         );
       })()}
+
+      {/* Program Overview Section - Glass Card */}
+      <div className="relative rounded-[20px] p-6 overflow-hidden bg-white/70 dark:bg-[#1c2026]/70 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent dark:from-white/5 pointer-events-none" />
+        <div className="relative space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="font-albert text-[20px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
+              Program overview
+            </h2>
+            {/* Enrolled Badge - matches week badge style */}
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100/80 dark:bg-green-500/20 border border-green-200/60 dark:border-green-500/30">
+              <span className="font-sans text-[12px] font-semibold text-green-700 dark:text-green-300 tracking-[-0.2px]">
+                Enrolled
+              </span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 flex-wrap">
+            {isGroup ? (
+              /* Group Program Overview */
+              <>
+                {/* Stacked Avatars + Group Info */}
+                <div className="flex items-center gap-3">
+                  {squadMembers && squadMembers.length > 0 && (
+                    <div className="flex items-center -space-x-3">
+                      {squadMembers.slice(0, 3).map((member) => (
+                        <div
+                          key={member.id}
+                          className="w-[38px] h-[38px] rounded-full border-2 border-white dark:border-[#1c2026] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
+                        >
+                          {member.imageUrl ? (
+                            <Image
+                              src={member.imageUrl}
+                              alt={`${member.firstName} ${member.lastName}`}
+                              width={38}
+                              height={38}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-xs font-medium text-white">
+                                {member.firstName?.[0] || member.lastName?.[0] || 'M'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
+                      Group program
+                    </span>
+                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
+                      {memberCount} member{memberCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Coach Avatar + Info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-brand-accent/10">
+                    {program.coachImageUrl ? (
+                      <Image
+                        src={program.coachImageUrl}
+                        alt={program.coachName}
+                        width={38}
+                        height={38}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="font-albert font-semibold text-sm text-brand-accent">
+                          {program.coachName[0]}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
+                      {program.coachName}
+                    </span>
+                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
+                      Program coach
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* 1:1 Program Overview */
+              <>
+                {/* Next Session Info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-5 h-5 text-brand-accent" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
+                      Next session
+                    </span>
+                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
+                      {nextCall?.datetime ? (
+                        new Date(nextCall.datetime).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })
+                      ) : (
+                        'Not scheduled'
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Coach Avatar + Info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-brand-accent/10">
+                    {(coachingCoach?.imageUrl || program.coachImageUrl) ? (
+                      <Image
+                        src={coachingCoach?.imageUrl || program.coachImageUrl || ''}
+                        alt={coachingCoach?.name || program.coachName}
+                        width={38}
+                        height={38}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="font-albert font-semibold text-sm text-brand-accent">
+                          {(coachingCoach?.name || program.coachName)?.[0] || 'C'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px]">
+                      {coachingCoach?.name || program.coachName}
+                    </span>
+                    <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[16px]">
+                      Program coach
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Weekly Outcomes */}
+      {weeklyWeek && (
+        <div className="mt-6">
+          <WeeklyOutcomes week={weeklyWeek} />
+        </div>
+      )}
+
+      {/* Coach Notes */}
+      {weeklyWeek && (
+        <div className="mt-6">
+          <CoachNotes week={weeklyWeek} coachName={program.coachName} />
+        </div>
+      )}
 
       {/* Legacy 3 Day Focus Section - Fallback when no weekly content */}
       {hasAnyTasks && !weeklyWeek && (

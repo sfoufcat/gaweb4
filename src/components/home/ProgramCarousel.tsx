@@ -99,13 +99,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
         className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory touch-pan-x"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {enrollments.map((enrollment) => {
-          // Check if the program has already started (start date is in the past)
-          const hasStarted = enrollment.cohort 
-            ? new Date(enrollment.cohort.startDate) <= new Date() 
-            : false;
-          
-          return (
+        {enrollments.map((enrollment) => (
           <Link
             key={enrollment.id}
             href={`/program?programId=${enrollment.programId}`}
@@ -191,9 +185,13 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                         </span>
                       </div>
                     </div>
-                  ) : hasStarted ? (
+                  ) : enrollment.status === 'completed' ? (
                     <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400">
-                      Ready to start
+                      Completed
+                    </span>
+                  ) : enrollment.status === 'upcoming' ? (
+                    <span className="text-[12px] font-medium text-amber-600 dark:text-amber-400">
+                      Upcoming
                     </span>
                   ) : (
                     <span className="text-[12px] font-medium text-brand-accent">
@@ -204,8 +202,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
               </div>
             </div>
           </Link>
-        );
-        })}
+        ))}
         
         {/* Discover More Card - Only show if there are available programs */}
         {hasAvailablePrograms && (
