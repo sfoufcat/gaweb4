@@ -6,6 +6,7 @@ import { sendTasksCompletedNotification } from '@/lib/notifications';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { updateLastActivity } from '@/lib/analytics/lastActivity';
 import { updateClientActivityStatus } from '@/lib/analytics/activity';
+import { getUserValidInstanceIds, filterTasksByValidInstances } from '@/lib/task-utils';
 import type { Task, UpdateTaskRequest } from '@/types';
 
 /**
@@ -113,7 +114,15 @@ export async function PATCH(
           .where('status', 'in', ['pending', 'completed']) // Exclude deleted/archived tasks
           .get();
 
-        if (focusTasksSnapshot.size >= focusLimit) {
+        // Filter out orphaned program tasks from invalid instances
+        const allFocusTasks: Task[] = [];
+        focusTasksSnapshot.forEach((doc) => {
+          allFocusTasks.push({ id: doc.id, ...doc.data() } as Task);
+        });
+        const validInstanceIds = await getUserValidInstanceIds(userId, organizationId || undefined);
+        const validFocusTasks = filterTasksByValidInstances(allFocusTasks, validInstanceIds);
+
+        if (validFocusTasks.length >= focusLimit) {
           return NextResponse.json(
             { error: `Focus list is full. Maximum ${focusLimit} tasks allowed.` },
             { status: 400 }

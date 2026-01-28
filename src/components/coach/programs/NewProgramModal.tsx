@@ -48,7 +48,7 @@ import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 
 // Wizard step types
-type WizardStep = 'type' | 'structure' | 'details' | 'settings' | 'cohort';
+type WizardStep = 'type' | 'structure' | 'details' | 'community' | 'settings' | 'cohort';
 
 // Cohort form data
 interface CohortFormData {
@@ -72,6 +72,8 @@ interface ProgramWizardData {
   name: string;
   description: string;
   coverImage?: string;
+  // Step 3.5 (1:1 only)
+  includeCommunity: boolean;
   // Step 4
   visibility: 'public' | 'private';
   pricing: 'free' | 'paid';
@@ -90,6 +92,7 @@ const DEFAULT_WIZARD_DATA: ProgramWizardData = {
   name: '',
   description: '',
   coverImage: undefined,
+  includeCommunity: false,
   visibility: 'private',
   pricing: 'free',
   price: 297,
@@ -275,7 +278,11 @@ export function NewProgramModal({
   }, []);
 
   const goToNextStep = () => {
-    const steps: WizardStep[] = ['type', 'structure', 'details', 'settings', 'cohort'];
+    // 1:1 programs: type → structure → details → community → settings
+    // Group programs: type → structure → details → settings → cohort
+    const steps: WizardStep[] = wizardData.type === 'individual'
+      ? ['type', 'structure', 'details', 'community', 'settings']
+      : ['type', 'structure', 'details', 'settings', 'cohort'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex < steps.length - 1) {
       setStep(steps[currentIndex + 1]);
@@ -286,7 +293,11 @@ export function NewProgramModal({
     // Don't allow going back from cohort step (program already created)
     if (step === 'cohort') return;
 
-    const steps: WizardStep[] = ['type', 'structure', 'details', 'settings'];
+    // 1:1 programs: type → structure → details → community → settings
+    // Group programs: type → structure → details → settings
+    const steps: WizardStep[] = wizardData.type === 'individual'
+      ? ['type', 'structure', 'details', 'community', 'settings']
+      : ['type', 'structure', 'details', 'settings'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex > 0) {
       setStep(steps[currentIndex - 1]);
@@ -324,6 +335,7 @@ export function NewProgramModal({
           status: wizardData.status,
           recurring: wizardData.recurring,
           recurringCadence: wizardData.recurringCadence,
+          includeCommunity: wizardData.type === 'individual' ? wizardData.includeCommunity : false,
         }),
       });
 
@@ -394,7 +406,11 @@ export function NewProgramModal({
 
   // Get step index for progress indicator
   const getStepIndex = () => {
-    const steps: WizardStep[] = ['type', 'structure', 'details', 'settings', 'cohort'];
+    // 1:1 programs: type → structure → details → community → settings
+    // Group programs: type → structure → details → settings → cohort
+    const steps: WizardStep[] = wizardData.type === 'individual'
+      ? ['type', 'structure', 'details', 'community', 'settings']
+      : ['type', 'structure', 'details', 'settings', 'cohort'];
     return steps.indexOf(step);
   };
 
@@ -427,6 +443,8 @@ export function NewProgramModal({
         return wizardData.durationWeeks >= 1 && wizardData.numModules >= 1;
       case 'details':
         return wizardData.name.trim().length > 0 && wizardData.description.trim().length > 0 && !!wizardData.coverImage;
+      case 'community':
+        return true; // Always valid, it's a boolean choice with a default
       case 'settings':
         return wizardData.pricing === 'free' || wizardData.price > 0;
       default:
@@ -456,6 +474,7 @@ export function NewProgramModal({
               {step === 'type' && 'Create New Program'}
               {step === 'structure' && 'Program Structure'}
               {step === 'details' && 'Program Details'}
+              {step === 'community' && 'Community'}
               {step === 'settings' && 'Final Settings'}
               {step === 'cohort' && 'Create First Cohort'}
             </h2>
@@ -463,6 +482,7 @@ export function NewProgramModal({
               {step === 'type' && 'Choose your program type'}
               {step === 'structure' && 'Configure how your program is organized'}
               {step === 'details' && 'Give your program a name and description'}
+              {step === 'community' && 'Add a shared space for your clients'}
               {step === 'settings' && 'Set visibility, pricing, and status'}
               {step === 'cohort' && 'Set up your first cohort to get started'}
             </p>
@@ -591,6 +611,22 @@ export function NewProgramModal({
             </motion.div>
           )}
 
+          {step === 'community' && (
+            <motion.div
+              key="community"
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <CommunityStep
+                value={wizardData.includeCommunity}
+                onChange={(includeCommunity) => updateWizardData({ includeCommunity })}
+              />
+            </motion.div>
+          )}
+
           {step === 'settings' && (
             <motion.div
               key="settings"
@@ -634,9 +670,9 @@ export function NewProgramModal({
       {/* Footer */}
       <div className="px-6 py-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="flex items-center justify-between">
-          {/* Progress Indicator - 5 dots for group programs, 4 for 1:1 */}
+          {/* Progress Indicator - 5 dots for both 1:1 (with community) and group (with cohort) */}
           <div className="flex items-center gap-2">
-            {(wizardData.type === 'group' ? [0, 1, 2, 3, 4] : [0, 1, 2, 3]).map((i) => (
+            {[0, 1, 2, 3, 4].map((i) => (
               <div
                 key={i}
                 className={`w-2 h-2 rounded-full transition-colors ${
@@ -1047,6 +1083,106 @@ function DetailsStep({ data, onChange }: DetailsStepProps) {
 }
 
 // ============================================================================
+// STEP 3.5: Community (1:1 programs only)
+// ============================================================================
+interface CommunityStepProps {
+  value: boolean;
+  onChange: (value: boolean) => void;
+}
+
+function CommunityStep({ value, onChange }: CommunityStepProps) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Yes, include community */}
+      <button
+        onClick={() => onChange(true)}
+        className={`group relative flex flex-col items-center text-center p-6 rounded-2xl border-2 transition-colors ${
+          value === true
+            ? 'border-brand-accent bg-brand-accent/5'
+            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+        }`}
+      >
+        {/* Icon */}
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
+          value === true
+            ? 'bg-brand-accent/20'
+            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+        }`}>
+          <Users className={`w-7 h-7 ${value === true ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+        </div>
+
+        {/* Title */}
+        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          Yes, include community
+        </h3>
+
+        {/* Description */}
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+          Create a shared space for all 1:1 clients
+        </p>
+
+        {/* Explainer */}
+        <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert leading-relaxed">
+          Clients can connect, share progress, and support each other alongside their 1:1 coaching
+        </p>
+
+        {/* Selection indicator */}
+        {value === true && (
+          <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        )}
+      </button>
+
+      {/* No, just 1:1 */}
+      <button
+        onClick={() => onChange(false)}
+        className={`group relative flex flex-col items-center text-center p-6 rounded-2xl border-2 transition-colors ${
+          value === false
+            ? 'border-brand-accent bg-brand-accent/5'
+            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+        }`}
+      >
+        {/* Icon */}
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
+          value === false
+            ? 'bg-brand-accent/20'
+            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+        }`}>
+          <User className={`w-7 h-7 ${value === false ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+        </div>
+
+        {/* Title */}
+        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          No, just 1:1
+        </h3>
+
+        {/* Description */}
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+          Keep coaching fully private
+        </p>
+
+        {/* Explainer */}
+        <p className="text-xs text-[#8c8a87] dark:text-[#8b8f9a] font-albert leading-relaxed">
+          Each client only sees their own progress and communicates directly with you
+        </p>
+
+        {/* Selection indicator */}
+        {value === false && (
+          <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        )}
+      </button>
+    </div>
+  );
+}
+
+// ============================================================================
 // STEP 4: Settings
 // ============================================================================
 interface SettingsStepProps {
@@ -1092,6 +1228,20 @@ function SettingsStep({ data, onChange, stripeConnected, stripeLoading, onOpenSt
             <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">Private</span>
           </button>
         </div>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={data.visibility}
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            transition={{ duration: 0.15 }}
+            className="mt-2 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+          >
+            {data.visibility === 'public'
+              ? 'Anyone can discover and enroll in this program'
+              : 'Only clients you invite can access this program'}
+          </motion.p>
+        </AnimatePresence>
       </div>
 
       {/* Pricing */}
@@ -1164,7 +1314,7 @@ function SettingsStep({ data, onChange, stripeConnected, stripeLoading, onOpenSt
                   value={data.price}
                   onChange={(e) => onChange({ price: Math.max(0, parseInt(e.target.value) || 0) })}
                   placeholder="297"
-                  className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-brand-accent/50 focus:border-brand-accent transition-colors"
+                  className="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] dark:placeholder:text-[#6b7280] focus:outline-none focus:border-brand-accent transition-colors"
                 />
                 {!canAcceptPayments && (
                   <p className="mt-1.5 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">

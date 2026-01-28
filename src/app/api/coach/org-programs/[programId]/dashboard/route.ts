@@ -21,6 +21,7 @@ interface MemberStats {
   streak: number;
   lastActiveAt?: string;
   daysIdle: number;
+  daysSinceEnrollment: number;
   enrollmentId: string;
   tasksCompleted: number;
   totalTasks: number;
@@ -357,6 +358,9 @@ export async function GET(
       const user = userMap.get(enrollment.userId) || { name: 'Unknown' };
       const startedAt = enrollment.startedAt || enrollment.createdAt || new Date().toISOString();
       const currentWeek = calculateCurrentWeek(startedAt, lengthDays);
+      const daysSinceEnrollment = Math.floor(
+        (Date.now() - new Date(startedAt).getTime()) / (1000 * 60 * 60 * 24)
+      );
       // Use updatedAt as proxy for lastActiveAt (when enrollment was last updated)
       const lastActiveAt = enrollment.updatedAt || enrollment.createdAt;
       const daysIdle = calculateDaysIdle(lastActiveAt);
@@ -380,6 +384,7 @@ export async function GET(
         streak,
         lastActiveAt,
         daysIdle,
+        daysSinceEnrollment,
         enrollmentId: enrollment.id,
         tasksCompleted,
         totalTasks,
@@ -464,8 +469,9 @@ export async function GET(
     }
 
     // Identify members needing attention (< 50% task completion OR idle > 2 days)
+    // Grace period: exclude members in their first 2 days of enrollment
     const needsAttention = memberStats
-      .filter((m) => m.taskCompletionPercent < 50 || m.daysIdle > 2)
+      .filter((m) => m.daysSinceEnrollment > 2 && (m.taskCompletionPercent < 50 || m.daysIdle > 2))
       .map((m) => {
         const reason = (m.taskCompletionPercent < 50 && m.daysIdle > 2
           ? 'both'

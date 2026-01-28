@@ -5,6 +5,8 @@ import { Users, MessageCircle, Edit2, Loader2, ChevronDown, Check } from 'lucide
 import type { Squad, SquadMember } from '@/types';
 import { SquadMemberList } from '@/components/squad/SquadMemberList';
 import { Button } from '@/components/ui/button';
+import { CohortSessionCard } from '@/components/program/CohortSessionCard';
+import { NextSquadCallCard } from '@/components/squad/NextSquadCallCard';
 import { useChatSheet } from '@/contexts/ChatSheetContext';
 import {
   Dialog,
@@ -31,6 +33,10 @@ interface ProgramCommunityTabProps {
   onCommunityEnabled?: () => void;
   /** Selected cohort ID from parent (for group programs) */
   selectedCohortId?: string | null;
+  /** Program name for schedule modal */
+  programName?: string;
+  /** Cohort name for schedule modal (group programs) */
+  cohortName?: string;
 }
 
 export function ProgramCommunityTab({
@@ -39,6 +45,8 @@ export function ProgramCommunityTab({
   clientCommunityEnabled,
   onCommunityEnabled,
   selectedCohortId,
+  programName,
+  cohortName,
 }: ProgramCommunityTabProps) {
   const [allSquads, setAllSquads] = useState<SquadWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -508,6 +516,24 @@ export function ProgramCommunityTab({
           </div>
         </div>
       </div>
+
+      {/* Schedule Call Card */}
+      {programType === 'group' && selectedCohortId && squad && (
+        <CohortSessionCard
+          cohortId={selectedCohortId}
+          programId={programId}
+          programName={programName}
+          cohortName={cohortName || squad.name}
+          chatChannelId={squad.chatChannelId || undefined}
+          isCoach={true}
+        />
+      )}
+      {programType === 'individual' && squad && (
+        <NextSquadCallCard
+          squad={squad as Squad}
+          isCoach={true}
+        />
+      )}
 
       {/* Squad Stats */}
       {squad && (

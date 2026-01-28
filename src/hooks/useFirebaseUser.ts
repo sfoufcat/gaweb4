@@ -47,7 +47,16 @@ export function useFirebaseUser() {
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      try {
+        unsubscribe();
+      } catch (e) {
+        // Firestore 11.x bug - safe to ignore
+        if (!(e instanceof Error && e.message?.includes('INTERNAL ASSERTION FAILED'))) {
+          throw e;
+        }
+      }
+    };
   }, [user, isLoaded]);
 
   return { 

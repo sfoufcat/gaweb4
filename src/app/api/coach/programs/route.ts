@@ -9,7 +9,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { Program } from '@/types';
+import { getStreamServerClient } from '@/lib/stream-server';
+import type { Program, Squad } from '@/types';
 
 interface CreateProgramRequest {
   // Step 1: Type
@@ -26,12 +27,15 @@ interface CreateProgramRequest {
   description?: string;
   coverImage?: string;
 
+  // Step 3.5: Community (1:1 programs only)
+  includeCommunity?: boolean;
+
   // Step 4: Settings
   visibility: 'public' | 'private';
   pricing: 'free' | 'paid';
   price?: number; // in dollars
   status: 'active' | 'draft';
-  
+
   // Subscription settings (only valid for evergreen programs)
   subscriptionEnabled?: boolean;
   billingInterval?: 'monthly' | 'quarterly' | 'yearly';
@@ -63,6 +67,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       coverImage,
+      includeCommunity,
       visibility,
       pricing,
       price,
@@ -138,6 +143,8 @@ export async function POST(request: NextRequest) {
       // Subscription settings (only for evergreen programs with paid pricing)
       subscriptionEnabled: effectiveDurationType === 'evergreen' && subscriptionEnabled === true,
       billingInterval: effectiveDurationType === 'evergreen' && subscriptionEnabled ? (billingInterval || 'monthly') : undefined,
+      // Community feature for 1:1 programs (uses existing clientCommunityEnabled field)
+      clientCommunityEnabled: type === 'individual' ? (includeCommunity ?? false) : false,
       defaultHabits: [],
       includeWeekends,
       hasModules: numModules > 1,
@@ -228,6 +235,68 @@ export async function POST(request: NextRequest) {
     });
 
     console.log(`[CREATE_PROGRAM] Successfully created program ${programId} with ${lengthDays} days and ${weeks.length} weeks distributed across ${numModules} modules`);
+
+    // If community is enabled for 1:1 program, auto-create the community squad
+    let clientCommunitySquadId: string | undefined;
+    if (type === 'individual' && includeCommunity) {
+      try {
+        // Generate invite code for the community
+        const inviteCode = `GA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+        // Create the community squad
+        const squadData: Omit<Squad, 'id'> = {
+          name: `${name} Community`,
+          description: `Client community for ${name} participants`,
+          avatarUrl: coverImage || '',
+          visibility: 'private',
+          timezone: 'UTC',
+          memberIds: [],
+          inviteCode,
+          hasCoach: true,
+          coachId: userId,
+          organizationId,
+          programId,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        const squadRef = await adminDb.collection('squads').add(squadData);
+        clientCommunitySquadId = squadRef.id;
+
+        console.log(`[CREATE_PROGRAM] Created client community squad: ${clientCommunitySquadId} for program ${programId}`);
+
+        // Create Stream Chat channel for the community
+        try {
+          const streamClient = await getStreamServerClient();
+          if (streamClient) {
+            const channelId = `squad-${clientCommunitySquadId}`;
+            const channel = streamClient.channel('messaging', channelId, {
+              members: [userId],
+              created_by_id: userId,
+              name: `${name} Community`,
+              image: coverImage || undefined,
+              isSquadChannel: true,
+            } as Record<string, unknown>);
+
+            await channel.create();
+
+            // Update squad with chat channel ID
+            await squadRef.update({ chatChannelId: channelId });
+
+            console.log(`[CREATE_PROGRAM] Created Stream chat channel: ${channelId}`);
+          }
+        } catch (chatError) {
+          console.error('[CREATE_PROGRAM] Error creating chat channel:', chatError);
+          // Don't fail the whole operation if chat creation fails
+        }
+
+        // Update program with community squad ID
+        await programRef.update({ clientCommunitySquadId });
+      } catch (squadError) {
+        console.error('[CREATE_PROGRAM] Error creating community squad:', squadError);
+        // Don't fail the whole operation if squad creation fails
+      }
+    }
 
     return NextResponse.json({
       success: true,

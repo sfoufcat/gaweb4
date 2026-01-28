@@ -105,6 +105,8 @@ interface ProgramWithCohorts {
   type: 'group' | 'individual';
   lengthDays?: number;
   cohorts?: ProgramCohort[];
+  clientCommunityEnabled?: boolean;
+  clientCommunitySquadId?: string | null;
 }
 
 /**
@@ -277,13 +279,15 @@ export function CreateEventModal({
   const [creatingCohort, setCreatingCohort] = useState(false);
   const [cohortCreateError, setCohortCreateError] = useState<string | null>(null);
 
-  // Get group programs (only group programs have cohorts)
-  const groupPrograms = programsData?.programs?.filter(p => p.type === 'group') || [];
+  // Get selectable programs: group programs + individual programs with community enabled
+  const selectablePrograms = programsData?.programs?.filter(p =>
+    p.type === 'group' || (p.type === 'individual' && p.clientCommunityEnabled && p.clientCommunitySquadId)
+  ) || [];
   const cohorts = cohortsData?.cohorts || [];
   const squads = squadsData?.squads || [];
 
   // Get selected program for cohort creation
-  const selectedProgram = groupPrograms.find(p => p.id === selectedProgramId);
+  const selectedProgram = selectablePrograms.find(p => p.id === selectedProgramId);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -390,9 +394,13 @@ export function CreateEventModal({
         }
       } else {
         // Normal flow: meeting step is step 2, validate event type + meeting
-        if (eventType === 'cohort_call' && !selectedCohortId) {
-          setError('Please select a cohort');
-          return false;
+        if (eventType === 'cohort_call') {
+          // For group programs, require cohort selection
+          // For 1:1 programs, cohort is not needed (uses community squad)
+          if (selectedProgram?.type === 'group' && !selectedCohortId) {
+            setError('Please select a cohort');
+            return false;
+          }
         }
         if (eventType === 'squad_call' && !selectedSquadId) {
           setError('Please select a squad');
@@ -575,8 +583,12 @@ export function CreateEventModal({
       } : undefined;
 
       // Determine IDs based on event type
-      const finalCohortId = eventType === 'cohort_call' ? selectedCohortId : (propCohortId || undefined);
-      const finalSquadId = eventType === 'squad_call' ? selectedSquadId : (propSquadId || undefined);
+      // For 1:1 programs with community, use the community squad instead of cohort
+      const isIndividualProgramWithCommunity = selectedProgram?.type === 'individual' && selectedProgram?.clientCommunitySquadId;
+      const finalCohortId = (eventType === 'cohort_call' && !isIndividualProgramWithCommunity) ? selectedCohortId : (propCohortId || undefined);
+      const finalSquadId = isIndividualProgramWithCommunity
+        ? selectedProgram.clientCommunitySquadId
+        : (eventType === 'squad_call' ? selectedSquadId : (propSquadId || undefined));
       const finalProgramId = eventType === 'cohort_call' ? selectedProgramId : (propProgramId || undefined);
 
       // Determine scope based on event type
@@ -964,7 +976,7 @@ export function CreateEventModal({
                     <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                       Select Program <span className="text-red-500">*</span>
                     </label>
-                    {groupPrograms.length === 0 ? (
+                    {selectablePrograms.length === 0 ? (
                       <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl">
                         No group programs found
                       </p>
@@ -981,13 +993,18 @@ export function CreateEventModal({
                           <SelectValue placeholder="Select a program..." />
                         </SelectTrigger>
                         <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
-                          {groupPrograms.map((program) => (
+                          {selectablePrograms.map((program) => (
                             <SelectItem
                               key={program.id}
                               value={program.id}
-                              className="cursor-pointer font-albert pl-3"
+                              className="cursor-pointer font-albert pl-3 [&>span:first-child]:hidden"
                             >
-                              {program.name}
+                              <span className="flex items-center gap-2">
+                                {program.name}
+                                {program.type === 'individual' && (
+                                  <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">(1:1)</span>
+                                )}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -995,63 +1012,82 @@ export function CreateEventModal({
                     )}
                   </div>
 
-                  {/* Cohort Selector */}
+                  {/* Cohort Selector (for group programs) or Community indicator (for 1:1) */}
                   <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                      Select Cohort <span className="text-red-500">*</span>
-                    </label>
                     {!selectedProgramId ? (
-                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl h-12 flex items-center">
-                        Select a program first
-                      </p>
-                    ) : showInlineCohortForm ? (
-                      <div className="h-12 px-4 bg-brand-accent/10 border border-brand-accent/30 rounded-xl flex items-center gap-2">
-                        <div className="w-2 h-2 bg-brand-accent rounded-full animate-pulse" />
-                        <span className="text-sm text-brand-accent font-medium">New cohort</span>
-                      </div>
-                    ) : cohorts.length === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const nextMonth = new Date();
-                          nextMonth.setMonth(nextMonth.getMonth() + 1);
-                          nextMonth.setDate(1);
-                          const endDate = new Date(nextMonth);
-                          endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
-                          setNewCohortData({
-                            name: nextMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-                            startDate: nextMonth.toISOString().split('T')[0],
-                            endDate: endDate.toISOString().split('T')[0],
-                            maxEnrollment: null,
-                            enrollmentOpen: true,
-                          });
-                          setShowInlineCohortForm(true);
-                        }}
-                        className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-brand-accent font-albert text-sm hover:border-brand-accent hover:bg-brand-accent/5 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Create Cohort
-                      </button>
+                      <>
+                        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                          Select Cohort <span className="text-red-500">*</span>
+                        </label>
+                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl h-12 flex items-center">
+                          Select a program first
+                        </p>
+                      </>
+                    ) : selectedProgram?.type === 'individual' ? (
+                      <>
+                        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                          Target Audience
+                        </label>
+                        <div className="h-12 px-4 bg-brand-accent/10 border border-brand-accent/30 rounded-xl flex items-center gap-2">
+                          <Users className="w-4 h-4 text-brand-accent" />
+                          <span className="text-sm text-brand-accent font-medium">Program Community</span>
+                        </div>
+                      </>
                     ) : (
-                      <Select
-                        value={selectedCohortId}
-                        onValueChange={setSelectedCohortId}
-                      >
-                        <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent [&>span]:truncate">
-                          <SelectValue placeholder="Select a cohort..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
-                          {cohorts.map((cohort) => (
-                            <SelectItem
-                              key={cohort.id}
-                              value={cohort.id}
-                              className="cursor-pointer font-albert pl-3 [&>span:first-child]:hidden"
-                            >
-                              {cohort.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <>
+                        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                          Select Cohort <span className="text-red-500">*</span>
+                        </label>
+                        {showInlineCohortForm ? (
+                          <div className="h-12 px-4 bg-brand-accent/10 border border-brand-accent/30 rounded-xl flex items-center gap-2">
+                            <div className="w-2 h-2 bg-brand-accent rounded-full animate-pulse" />
+                            <span className="text-sm text-brand-accent font-medium">New cohort</span>
+                          </div>
+                        ) : cohorts.length === 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextMonth = new Date();
+                              nextMonth.setMonth(nextMonth.getMonth() + 1);
+                              nextMonth.setDate(1);
+                              const endDate = new Date(nextMonth);
+                              endDate.setDate(endDate.getDate() + (selectedProgram?.lengthDays || 30) - 1);
+                              setNewCohortData({
+                                name: nextMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+                                startDate: nextMonth.toISOString().split('T')[0],
+                                endDate: endDate.toISOString().split('T')[0],
+                                maxEnrollment: null,
+                                enrollmentOpen: true,
+                              });
+                              setShowInlineCohortForm(true);
+                            }}
+                            className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-brand-accent font-albert text-sm hover:border-brand-accent hover:bg-brand-accent/5 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Create Cohort
+                          </button>
+                        ) : (
+                          <Select
+                            value={selectedCohortId}
+                            onValueChange={setSelectedCohortId}
+                          >
+                            <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent [&>span]:truncate">
+                              <SelectValue placeholder="Select a cohort..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
+                              {cohorts.map((cohort) => (
+                                <SelectItem
+                                  key={cohort.id}
+                                  value={cohort.id}
+                                  className="cursor-pointer font-albert pl-3 [&>span:first-child]:hidden"
+                                >
+                                  {cohort.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </>
                     )}
                   </div>
                 </motion.div>

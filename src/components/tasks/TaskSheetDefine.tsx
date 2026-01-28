@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import type { Task } from '@/types';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface TaskSheetDefineProps {
@@ -157,6 +158,9 @@ export function TaskSheetDefine({
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-[500px] p-0 gap-0">
+          <VisuallyHidden.Root>
+            <DialogTitle>{isEditMode ? 'Edit focus' : 'Define focus'}</DialogTitle>
+          </VisuallyHidden.Root>
           {content}
         </DialogContent>
       </Dialog>

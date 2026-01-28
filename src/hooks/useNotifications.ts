@@ -193,7 +193,14 @@ export function useNotifications(): UseNotificationsReturn {
     return () => {
       isMounted = false;
       if (unsubscribeRef.current) {
-        unsubscribeRef.current();
+        try {
+          unsubscribeRef.current();
+        } catch (e) {
+          // Firestore 11.x bug - safe to ignore
+          if (!(e instanceof Error && e.message?.includes('INTERNAL ASSERTION FAILED'))) {
+            throw e;
+          }
+        }
         unsubscribeRef.current = null;
       }
       listenerSetupStartedRef.current = false;

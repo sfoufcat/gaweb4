@@ -4231,21 +4231,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
                 {/* Selectors + Controls */}
                 <div className="flex items-center gap-2 min-w-0 flex-1 justify-between">
-                  {/* Client/Cohort Selector */}
-                  <div className={viewMode !== 'days' && viewMode !== 'overview' && viewMode !== 'community' ? 'invisible' : ''}>
-                    {viewMode === 'community' ? (
-                      // Community tab - cohort selector without template option (for group programs only)
-                      selectedProgram?.type === 'group' && programCohorts.length > 0 ? (
-                        <CohortSelector
-                          cohorts={programCohorts}
-                          value={cohortViewContext}
-                          onChange={(context) => {
-                            setCohortViewContext(context);
-                          }}
-                          loading={loadingDetails}
-                          className="max-w-[200px] flex-shrink-0"
-                        />
-                      ) : null
+                  {/* Client/Cohort Selector - invisible on tabs that don't need it, but maintains space */}
+                  <div className={
+                    viewMode === 'days' || viewMode === 'overview'
+                      ? '' // visible on content and overview
+                      : viewMode === 'community' && selectedProgram?.type === 'group' && programCohorts.length > 0
+                        ? '' // visible on community for group programs with cohorts
+                        : 'invisible' // invisible but maintains space on all other tabs/cases
+                  }>
+                    {viewMode === 'community' && selectedProgram?.type === 'group' && programCohorts.length > 0 ? (
+                      // Community tab - cohort selector for group programs only
+                      <CohortSelector
+                        cohorts={programCohorts}
+                        value={cohortViewContext}
+                        onChange={(context) => {
+                          setCohortViewContext(context);
+                        }}
+                        loading={loadingDetails}
+                        className="max-w-[200px] flex-shrink-0"
+                      />
                     ) : selectedProgram?.type === 'individual' ? (
                       <ClientSelector
                         enrollments={programEnrollments}
@@ -4894,8 +4898,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           <ProgramCommunityTab
             programId={selectedProgram!.id}
             programType={selectedProgram!.type}
+            programName={selectedProgram!.name}
             clientCommunityEnabled={selectedProgram!.clientCommunityEnabled}
             selectedCohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : null}
+            cohortName={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortName : undefined}
             onCommunityEnabled={() => {
               // Update local state to reflect community is now enabled
               setSelectedProgram(prev => prev ? { ...prev, clientCommunityEnabled: true } : null);

@@ -177,8 +177,8 @@ export function SquadInviteCards({
 
       {/* Footer: Invite Code (left) & Leave Squad (right) */}
       <div className="flex justify-between items-center pt-2">
-        {/* Invite Code - only show for non-coached squads (hide for coached squads) */}
-        {inviteCode && !squadHasCoach ? (
+        {/* Invite Code - only show for standalone non-coached squads (hide for coached squads and program squads) */}
+        {inviteCode && !squadHasCoach && !isProgramSquad ? (
           <button
             onClick={handleCopyInviteCode}
             className="flex items-center gap-1.5 text-text-secondary/70 dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors font-albert text-[13px]"
@@ -195,15 +195,17 @@ export function SquadInviteCards({
           <div /> /* Empty div to maintain flex spacing */
         )}
 
-        {/* Leave Squad */}
-        <button
-          onClick={() => setShowLeaveDialog(true)}
-          disabled={isLeaving}
-          className="flex items-center gap-1.5 text-text-secondary/70 dark:text-[#7d8190] hover:text-red-500 dark:hover:text-red-400 transition-colors font-albert text-[13px] disabled:opacity-50"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          <span>{isLeaving ? 'Leaving...' : `Leave ${squadLower}`}</span>
-        </button>
+        {/* Leave Squad - hide for program squads (members can't leave program community) */}
+        {!isProgramSquad && (
+          <button
+            onClick={() => setShowLeaveDialog(true)}
+            disabled={isLeaving}
+            className="flex items-center gap-1.5 text-text-secondary/70 dark:text-[#7d8190] hover:text-red-500 dark:hover:text-red-400 transition-colors font-albert text-[13px] disabled:opacity-50"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>{isLeaving ? 'Leaving...' : `Leave ${squadLower}`}</span>
+          </button>
+        )}
       </div>
 
       {/* Leave Squad Confirmation Dialog */}

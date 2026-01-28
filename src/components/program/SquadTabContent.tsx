@@ -10,6 +10,7 @@ import { SquadMemberList } from '@/components/squad/SquadMemberList';
 import { SquadInviteCards } from '@/components/squad/SquadInviteCards';
 import { NextSquadCallCard, type CoachInfo } from '@/components/squad/NextSquadCallCard';
 import { StandardSquadCallCard } from '@/components/squad/StandardSquadCallCard';
+import { CohortSessionCard } from '@/components/program/CohortSessionCard';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 import type { ReferralConfig } from '@/types';
 
@@ -39,9 +40,11 @@ interface SquadTabContentProps {
   squadId?: string;
   /** Program type - used to show appropriate messaging when no squad exists */
   programType?: 'group' | 'individual';
+  /** Cohort ID - for fetching cohort sessions in group programs */
+  cohortId?: string;
 }
 
-export function SquadTabContent({ programId, squadId, programType }: SquadTabContentProps) {
+export function SquadTabContent({ programId, squadId, programType, cohortId }: SquadTabContentProps) {
   const router = useRouter();
   const { user } = useUser();
   const { squad: squadTitle, squadLower } = useMenuTitles();
@@ -173,16 +176,36 @@ export function SquadTabContent({ programId, squadId, programType }: SquadTabCon
       {/* Squad Header */}
       <SquadHeader squad={squad} onSquadUpdated={onRefetch} isCoach={isCoach} />
 
-      {/* Squad Call Card */}
-      {!!squad.coachId ? (
-        <NextSquadCallCard 
-          squad={squad} 
+      {/* Session/Call Card - varies by program type */}
+      {programType === 'group' && cohortId ? (
+        // Cohort programs: Show cohort sessions (fetched by cohortId)
+        <CohortSessionCard
+          cohortId={cohortId}
+          programId={programId}
+          chatChannelId={squad.chatChannelId || undefined}
+          isCoach={isCoach}
+          coachInfo={coachInfo}
+          onSessionUpdated={onRefetch}
+        />
+      ) : programType === 'individual' ? (
+        // Client programs: Show squad sessions (coach-only scheduling)
+        <NextSquadCallCard
+          squad={squad}
+          isCoach={isCoach}
+          onCallUpdated={onRefetch}
+          coachInfo={coachInfo}
+        />
+      ) : !!squad.coachId ? (
+        // Standalone coached squad
+        <NextSquadCallCard
+          squad={squad}
           isCoach={isCoach}
           onCallUpdated={onRefetch}
           coachInfo={coachInfo}
         />
       ) : (
-        <StandardSquadCallCard 
+        // Standalone non-coached squad: member voting allowed
+        <StandardSquadCallCard
           squad={squad}
           onCallUpdated={onRefetch}
         />

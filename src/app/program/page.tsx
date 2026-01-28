@@ -300,7 +300,7 @@ export default function ProgramHubPage() {
                   onTabChange={handleProgramTabChange}
                   showSquadTab={programShowSquadTab}
                   programTitle={programTitle}
-                  squadTitle={selectedProgram.program.type === 'individual' ? 'Community' : squadTitle}
+                  squadTitle="Community"
                 />
               </div>
             )}
@@ -335,6 +335,7 @@ export default function ProgramHubPage() {
                     programId={selectedProgram.program.id}
                     squadId={programSquadId || undefined}
                     programType={selectedProgram.program.type as 'group' | 'individual'}
+                    cohortId={selectedProgram.cohort?.id}
                   />
                 </motion.div>
               )}
@@ -396,7 +397,7 @@ export default function ProgramHubPage() {
               onTabChange={handleProgramTabChange}
               showSquadTab={programShowSquadTab}
               programTitle={programTitle}
-              squadTitle={selectedProgram.program.type === 'individual' ? 'Community' : squadTitle}
+              squadTitle="Community"
             />
           </div>
         )}
@@ -431,6 +432,7 @@ export default function ProgramHubPage() {
                 programId={selectedProgram.program.id}
                 squadId={programSquadId || undefined}
                 programType={selectedProgram.program.type as 'group' | 'individual'}
+                cohortId={selectedProgram.cohort?.id}
               />
             </motion.div>
           )}
@@ -468,7 +470,7 @@ export default function ProgramHubPage() {
             onTabChange={handleTabChange}
             showSquadTab={showSquadTab}
             programTitle={programTitle}
-            squadTitle={singleProgram.program.type === 'individual' ? 'Community' : squadTitle}
+            squadTitle="Community"
           />
         </div>
       )}
@@ -503,6 +505,7 @@ export default function ProgramHubPage() {
               programId={singleProgram.program.id}
               squadId={singleProgramSquadId || undefined}
               programType={singleProgram.program.type as 'group' | 'individual'}
+              cohortId={singleProgram.cohort?.id}
             />
           </motion.div>
         )}

@@ -284,9 +284,14 @@ export async function POST(request: NextRequest) {
       existingTasks.push({ id: doc.id, ...data } as Task);
     });
 
+    // Filter out orphaned tasks from invalid instances (same as GET)
+    // This prevents counting ghost program tasks toward the focus limit
+    const validInstanceIds = await getUserValidInstanceIds(userId, organizationId || undefined);
+    const validTasks = filterTasksByValidInstances(existingTasks, validInstanceIds);
+
     // Count tasks in focus list
-    const focusTasks = existingTasks.filter((t) => t.listType === 'focus');
-    const backlogTasks = existingTasks.filter((t) => t.listType === 'backlog');
+    const focusTasks = validTasks.filter((t) => t.listType === 'focus');
+    const backlogTasks = validTasks.filter((t) => t.listType === 'backlog');
 
     // Determine listType: if focus has space, add to focus, otherwise backlog
     let finalListType: 'focus' | 'backlog' = listType || (focusTasks.length < focusLimit ? 'focus' : 'backlog');
