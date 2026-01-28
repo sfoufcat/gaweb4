@@ -331,27 +331,118 @@ export async function GET(
     });
     const totalAssignedContent = uniqueResourcesForTotals.size;
 
-    // Get task completions per user from tasks collection
-    const userTaskCompletionsMap = new Map<string, number>();
-    if (userIds.length > 0 && instanceId) {
+    // Get task completions per user - calculate avg DAILY completion over last 7 days
+    // For each user: group tasks by date, calc completion % per day, average those %s
+    // Map: userId -> Map<date, { completed: number, total: number }>
+    const userDailyTasksMap = new Map<string, Map<string, { completed: number; total: number }>>();
+
+    // Calculate 7-day window
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    // Format dates as ISO strings (YYYY-MM-DD) for comparison with task.date field
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+    // Get enrollment IDs for fallback query (legacy tasks without instanceId)
+    const enrollmentIds = enrollments.map(e => e.id);
+
+    console.log('[DASHBOARD] Task query params:', { userIds, instanceId, enrollmentIds, sevenDaysAgoStr });
+
+    if (userIds.length > 0) {
       const batchSize = 30;
       for (let i = 0; i < userIds.length; i += batchSize) {
         const batch = userIds.slice(i, i + batchSize);
-        const tasksSnapshot = await adminDb
-          .collection('tasks')
-          .where('userId', 'in', batch)
-          .where('instanceId', '==', instanceId)
-          .where('completed', '==', true)
-          .get();
+
+        // Query tasks - try instanceId first, fall back to programEnrollmentId
+        let tasksSnapshot;
+        if (instanceId) {
+          tasksSnapshot = await adminDb
+            .collection('tasks')
+            .where('userId', 'in', batch)
+            .where('instanceId', '==', instanceId)
+            .where('date', '>=', sevenDaysAgoStr)
+            .get();
+        }
+
+        // If no tasks found with instanceId, try programEnrollmentId (legacy)
+        if (!tasksSnapshot || tasksSnapshot.empty) {
+          const batchEnrollmentIds = enrollments
+            .filter(e => batch.includes(e.userId))
+            .map(e => e.id);
+
+          if (batchEnrollmentIds.length > 0) {
+            tasksSnapshot = await adminDb
+              .collection('tasks')
+              .where('programEnrollmentId', 'in', batchEnrollmentIds)
+              .where('date', '>=', sevenDaysAgoStr)
+              .get();
+          }
+        }
+
+        // Log all tasks for debugging
+        const allTasksData = tasksSnapshot?.docs.map(d => ({
+          date: d.data().date,
+          completed: d.data().completed,
+          status: d.data().status,
+          title: d.data().title?.substring(0, 30),
+          listType: d.data().listType,
+        })) || [];
+
+        console.log('[DASHBOARD] Tasks found for batch:', {
+          batchUserIds: batch,
+          taskCount: tasksSnapshot?.size || 0,
+          allTasks: allTasksData,
+        });
+
+        if (!tasksSnapshot) continue;
 
         tasksSnapshot.docs.forEach((doc) => {
           const data = doc.data();
           const userId = data.userId;
-          const current = userTaskCompletionsMap.get(userId) || 0;
-          userTaskCompletionsMap.set(userId, current + 1);
+          const taskDate = data.date as string; // YYYY-MM-DD
+
+          // Get or create user's daily map
+          if (!userDailyTasksMap.has(userId)) {
+            userDailyTasksMap.set(userId, new Map());
+          }
+          const dailyMap = userDailyTasksMap.get(userId)!;
+
+          // Get or create day entry
+          if (!dailyMap.has(taskDate)) {
+            dailyMap.set(taskDate, { completed: 0, total: 0 });
+          }
+          const dayStats = dailyMap.get(taskDate)!;
+
+          // Count task
+          dayStats.total += 1;
+          if (data.completed === true) {
+            dayStats.completed += 1;
+          }
         });
       }
     }
+
+    // Calculate avg daily completion per user
+    const userAvgDailyCompletionMap = new Map<string, number>();
+    userDailyTasksMap.forEach((dailyMap, userId) => {
+      if (dailyMap.size === 0) {
+        userAvgDailyCompletionMap.set(userId, 0);
+        return;
+      }
+
+      // Calculate completion % for each day, then average
+      let totalDayPercents = 0;
+      dailyMap.forEach((dayStats) => {
+        const dayPercent = dayStats.total > 0
+          ? (dayStats.completed / dayStats.total) * 100
+          : 0;
+        totalDayPercents += dayPercent;
+      });
+
+      const avgDailyCompletion = Math.round(totalDayPercents / dailyMap.size);
+      userAvgDailyCompletionMap.set(userId, avgDailyCompletion);
+    });
 
     // Calculate member stats
     const memberStats: MemberStats[] = enrollments.map((enrollment) => {
@@ -365,12 +456,19 @@ export async function GET(
       const lastActiveAt = enrollment.updatedAt || enrollment.createdAt;
       const daysIdle = calculateDaysIdle(lastActiveAt);
 
-      // Calculate task completion percentage
-      const tasksCompleted = userTaskCompletionsMap.get(enrollment.userId) || 0;
-      const totalTasks = totalProgramTasks;
-      const taskCompletionPercent = totalTasks > 0
-        ? Math.round((tasksCompleted / totalTasks) * 100)
-        : 0;
+      // Get avg daily task completion (rolling 7-day)
+      const taskCompletionPercent = userAvgDailyCompletionMap.get(enrollment.userId) || 0;
+
+      // For display: get total completed and total tasks in window
+      const dailyMap = userDailyTasksMap.get(enrollment.userId);
+      let tasksCompleted = 0;
+      let totalTasks = 0;
+      if (dailyMap) {
+        dailyMap.forEach((dayStats) => {
+          tasksCompleted += dayStats.completed;
+          totalTasks += dayStats.total;
+        });
+      }
 
       // Get streak from alignment summary
       const streak = streakMap.get(enrollment.userId) || 0;

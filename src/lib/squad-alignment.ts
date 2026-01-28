@@ -31,6 +31,15 @@ async function getSquadCoachId(squadId: string): Promise<string | null> {
 }
 
 /**
+ * Get the organizationId for a squad
+ */
+async function getSquadOrganizationId(squadId: string): Promise<string | null> {
+  const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+  if (!squadDoc.exists) return null;
+  return squadDoc.data()?.organizationId || null;
+}
+
+/**
  * Get the super_coach userId for a squad's organization
  * Returns null if squad has no organizationId or no super_coach is found
  */
@@ -91,17 +100,20 @@ async function getAllSquadUserIds(squadId: string): Promise<string[]> {
 
 /**
  * Get alignment data for multiple users for a specific date
+ * Multi-tenancy: Uses ${organizationId}_${userId}_${date} document ID format
  */
 async function getUserAlignmentsForDate(
   userIds: string[],
-  date: string
+  date: string,
+  organizationId: string
 ): Promise<Map<string, UserAlignment | null>> {
   const alignments = new Map<string, UserAlignment | null>();
-  
+
   if (userIds.length === 0) return alignments;
-  
+
   // Batch fetch alignments (Firestore has 30 docs limit per batch)
-  const docIds = userIds.map(userId => `${userId}_${date}`);
+  // Multi-tenancy: Document IDs include organizationId prefix
+  const docIds = userIds.map(userId => `${organizationId}_${userId}_${date}`);
   
   // Firestore getAll with batch
   const chunks: string[][] = [];
@@ -128,24 +140,27 @@ async function getUserAlignmentsForDate(
 
 /**
  * Get alignment summaries for multiple users (streaks)
+ * Multi-tenancy: Uses ${organizationId}_${userId} document ID format
  */
 async function getUserAlignmentSummaries(
-  userIds: string[]
+  userIds: string[],
+  organizationId: string
 ): Promise<Map<string, UserAlignmentSummary | null>> {
   const summaries = new Map<string, UserAlignmentSummary | null>();
-  
+
   if (userIds.length === 0) return summaries;
-  
+
   // Batch fetch summaries
   const chunks: string[][] = [];
   for (let i = 0; i < userIds.length; i += 30) {
     chunks.push(userIds.slice(i, i + 30));
   }
-  
+
   for (const chunk of chunks) {
-    const refs = chunk.map(id => adminDb.collection('userAlignmentSummary').doc(id));
+    // Multi-tenancy: Document IDs include organizationId prefix
+    const refs = chunk.map(id => adminDb.collection('userAlignmentSummary').doc(`${organizationId}_${id}`));
     const docs = await adminDb.getAll(...refs);
-    
+
     docs.forEach((doc, index) => {
       const userId = chunk[index];
       if (doc.exists) {
@@ -162,17 +177,19 @@ async function getUserAlignmentSummaries(
 /**
  * Compute squad stats for today (and change from yesterday)
  * EXCLUDES the coach and super_coach from all calculations - only regular members count.
- * 
+ *
  * @param squadId - The squad ID
  * @param coachId - Optional coach ID to exclude (if already known)
  * @param superCoachId - Optional super_coach ID to exclude (if already known)
  * @param allUserIds - Optional list of ALL squad user IDs (for returning member alignments including coach for display)
+ * @param organizationId - Optional organization ID (fetched from squad if not provided)
  */
 export async function computeSquadDailyStats(
   squadId: string,
   coachId?: string | null,
   superCoachId?: string | null,
-  allUserIds?: string[]
+  allUserIds?: string[],
+  organizationId?: string | null
 ): Promise<{
   avgAlignmentToday: number;
   avgAlignmentYesterday: number;
@@ -181,17 +198,29 @@ export async function computeSquadDailyStats(
 }> {
   const today = getTodayDate();
   const yesterday = getYesterdayDate();
-  
+
+  // Get organizationId if not provided (required for alignment doc lookups)
+  const orgId = organizationId || await getSquadOrganizationId(squadId);
+  if (!orgId) {
+    // No organization = no alignment data possible
+    return {
+      avgAlignmentToday: 0,
+      avgAlignmentYesterday: 0,
+      alignmentChange: 0,
+      memberAlignments: new Map(),
+    };
+  }
+
   // Get IDs to exclude if not provided
   const actualCoachId = coachId !== undefined ? coachId : await getSquadCoachId(squadId);
   const actualSuperCoachId = superCoachId !== undefined ? superCoachId : await getSquadSuperCoachId(squadId);
-  
+
   // Get squad member IDs (EXCLUDING coach and super_coach)
   const memberIds = await getSquadMemberIds(squadId, actualCoachId, actualSuperCoachId);
-  
+
   // For returning alignment data, include all users (coach needs display data too)
   const displayUserIds = allUserIds || await getAllSquadUserIds(squadId);
-  
+
   if (memberIds.length === 0) {
     return {
       avgAlignmentToday: 0,
@@ -200,13 +229,14 @@ export async function computeSquadDailyStats(
       memberAlignments: new Map(),
     };
   }
-  
+
   // Fetch alignments for today and yesterday for ALL users (for display)
   // But only count MEMBERS (not coach) for averages
+  // Multi-tenancy: Pass organizationId to fetch correct alignment documents
   const [todayAlignments, yesterdayAlignments, summaries] = await Promise.all([
-    getUserAlignmentsForDate(displayUserIds, today),
-    getUserAlignmentsForDate(memberIds, yesterday), // Only members for yesterday (for avg calculation)
-    getUserAlignmentSummaries(displayUserIds),
+    getUserAlignmentsForDate(displayUserIds, today, orgId),
+    getUserAlignmentsForDate(memberIds, yesterday, orgId), // Only members for yesterday (for avg calculation)
+    getUserAlignmentSummaries(displayUserIds, orgId),
   ]);
   
   // Calculate averages (ONLY from members, not coach)
@@ -249,86 +279,95 @@ export async function computeSquadDailyStats(
 /**
  * Compute squad percentile among all squads
  * EXCLUDES coaches and super_coaches from all calculations - only regular members count.
- * 
+ *
  * PERFORMANCE: This is expensive (queries all squads). Consider caching.
  */
 export async function computeSquadPercentile(squadId: string): Promise<number> {
   const today = getTodayDate();
-  
+
   // Get all squads
   const squadsSnapshot = await adminDb.collection('squads').get();
-  
+
   if (squadsSnapshot.empty) return 100; // No squads = top 100%
-  
+
   // Compute average alignment for each squad (excluding coaches and super_coaches)
   const squadAvgAlignments: { squadId: string; avgAlignment: number }[] = [];
-  
+
   for (const squadDoc of squadsSnapshot.docs) {
     const sid = squadDoc.id;
     const squadData = squadDoc.data();
     const squadCoachId = squadData?.coachId || null;
     const squadOrgId = squadData?.organizationId || null;
-    
+
+    // Skip squads without organizationId (no alignment data possible)
+    if (!squadOrgId) {
+      squadAvgAlignments.push({ squadId: sid, avgAlignment: 0 });
+      continue;
+    }
+
     // Get super_coach for this squad's organization
     const squadSuperCoachId = squadOrgId ? await getSquadSuperCoachId(sid, squadOrgId) : null;
-    
+
     // Get only members (not coach or super_coach)
     const memberIds = await getSquadMemberIds(sid, squadCoachId, squadSuperCoachId);
-    
+
     if (memberIds.length === 0) {
       squadAvgAlignments.push({ squadId: sid, avgAlignment: 0 });
       continue;
     }
-    
-    const alignments = await getUserAlignmentsForDate(memberIds, today);
+
+    // Multi-tenancy: Pass organizationId to fetch correct alignment documents
+    const alignments = await getUserAlignmentsForDate(memberIds, today, squadOrgId);
     let sum = 0;
     for (const alignment of alignments.values()) {
       sum += alignment?.alignmentScore ?? 0;
     }
-    
+
     squadAvgAlignments.push({
       squadId: sid,
       avgAlignment: sum / memberIds.length,
     });
   }
-  
+
   // Sort descending by avgAlignment
   squadAvgAlignments.sort((a, b) => b.avgAlignment - a.avgAlignment);
-  
+
   // Find rank of this squad (1-based)
   const rank = squadAvgAlignments.findIndex(s => s.squadId === squadId) + 1;
   const totalSquads = squadAvgAlignments.length;
-  
+
   if (rank === 0 || totalSquads === 0) return 100;
-  
+
   // Percentile: top X%
   // If rank 1 out of 100 squads = top 1%
   // If rank 50 out of 100 squads = top 50%
   const percentile = Math.ceil((rank / totalSquads) * 100);
-  
+
   return Math.max(1, percentile); // At least top 1%
 }
 
 /**
  * Get or compute squad alignment for a specific day
  * EXCLUDES the coach and super_coach from calculations - only regular members count.
- * 
+ *
  * @param squadId - The squad ID
  * @param date - The date in YYYY-MM-DD format
  * @param coachId - Optional coach ID to exclude (for performance if already known)
  * @param superCoachId - Optional super_coach ID to exclude (for performance if already known)
+ * @param organizationId - Optional organization ID (fetched from squad if not provided)
  */
 async function getOrComputeSquadAlignmentDay(
   squadId: string,
   date: string,
   coachId?: string | null,
-  superCoachId?: string | null
+  superCoachId?: string | null,
+  organizationId?: string | null
 ): Promise<SquadAlignmentDay> {
   const docId = `${squadId}_${date}`;
   const docRef = adminDb.collection('squadAlignmentDays').doc(docId);
   const now = new Date().toISOString();
   const today = getTodayDate();
-  
+
   // Check if we have cached data for this day (only use cache for past days)
   if (date !== today) {
     const existingDoc = await docRef.get();
@@ -336,15 +375,32 @@ async function getOrComputeSquadAlignmentDay(
       return { ...existingDoc.data() } as SquadAlignmentDay;
     }
   }
-  
+
+  // Get organizationId if not provided (required for alignment doc lookups)
+  const orgId = organizationId || await getSquadOrganizationId(squadId);
+  if (!orgId) {
+    // No organization = no alignment data possible
+    const dayData: SquadAlignmentDay = {
+      squadId,
+      date,
+      fractionFullyAligned: 0,
+      numFullyAligned: 0,
+      totalMembers: 0,
+      kept: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    return dayData;
+  }
+
   // Get IDs to exclude if not provided
   const actualCoachId = coachId !== undefined ? coachId : await getSquadCoachId(squadId);
   const actualSuperCoachId = superCoachId !== undefined ? superCoachId : await getSquadSuperCoachId(squadId);
-  
+
   // Compute for this day - ONLY count members, not coach or super_coach
   const memberIds = await getSquadMemberIds(squadId, actualCoachId, actualSuperCoachId);
   const totalMembers = memberIds.length;
-  
+
   if (totalMembers === 0) {
     const dayData: SquadAlignmentDay = {
       squadId,
@@ -362,8 +418,9 @@ async function getOrComputeSquadAlignmentDay(
     }
     return dayData;
   }
-  
-  const alignments = await getUserAlignmentsForDate(memberIds, date);
+
+  // Multi-tenancy: Pass organizationId to fetch correct alignment documents
+  const alignments = await getUserAlignmentsForDate(memberIds, date, orgId);
   
   let numFullyAligned = 0;
   for (const alignment of alignments.values()) {
@@ -397,15 +454,16 @@ async function getOrComputeSquadAlignmentDay(
 /**
  * Compute contribution history for the last N days
  * EXCLUDES the coach and super_coach from calculations - only regular members count.
- * 
+ *
  * @param squadId - The squad ID
  * @param days - Number of days to fetch (default: 30)
  * @param coachId - Optional coach ID (for performance if already known)
  * @param superCoachId - Optional super_coach ID (for performance if already known)
  * @param offset - Number of days to skip from today (for pagination, default: 0)
  * @param squadCreatedAt - Optional squad creation date to limit history
- * 
- * PERFORMANCE: Fetches coachId and superCoachId once and reuses for all days.
+ * @param organizationId - Optional organization ID (fetched from squad if not provided)
+ *
+ * PERFORMANCE: Fetches coachId, superCoachId, and organizationId once and reuses for all days.
  */
 export async function computeContributionHistory(
   squadId: string,
@@ -413,34 +471,43 @@ export async function computeContributionHistory(
   coachId?: string | null,
   superCoachId?: string | null,
   offset: number = 0,
-  squadCreatedAt?: string | null
+  squadCreatedAt?: string | null,
+  organizationId?: string | null
 ): Promise<ContributionDay[]> {
   // Get IDs to exclude once for all day calculations
   const actualCoachId = coachId !== undefined ? coachId : await getSquadCoachId(squadId);
   const actualSuperCoachId = superCoachId !== undefined ? superCoachId : await getSquadSuperCoachId(squadId);
-  
+
+  // Get organizationId if not provided (required for alignment doc lookups)
+  const orgId = organizationId || await getSquadOrganizationId(squadId);
+  if (!orgId) {
+    // No organization = no alignment data possible
+    return [];
+  }
+
   const history: ContributionDay[] = [];
   const today = new Date();
-  
+
   // Parse squad creation date if provided
   const creationDate = squadCreatedAt ? new Date(squadCreatedAt).toISOString().split('T')[0] : null;
-  
+
   // Batch process days for better performance
   const datePromises: Promise<SquadAlignmentDay>[] = [];
   const dates: string[] = [];
-  
+
   for (let i = offset; i < offset + days; i++) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split('T')[0];
-    
+
     // Stop if we've reached before squad creation date
     if (creationDate && dateStr < creationDate) {
       break;
     }
-    
+
     dates.push(dateStr);
-    datePromises.push(getOrComputeSquadAlignmentDay(squadId, dateStr, actualCoachId, actualSuperCoachId));
+    // Multi-tenancy: Pass organizationId to fetch correct alignment documents
+    datePromises.push(getOrComputeSquadAlignmentDay(squadId, dateStr, actualCoachId, actualSuperCoachId, orgId));
   }
   
   // If no dates to process, return empty
@@ -469,25 +536,27 @@ export async function computeContributionHistory(
 /**
  * Get or update squad streak
  * EXCLUDES the coach and super_coach from calculations - only regular members count.
- * 
+ *
  * @param squadId - The squad ID
  * @param coachId - Optional coach ID to exclude (for performance if already known)
  * @param superCoachId - Optional super_coach ID to exclude (for performance if already known)
+ * @param organizationId - Optional organization ID (fetched from squad if not provided)
  */
 export async function getSquadStreak(
   squadId: string,
   coachId?: string | null,
-  superCoachId?: string | null
+  superCoachId?: string | null,
+  organizationId?: string | null
 ): Promise<SquadAlignmentSummary> {
   const summaryRef = adminDb.collection('squadAlignmentSummary').doc(squadId);
   const today = getTodayDate();
   const yesterday = getYesterdayDate();
   const now = new Date().toISOString();
-  
+
   // Get existing summary
   const existingDoc = await summaryRef.get();
   let summary: SquadAlignmentSummary;
-  
+
   if (existingDoc.exists) {
     summary = existingDoc.data() as SquadAlignmentSummary;
   } else {
@@ -497,19 +566,23 @@ export async function getSquadStreak(
       updatedAt: now,
     };
   }
-  
+
   // Check if we need to update (once per day)
   if (summary.lastKeptDate === today) {
     // Already computed today
     return summary;
   }
-  
+
+  // Get organizationId if not provided (required for alignment doc lookups)
+  const orgId = organizationId || await getSquadOrganizationId(squadId);
+
   // Get IDs to exclude if not provided
   const actualCoachId = coachId !== undefined ? coachId : await getSquadCoachId(squadId);
   const actualSuperCoachId = superCoachId !== undefined ? superCoachId : await getSquadSuperCoachId(squadId);
-  
+
   // Compute today's status (excluding coach and super_coach)
-  const todayData = await getOrComputeSquadAlignmentDay(squadId, today, actualCoachId, actualSuperCoachId);
+  // Multi-tenancy: Pass organizationId to fetch correct alignment documents
+  const todayData = await getOrComputeSquadAlignmentDay(squadId, today, actualCoachId, actualSuperCoachId, orgId);
   
   if (todayData.kept) {
     // Day is kept - update streak
@@ -541,9 +614,10 @@ export async function getSquadStreak(
  * Returns member alignments and basic stats without expensive percentile calculation
  */
 export async function getBasicSquadStats(
-  squadId: string, 
+  squadId: string,
   coachId?: string | null,
-  superCoachId?: string | null
+  superCoachId?: string | null,
+  organizationId?: string | null
 ): Promise<{
   avgAlignment: number;
   alignmentChange: number;
@@ -553,16 +627,20 @@ export async function getBasicSquadStats(
   // Get IDs to exclude once for all calculations
   const actualCoachId = coachId !== undefined ? coachId : await getSquadCoachId(squadId);
   const actualSuperCoachId = superCoachId !== undefined ? superCoachId : await getSquadSuperCoachId(squadId);
-  
+
+  // Get organizationId if not provided (required for alignment doc lookups)
+  const orgId = organizationId || await getSquadOrganizationId(squadId);
+
   // Get all user IDs for display purposes
   const allUserIds = await getAllSquadUserIds(squadId);
-  
+
   // Compute daily stats and streak in parallel
+  // Multi-tenancy: Pass organizationId to fetch correct alignment documents
   const [dailyStats, streakSummary] = await Promise.all([
-    computeSquadDailyStats(squadId, actualCoachId, actualSuperCoachId, allUserIds),
-    getSquadStreak(squadId, actualCoachId, actualSuperCoachId),
+    computeSquadDailyStats(squadId, actualCoachId, actualSuperCoachId, allUserIds, orgId),
+    getSquadStreak(squadId, actualCoachId, actualSuperCoachId, orgId),
   ]);
-  
+
   return {
     avgAlignment: dailyStats.avgAlignmentToday,
     alignmentChange: dailyStats.alignmentChange,
@@ -574,7 +652,7 @@ export async function getBasicSquadStats(
 /**
  * Get full squad stats for the squad page
  * EXCLUDES the coach and super_coach from all calculations - only regular members count.
- * 
+ *
  * PERFORMANCE: This is expensive. For initial page load, use getBasicSquadStats instead
  * and lazy-load the percentile and contribution history.
  */
@@ -589,23 +667,27 @@ export async function getFullSquadStats(squadId: string): Promise<{
   // Get IDs to exclude once for all calculations
   const coachId = await getSquadCoachId(squadId);
   const superCoachId = await getSquadSuperCoachId(squadId);
-  
+
+  // Get organizationId for alignment doc lookups
+  const organizationId = await getSquadOrganizationId(squadId);
+
   // Get all user IDs for display purposes
   const allUserIds = await getAllSquadUserIds(squadId);
-  
+
   // Compute all stats - daily stats and streak are fast, percentile and history are slower
   // Run daily stats and streak first (needed immediately), then the rest
+  // Multi-tenancy: Pass organizationId to fetch correct alignment documents
   const [dailyStats, streakSummary] = await Promise.all([
-    computeSquadDailyStats(squadId, coachId, superCoachId, allUserIds),
-    getSquadStreak(squadId, coachId, superCoachId),
+    computeSquadDailyStats(squadId, coachId, superCoachId, allUserIds, organizationId),
+    getSquadStreak(squadId, coachId, superCoachId, organizationId),
   ]);
-  
+
   // These are slower - run them in parallel
   const [percentile, contributionHistory] = await Promise.all([
     computeSquadPercentile(squadId),
-    computeContributionHistory(squadId, 30, coachId, superCoachId),
+    computeContributionHistory(squadId, 30, coachId, superCoachId, 0, null, organizationId),
   ]);
-  
+
   return {
     avgAlignment: dailyStats.avgAlignmentToday,
     alignmentChange: dailyStats.alignmentChange,
@@ -618,7 +700,7 @@ export async function getFullSquadStats(squadId: string): Promise<{
 
 /**
  * Get stats tab data (expensive operations) - for lazy loading
- * 
+ *
  * @param squadId - The squad ID
  * @param squadCreatedAt - Optional squad creation date to limit contribution history
  */
@@ -632,12 +714,15 @@ export async function getStatsTabData(
   // Get IDs to exclude once for all calculations
   const coachId = await getSquadCoachId(squadId);
   const superCoachId = await getSquadSuperCoachId(squadId);
-  
+
+  // Get organizationId for alignment doc lookups
+  const organizationId = await getSquadOrganizationId(squadId);
+
   const [percentile, contributionHistory] = await Promise.all([
     computeSquadPercentile(squadId),
-    computeContributionHistory(squadId, 30, coachId, superCoachId, 0, squadCreatedAt),
+    computeContributionHistory(squadId, 30, coachId, superCoachId, 0, squadCreatedAt, organizationId),
   ]);
-  
+
   return {
     topPercentile: percentile,
     contributionHistory,
@@ -764,7 +849,8 @@ export async function updateSquadStatsCache(
 export async function getSquadStatsWithCache(
   squadId: string,
   coachId: string | null,
-  superCoachId?: string | null
+  superCoachId?: string | null,
+  organizationId?: string | null
 ): Promise<{
   avgAlignment: number;
   alignmentChange: number;
@@ -773,14 +859,14 @@ export async function getSquadStatsWithCache(
 }> {
   // Try to get cached stats first
   const cached = await getCachedSquadStats(squadId);
-  
+
   if (cached) {
     // Convert Record back to Map
     const memberAlignments = new Map<string, { alignmentScore: number; currentStreak: number }>();
     Object.entries(cached.memberAlignments).forEach(([key, value]) => {
       memberAlignments.set(key, value);
     });
-    
+
     return {
       avgAlignment: cached.avgAlignment,
       alignmentChange: cached.alignmentChange,
@@ -788,9 +874,10 @@ export async function getSquadStatsWithCache(
       memberAlignments,
     };
   }
-  
+
   // Cache miss - compute fresh stats
-  const freshStats = await getBasicSquadStats(squadId, coachId, superCoachId);
+  // Multi-tenancy: Pass organizationId to fetch correct alignment documents
+  const freshStats = await getBasicSquadStats(squadId, coachId, superCoachId, organizationId);
   
   // Update cache in background (don't await)
   updateSquadStatsCache(squadId, {

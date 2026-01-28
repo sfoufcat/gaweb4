@@ -226,8 +226,9 @@ async function fetchSquadData(
   const coachId = squadData?.coachId || null;
 
   // Only fetch stats if requested (for instant load, skip this)
-  const squadStats = includeStats 
-    ? await getSquadStatsWithCache(squadId, coachId)
+  // Multi-tenancy: Pass organizationId to fetch correct alignment documents
+  const squadStats = includeStats
+    ? await getSquadStatsWithCache(squadId, coachId, undefined, squadOrgId)
     : null;
 
   const hasCoach = !!coachId;

@@ -113,11 +113,7 @@ export function DashboardStatsRow({ mode, stats, className }: DashboardStatsRowP
         <StatCard
           label="Avg Task Completion"
           value={`${programStats.avgTaskCompletion ?? 0}%`}
-          subValue={
-            programStats.taskCompletionRange
-              ? `Range: ${programStats.taskCompletionRange.min}% - ${programStats.taskCompletionRange.max}%`
-              : undefined
-          }
+          subValue="Last 7 days"
           icon={TrendingUp}
           iconColor="text-emerald-600 dark:text-emerald-400"
           iconBg="bg-emerald-100 dark:bg-emerald-900/30"
