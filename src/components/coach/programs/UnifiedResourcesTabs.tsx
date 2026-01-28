@@ -315,6 +315,7 @@ function LinkedResourceItem({
         includeWeekends={includeWeekends}
         courseInfo={courseInfo}
         calendarStartDate={calendarStartDate}
+        resourceType={assignment.resourceType}
       />
     </>
   );
@@ -543,7 +544,7 @@ export function UnifiedResourcesTabs({
     courseId: string,
     days: number[]
   ): Record<string, number> | undefined => {
-    if (days.length < 2) return undefined;
+    if (days.length < 1) return undefined;
 
     const course = availableCourses.find(c => c.id === courseId);
     if (!course?.modules) return undefined;
@@ -572,14 +573,24 @@ export function UnifiedResourcesTabs({
 
   // Update dayTag (and generate lesson mapping for multi-day courses)
   const updateDayTag = (assignmentId: string, dayTag: ResourceDayTag) => {
+    const daysInWeek = includeWeekends ? 7 : 5;
+
     onResourceAssignmentsChange(
       resourceAssignments.map((a) => {
         if (a.id !== assignmentId) return a;
 
-        // Generate lesson mapping if this is a course with multi-day selection
+        // Generate lesson mapping if this is a course
         let lessonDayMapping: Record<string, number> | undefined;
-        if (a.resourceType === 'course' && Array.isArray(dayTag) && dayTag.length >= 2) {
-          lessonDayMapping = generateLessonDayMapping(a.resourceId, dayTag);
+        if (a.resourceType === 'course') {
+          if (dayTag === 'spread') {
+            // Auto-spread: distribute lessons across all weekdays
+            const allDays = Array.from({ length: daysInWeek }, (_, i) => i + 1);
+            lessonDayMapping = generateLessonDayMapping(a.resourceId, allDays);
+          } else if (Array.isArray(dayTag) && dayTag.length >= 1) {
+            // Specific days selected
+            lessonDayMapping = generateLessonDayMapping(a.resourceId, dayTag);
+          }
+          // For 'week' or 'daily', no lesson mapping (entire course available)
         }
 
         return { ...a, dayTag, lessonDayMapping };

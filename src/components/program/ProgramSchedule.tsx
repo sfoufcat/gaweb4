@@ -16,11 +16,13 @@ import {
   Calendar,
 } from 'lucide-react';
 import type { WeeklyContentResponse } from '@/hooks/useProgramWeeklyContent';
-import type { ProgramTaskTemplate } from '@/types';
+import type { ProgramTaskTemplate, WeekResourceAssignment } from '@/types';
+import { getResourcesForDay, getLessonsForDay } from '@/lib/program-utils-client';
 
 interface ProgramScheduleProps {
   days: WeeklyContentResponse['days'];
   week: WeeklyContentResponse['week'];
+  resourceAssignments: WeekResourceAssignment[];
   events: WeeklyContentResponse['events'];
   courses: WeeklyContentResponse['courses'];
   articles: WeeklyContentResponse['articles'];
@@ -33,6 +35,7 @@ interface ProgramScheduleProps {
 export function ProgramSchedule({
   days,
   week,
+  resourceAssignments,
   events,
   courses,
   articles,
@@ -207,19 +210,52 @@ export function ProgramSchedule({
                         );
                       })}
 
-                      {selectedDay.linkedCourseIds?.map(courseId => {
-                        const course = getCourse(courseId);
-                        if (!course) return null;
-                        return (
-                          <ResourceCard
-                            key={courseId}
-                            icon={<GraduationCap className="w-4 h-4" />}
-                            label={course.title}
-                            href={`/discover/courses/${courseId}${enrollmentId ? `?enrollmentId=${enrollmentId}` : ''}`}
-                            color="blue"
-                          />
-                        );
-                      })}
+                      {/* Use resourceAssignments if available, fallback to linkedCourseIds */}
+                      {(() => {
+                        // Get course assignments for this day using dayOfWeek (1-7)
+                        const dayOfWeek = selectedIdx + 1;
+                        const weekWithResources = { resourceAssignments };
+                        const dayResources = getResourcesForDay(weekWithResources, dayOfWeek);
+                        const courseAssignments = dayResources.filter(r => r.resourceType === 'course');
+
+                        // If we have resourceAssignments, use them (shows specific lessons)
+                        if (courseAssignments.length > 0) {
+                          return courseAssignments.map(assignment => {
+                            const course = getCourse(assignment.resourceId);
+                            if (!course) return null;
+
+                            // Get lessons for this specific day
+                            const lessonsForDay = getLessonsForDay(assignment, dayOfWeek, course);
+                            const hasLessons = lessonsForDay.length > 0;
+
+                            return (
+                              <ResourceCard
+                                key={assignment.id}
+                                icon={<GraduationCap className="w-4 h-4" />}
+                                label={course.title}
+                                sublabel={hasLessons ? `${lessonsForDay.length} lesson${lessonsForDay.length > 1 ? 's' : ''} today` : undefined}
+                                href={`/discover/courses/${assignment.resourceId}${enrollmentId ? `?enrollmentId=${enrollmentId}` : ''}`}
+                                color="blue"
+                              />
+                            );
+                          });
+                        }
+
+                        // Fallback to legacy linkedCourseIds
+                        return selectedDay.linkedCourseIds?.map(courseId => {
+                          const course = getCourse(courseId);
+                          if (!course) return null;
+                          return (
+                            <ResourceCard
+                              key={courseId}
+                              icon={<GraduationCap className="w-4 h-4" />}
+                              label={course.title}
+                              href={`/discover/courses/${courseId}${enrollmentId ? `?enrollmentId=${enrollmentId}` : ''}`}
+                              color="blue"
+                            />
+                          );
+                        });
+                      })()}
 
                       {selectedDay.linkedArticleIds?.map(articleId => {
                         const article = getArticle(articleId);

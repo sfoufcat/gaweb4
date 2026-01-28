@@ -11,6 +11,7 @@ import type {
   WeekResourceAssignment,
   UnifiedEvent,
 } from '@/types';
+import type { DiscoverCourse, CourseLesson } from '@/types/discover';
 
 // Accept either template or instance week (both have resourceAssignments)
 type WeekWithResources = Pick<ProgramWeek | ProgramInstanceWeek, 'resourceAssignments'>;
@@ -37,14 +38,60 @@ export function getResourcesForDay(
     // Daily resources always show
     if (tag === 'daily') return true;
 
-    // Specific day match
+    // Specific day match (single number)
     if (typeof tag === 'number') {
       return tag === dayOfWeek;
+    }
+
+    // Array of specific days (e.g., [1, 3, 5] for Mon/Wed/Fri)
+    if (Array.isArray(tag)) {
+      return tag.includes(dayOfWeek);
+    }
+
+    // 'spread' tag shows on all active days (lesson filtering happens separately)
+    if (tag === 'spread') {
+      return true;
     }
 
     // Default to showing (treats undefined as week-level)
     return true;
   });
+}
+
+/**
+ * Gets lessons mapped to a specific day for a course assignment
+ *
+ * @param assignment - The resource assignment (must have lessonDayMapping)
+ * @param dayOfWeek - The day of week (1-7)
+ * @param course - The course data with modules/lessons
+ * @returns Array of lessons assigned to this day, in order
+ */
+export function getLessonsForDay(
+  assignment: WeekResourceAssignment,
+  dayOfWeek: number,
+  course?: DiscoverCourse
+): CourseLesson[] {
+  if (!assignment.lessonDayMapping || !course) return [];
+
+  // Get lesson IDs mapped to this day
+  const lessonIdsForDay = Object.entries(assignment.lessonDayMapping)
+    .filter(([, day]) => day === dayOfWeek)
+    .map(([lessonId]) => lessonId);
+
+  if (lessonIdsForDay.length === 0) return [];
+
+  // Build a map of lessonId -> lesson for quick lookup
+  const lessonMap = new Map<string, CourseLesson>();
+  for (const module of course.modules || []) {
+    for (const lesson of module.lessons || []) {
+      lessonMap.set(lesson.id, lesson);
+    }
+  }
+
+  // Return lessons in the order they appear in the mapping
+  return lessonIdsForDay
+    .map((id) => lessonMap.get(id))
+    .filter((lesson): lesson is CourseLesson => lesson !== undefined);
 }
 
 /**

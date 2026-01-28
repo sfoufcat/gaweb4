@@ -35,6 +35,7 @@ import {
   getResourcesForDay,
   getResourcesByType,
   getCallsForDay,
+  getLessonsForDay,
 } from '@/lib/program-utils-client';
 
 // Accept either ProgramDay or ProgramInstanceDay
@@ -388,6 +389,14 @@ export function DayPreviewPopup({
                         const completed = completion
                           ? completion.completedCount === completion.totalCount && completion.totalCount > 0
                           : isContentCompleted('course', assignment.resourceId);
+
+                        // Get lessons for this specific day (if using spread or specific days)
+                        const lessonsForDay = dayOfWeek && course
+                          ? getLessonsForDay(assignment, dayOfWeek, course)
+                          : [];
+                        const hasLessonMapping = assignment.lessonDayMapping && Object.keys(assignment.lessonDayMapping).length > 0;
+                        const isWeekLevel = assignment.dayTag === 'week';
+
                         return (
                           <div
                             key={assignment.id}
@@ -398,10 +407,27 @@ export function DayPreviewPopup({
                               <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                                 {assignment.title || course?.title || 'Course'}
                               </p>
-                              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
-                                {getDayTagLabel(assignment)}
-                                {assignment.isRequired && ' · Required'}
-                              </p>
+                              {/* Show specific lessons for this day */}
+                              {hasLessonMapping && lessonsForDay.length > 0 ? (
+                                <div className="mt-1.5 space-y-1">
+                                  {lessonsForDay.map((lesson) => (
+                                    <p key={lesson.id} className="text-xs text-[#6b6560] dark:text-[#9ca3af] flex items-center gap-1.5">
+                                      <span className="w-1 h-1 rounded-full bg-purple-400 flex-shrink-0" />
+                                      {lesson.title}
+                                    </p>
+                                  ))}
+                                </div>
+                              ) : isWeekLevel ? (
+                                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                                  Self-paced
+                                  {assignment.isRequired && ' · Required'}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                                  {getDayTagLabel(assignment)}
+                                  {assignment.isRequired && ' · Required'}
+                                </p>
+                              )}
                             </div>
                             {/* Completion badge or checkmark */}
                             {completion && completion.totalCount > 0 ? (

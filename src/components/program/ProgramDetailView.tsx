@@ -165,6 +165,7 @@ export function ProgramDetailView({
   const {
     week: weeklyWeek,
     days: weeklyDays,
+    resourceAssignments: weeklyResourceAssignments,
     events: weeklyEvents,
     courses: weeklyCourses,
     articles: weeklyArticles,
@@ -873,6 +874,7 @@ export function ProgramDetailView({
           <ProgramSchedule
             days={weeklyDays}
             week={weeklyWeek}
+            resourceAssignments={weeklyResourceAssignments}
             events={weeklyEvents}
             courses={weeklyCourses}
             articles={weeklyArticles}

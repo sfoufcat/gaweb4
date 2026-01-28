@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
-import type { ProgramWeek, ProgramTaskTemplate, ProgramHabitTemplate, UnifiedEvent, CallSummary, DiscoverArticle, ProgramInstanceDay } from '@/types';
+import type { ProgramWeek, ProgramTaskTemplate, ProgramHabitTemplate, UnifiedEvent, CallSummary, DiscoverArticle, ProgramInstanceDay, WeekResourceAssignment } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
 
 /**
@@ -106,6 +106,8 @@ export interface WeeklyContentResponse {
     // Partial week info (for blurring inactive days)
     actualStartDayOfWeek?: number;  // 1-5 for Mon-Fri (1 = full week, >1 = partial start)
     actualEndDayOfWeek?: number;    // 1-5 for Mon-Fri (5 = full week, <5 = partial end)
+    // Resource assignments with cadence and lesson mapping
+    resourceAssignments?: WeekResourceAssignment[];
   } | null;
   days: Array<{
     dayIndex: number;
@@ -125,6 +127,8 @@ export interface WeeklyContentResponse {
     linkedCourseIds?: string[];
     linkedSummaryIds?: string[];
   }>;
+  // Resource assignments (top-level for easy access by client components)
+  resourceAssignments: WeekResourceAssignment[];
   // Resolved resources for the week
   events: UnifiedEvent[];
   courses: DiscoverCourse[];
@@ -207,9 +211,22 @@ export async function GET(
     const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-    // For 5-day programs on weekends, we'll show next week
-    const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const currentDayIndex = Math.max(1, daysSinceStart + 1);
+    // Calculate current day index (accounting for weekday-only programs)
+    let currentDayIndex: number;
+    if (includeWeekends) {
+      const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      currentDayIndex = Math.max(1, daysSinceStart + 1);
+    } else {
+      // Count only weekdays for 5-day programs
+      let weekdays = 0;
+      const d = new Date(startDate);
+      while (d <= today) {
+        const dow = d.getDay();
+        if (dow !== 0 && dow !== 6) weekdays++;
+        d.setDate(d.getDate() + 1);
+      }
+      currentDayIndex = Math.max(1, weekdays);
+    }
 
     // Try to get instance-based data first (new system)
     // First try individual instance for this enrollment
@@ -233,8 +250,6 @@ export async function GET(
         .get();
     }
 
-    console.log(`[WEEKLY_CONTENT] Instance found: ${!instanceSnapshot.empty}, instanceId: ${instanceSnapshot.docs[0]?.id || 'none'}`);
-
     let weekData: WeeklyContentResponse['week'] = null;
     let daysData: WeeklyContentResponse['days'] = [];
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -247,6 +262,7 @@ export async function GET(
     let weekLinkedCourseIds: string[] = [];
     let weekLinkedSummaryIds: string[] = [];
     let weekLinkedQuestionnaireIds: string[] = [];
+    let weekResourceAssignments: WeekResourceAssignment[] = [];
 
     if (!instanceSnapshot.empty) {
       // Use instance data (new system)
@@ -332,6 +348,9 @@ export async function GET(
           }
         }
 
+        // Collect resource assignments (with lessonDayMapping for courses)
+        weekResourceAssignments = targetWeek.resourceAssignments || [];
+
         weekData = {
           weekNumber: targetWeek.weekNumber,
           name: targetWeek.name,
@@ -348,6 +367,8 @@ export async function GET(
           // Partial week info for client UI blurring
           actualStartDayOfWeek: targetWeek.actualStartDayOfWeek,
           actualEndDayOfWeek: targetWeek.actualEndDayOfWeek,
+          // Resource assignments with cadence and lesson mapping
+          resourceAssignments: weekResourceAssignments,
         };
 
         // Collect week-level resources
@@ -359,42 +380,75 @@ export async function GET(
         weekLinkedSummaryIds = targetWeek.linkedSummaryIds || [];
         weekLinkedQuestionnaireIds = targetWeek.linkedQuestionnaireIds || [];
 
-        // Process days from instance (filter out weekends for 5-day programs)
-        // Use migrated days if migration was performed
+        // Generate days for the full week (5 days for weekday programs, 7 for weekend-inclusive)
+        // Then look up task/resource data from instance days
         const instanceDays = migratedDays;
-        for (const day of instanceDays) {
-          // Calculate calendar date if missing - use enrollment start + globalDayIndex
-          const globalDay = day.globalDayIndex || day.dayIndex;
-          let calendarDate = day.calendarDate;
-          let dayDate: Date;
+        // Instance days are indexed 1, 2, 3... for ACTIVE days only
+        // For partial weeks, we need to map calendar day to instance day
+        const actualStartDayOfWeek = targetWeek.actualStartDayOfWeek || 1;
+        const actualEndDayOfWeek = targetWeek.actualEndDayOfWeek || daysPerWeek;
+        const instanceDayMap = new Map(instanceDays.map((d: ProgramInstanceDay) => [d.dayIndex, d]));
 
-          if (calendarDate) {
-            dayDate = new Date(calendarDate);
+        // Calculate the week's calendar start date (Monday of this week)
+        // Use calendarStartDate from instance week if available, otherwise calculate
+        let weekCalendarStart: Date;
+        if (targetWeek.calendarStartDate) {
+          weekCalendarStart = new Date(targetWeek.calendarStartDate);
+        } else {
+          // Fallback: calculate from enrollment start + week's startDayIndex
+          weekCalendarStart = new Date(startDate);
+          if (includeWeekends) {
+            weekCalendarStart.setDate(weekCalendarStart.getDate() + (targetWeek.startDayIndex || 1) - 1);
           } else {
-            // Calculate from enrollment start date
-            dayDate = new Date(startDate);
-            dayDate.setDate(dayDate.getDate() + (globalDay - 1));
-            calendarDate = dayDate.toISOString().split('T')[0];
+            let daysToSkip = (targetWeek.startDayIndex || 1) - 1;
+            while (daysToSkip > 0) {
+              weekCalendarStart.setDate(weekCalendarStart.getDate() + 1);
+              const dow = weekCalendarStart.getDay();
+              if (dow !== 0 && dow !== 6) daysToSkip--;
+            }
           }
+          // Align to Monday of the week
+          const dow = weekCalendarStart.getDay();
+          if (dow !== 1 && dow !== 0) {
+            weekCalendarStart.setDate(weekCalendarStart.getDate() - (dow - 1));
+          } else if (dow === 0) {
+            weekCalendarStart.setDate(weekCalendarStart.getDate() - 6);
+          }
+        }
 
+        // Generate all days in the week (5 for weekday programs)
+        for (let dayIdx = 1; dayIdx <= daysPerWeek; dayIdx++) {
+          const dayDate = new Date(weekCalendarStart);
+          dayDate.setDate(dayDate.getDate() + dayIdx - 1);
           const dayDateOfWeek = dayDate.getDay();
 
-          // For 5-day programs, skip weekend days
+          // For 5-day programs, skip weekend days (shouldn't happen if weekCalendarStart is Monday)
           if (!includeWeekends && (dayDateOfWeek === 0 || dayDateOfWeek === 6)) {
             continue;
           }
 
+          const calendarDate = dayDate.toISOString().split('T')[0];
+          const globalDayIndex = (targetWeek.startDayIndex || 1) + dayIdx - 1;
+
+          // Map calendar day index to instance day index
+          // For partial weeks: calendar day 1 (Mon) maps to nothing if actualStartDayOfWeek=2
+          // Calendar day 2 (Tue) maps to instance dayIndex 1, etc.
+          const instanceDayIndex = dayIdx >= actualStartDayOfWeek && dayIdx <= actualEndDayOfWeek
+            ? dayIdx - actualStartDayOfWeek + 1
+            : null;
+          const instanceDay = instanceDayIndex ? instanceDayMap.get(instanceDayIndex) : undefined;
+
           // Inherit week-level resources if day-level is empty
-          const dayEventIds = day.linkedEventIds?.length ? day.linkedEventIds : weekLinkedCallEventIds;
-          const dayArticleIds = day.linkedArticleIds?.length ? day.linkedArticleIds : weekLinkedArticleIds;
-          const dayDownloadIds = day.linkedDownloadIds?.length ? day.linkedDownloadIds : weekLinkedDownloadIds;
-          const dayLinkIds = day.linkedLinkIds?.length ? day.linkedLinkIds : weekLinkedLinkIds;
-          const dayCourseIds = day.linkedCourseIds?.length ? day.linkedCourseIds : weekLinkedCourseIds;
-          const daySummaryIds = day.linkedSummaryIds?.length ? day.linkedSummaryIds : weekLinkedSummaryIds;
-          const dayQuestionnaireIds = day.linkedQuestionnaireIds?.length ? day.linkedQuestionnaireIds : weekLinkedQuestionnaireIds;
+          const dayEventIds = instanceDay?.linkedEventIds?.length ? instanceDay.linkedEventIds : weekLinkedCallEventIds;
+          const dayArticleIds = instanceDay?.linkedArticleIds?.length ? instanceDay.linkedArticleIds : weekLinkedArticleIds;
+          const dayDownloadIds = instanceDay?.linkedDownloadIds?.length ? instanceDay.linkedDownloadIds : weekLinkedDownloadIds;
+          const dayLinkIds = instanceDay?.linkedLinkIds?.length ? instanceDay.linkedLinkIds : weekLinkedLinkIds;
+          const dayCourseIds = instanceDay?.linkedCourseIds?.length ? instanceDay.linkedCourseIds : weekLinkedCourseIds;
+          const daySummaryIds = instanceDay?.linkedSummaryIds?.length ? instanceDay.linkedSummaryIds : weekLinkedSummaryIds;
+          const dayQuestionnaireIds = instanceDay?.linkedQuestionnaireIds?.length ? instanceDay.linkedQuestionnaireIds : weekLinkedQuestionnaireIds;
 
           // Merge completion status from tasks collection into instance tasks
-          const tasksWithCompletion = (day.tasks || []).map((task: ProgramInstanceDay['tasks'][0]) => {
+          const tasksWithCompletion = (instanceDay?.tasks || []).map((task: ProgramInstanceDay['tasks'][0]) => {
             const completion = completionMap.get(task.id);
             return {
               ...task,
@@ -404,14 +458,14 @@ export async function GET(
           });
 
           daysData.push({
-            dayIndex: day.dayIndex,
-            globalDayIndex: globalDay,
+            dayIndex: dayIdx,
+            globalDayIndex,
             calendarDate,
             dayName: dayNames[dayDateOfWeek],
             isToday: dayDate.toDateString() === today.toDateString(),
             isPast: dayDate < today,
             tasks: tasksWithCompletion,
-            habits: day.habits,
+            habits: instanceDay?.habits || [],
             linkedEventIds: dayEventIds,
             linkedArticleIds: dayArticleIds,
             linkedDownloadIds: dayDownloadIds,
@@ -441,6 +495,9 @@ export async function GET(
       }
 
       if (targetWeek) {
+        // Collect resource assignments (with lessonDayMapping for courses)
+        weekResourceAssignments = targetWeek.resourceAssignments || [];
+
         weekData = {
           weekNumber: targetWeek.weekNumber,
           name: targetWeek.name,
@@ -452,6 +509,8 @@ export async function GET(
           manualNotes: targetWeek.manualNotes,
           startDayIndex: targetWeek.startDayIndex,
           endDayIndex: targetWeek.endDayIndex,
+          // Resource assignments with cadence and lesson mapping
+          resourceAssignments: weekResourceAssignments,
         };
 
         // Collect week-level resources
@@ -464,8 +523,19 @@ export async function GET(
         weekLinkedQuestionnaireIds = targetWeek.linkedQuestionnaireIds || [];
 
         // Generate days from week range (respect includeWeekends)
-        const weekStartDate = new Date(startDate);
-        weekStartDate.setDate(weekStartDate.getDate() + targetWeek.startDayIndex - 1);
+        // Convert program day index to calendar date (skip weekends for 5-day programs)
+        let weekStartDate = new Date(startDate);
+        if (includeWeekends) {
+          weekStartDate.setDate(weekStartDate.getDate() + targetWeek.startDayIndex - 1);
+        } else {
+          // For 5-day programs, count only weekdays
+          let programDaysToSkip = targetWeek.startDayIndex - 1;
+          while (programDaysToSkip > 0) {
+            weekStartDate.setDate(weekStartDate.getDate() + 1);
+            const dow = weekStartDate.getDay();
+            if (dow !== 0 && dow !== 6) programDaysToSkip--;
+          }
+        }
 
         // For 5-day programs on weekends, shift to next Monday
         let adjustedWeekStartDate = new Date(weekStartDate);
@@ -570,6 +640,7 @@ export async function GET(
       success: true,
       week: weekData,
       days: daysData,
+      resourceAssignments: weekResourceAssignments,
       events,
       courses,
       articles,
@@ -675,6 +746,7 @@ function getDemoWeeklyContent(): WeeklyContentResponse {
       readingTimeMinutes: 5,
       organizationId: 'demo-org',
     }] as DiscoverArticle[],
+    resourceAssignments: [],
     downloads: [],
     links: [],
     summaries: [],

@@ -39,12 +39,14 @@ interface ResourceCadenceModalProps {
   includeWeekends?: boolean;
   courseInfo?: CourseInfo;
   calendarStartDate?: string;
+  resourceType?: 'course' | 'article' | 'download' | 'link' | 'questionnaire' | 'video';
 }
 
 // Helper to get display label for current value
 export function getResourceCadenceLabel(value: ResourceDayTag, calendarStartDate?: string): string {
   if (value === 'week') return 'Week-level';
   if (value === 'daily') return 'Daily';
+  if (value === 'spread') return 'Auto-spread';
   if (typeof value === 'number') {
     if (calendarStartDate) {
       const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -76,13 +78,27 @@ export function ResourceCadenceModal({
   includeWeekends = true,
   courseInfo,
   calendarStartDate,
+  resourceType,
 }: ResourceCadenceModalProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const daysInWeek = includeWeekends ? 7 : 5;
+  const isCourse = resourceType === 'course';
 
-  // Calculate spread info for multi-day selection
+  // Calculate spread info for multi-day selection or auto-spread
   const spreadInfo = useMemo(() => {
     if (!courseInfo?.totalLessons || courseInfo.totalLessons === 0) return null;
+
+    // For auto-spread, use all weekdays
+    if (value === 'spread') {
+      const lessonsPerDay = Math.ceil(courseInfo.totalLessons / daysInWeek);
+      return {
+        totalLessons: courseInfo.totalLessons,
+        selectedDays: daysInWeek,
+        lessonsPerDay,
+      };
+    }
+
+    // For specific days array
     if (!Array.isArray(value) || value.length < 2) return null;
 
     const lessonsPerDay = Math.ceil(courseInfo.totalLessons / value.length);
@@ -91,7 +107,7 @@ export function ResourceCadenceModal({
       selectedDays: value.length,
       lessonsPerDay,
     };
-  }, [courseInfo, value]);
+  }, [courseInfo, value, daysInWeek]);
 
   const content = (
     <div className="space-y-3 pt-2">
@@ -121,31 +137,63 @@ export function ResourceCadenceModal({
         {value === 'week' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
       </button>
 
-      {/* Daily option */}
-      <button
-        type="button"
-        onClick={() => { onChange('daily'); onOpenChange(false); }}
-        className={cn(
-          "w-full p-4 text-left rounded-xl transition-all flex items-center gap-4 border",
-          value === 'daily'
-            ? "bg-brand-accent/10 border-brand-accent"
-            : "bg-white dark:bg-[#1e222a] border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d1ccc6] dark:hover:border-[#3a4150]"
-        )}
-      >
-        <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
-          value === 'daily' ? "bg-brand-accent/15" : "bg-[#f5f3f0] dark:bg-[#262b35]"
-        )}>
-          <CalendarPlus className={cn("w-5 h-5", value === 'daily' ? "text-brand-accent" : "text-[#5f5a55] dark:text-[#9ca3af]")} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <span className={cn("text-sm font-semibold block", value === 'daily' ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]")}>
-            Daily
-          </span>
-          <p className="text-xs text-[#6b6560] dark:text-[#9ca3af] mt-0.5">Available every day of the week</p>
-        </div>
-        {value === 'daily' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
-      </button>
+      {/* Auto-spread option - only for courses */}
+      {isCourse && (
+        <button
+          type="button"
+          onClick={() => { onChange('spread'); onOpenChange(false); }}
+          className={cn(
+            "w-full p-4 text-left rounded-xl transition-all flex items-center gap-4 border",
+            value === 'spread'
+              ? "bg-brand-accent/10 border-brand-accent"
+              : "bg-white dark:bg-[#1e222a] border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d1ccc6] dark:hover:border-[#3a4150]"
+          )}
+        >
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+            value === 'spread' ? "bg-brand-accent/15" : "bg-[#f5f3f0] dark:bg-[#262b35]"
+          )}>
+            <BookOpen className={cn("w-5 h-5", value === 'spread' ? "text-brand-accent" : "text-[#5f5a55] dark:text-[#9ca3af]")} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className={cn("text-sm font-semibold block", value === 'spread' ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]")}>
+              Auto-spread
+            </span>
+            <p className="text-xs text-[#6b6560] dark:text-[#9ca3af] mt-0.5">
+              Lessons evenly distributed across all {daysInWeek} days
+            </p>
+          </div>
+          {value === 'spread' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
+        </button>
+      )}
+
+      {/* Daily option - hidden for courses (use auto-spread instead) */}
+      {!isCourse && (
+        <button
+          type="button"
+          onClick={() => { onChange('daily'); onOpenChange(false); }}
+          className={cn(
+            "w-full p-4 text-left rounded-xl transition-all flex items-center gap-4 border",
+            value === 'daily'
+              ? "bg-brand-accent/10 border-brand-accent"
+              : "bg-white dark:bg-[#1e222a] border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d1ccc6] dark:hover:border-[#3a4150]"
+          )}
+        >
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+            value === 'daily' ? "bg-brand-accent/15" : "bg-[#f5f3f0] dark:bg-[#262b35]"
+          )}>
+            <CalendarPlus className={cn("w-5 h-5", value === 'daily' ? "text-brand-accent" : "text-[#5f5a55] dark:text-[#9ca3af]")} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className={cn("text-sm font-semibold block", value === 'daily' ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]")}>
+              Daily
+            </span>
+            <p className="text-xs text-[#6b6560] dark:text-[#9ca3af] mt-0.5">Available every day of the week</p>
+          </div>
+          {value === 'daily' && <Check className="w-5 h-5 text-brand-accent flex-shrink-0" />}
+        </button>
+      )}
 
       {/* Specific day section - multi-select toggle */}
       <div className="pt-3 mt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
@@ -212,8 +260,8 @@ export function ResourceCadenceModal({
           })}
         </div>
 
-        {/* Spread info for multi-day courses */}
-        {spreadInfo && (
+        {/* Spread info for multi-day courses (specific days selection) */}
+        {spreadInfo && Array.isArray(value) && (
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-start gap-2">
             <Info className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-blue-700 dark:text-blue-300">
@@ -222,6 +270,16 @@ export function ResourceCadenceModal({
           </div>
         )}
       </div>
+
+      {/* Auto-spread info - shown when spread is selected */}
+      {isCourse && value === 'spread' && spreadInfo && (
+        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-start gap-2">
+          <Info className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-700 dark:text-blue-300">
+            {spreadInfo.totalLessons} lessons will be spread across {spreadInfo.selectedDays} days (~{spreadInfo.lessonsPerDay} per day)
+          </p>
+        </div>
+      )}
     </div>
   );
 

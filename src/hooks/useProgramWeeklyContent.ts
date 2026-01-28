@@ -10,6 +10,7 @@ export type { WeeklyContentResponse };
 export interface UseProgramWeeklyContentReturn {
   week: WeeklyContentResponse['week'];
   days: WeeklyContentResponse['days'];
+  resourceAssignments: WeeklyContentResponse['resourceAssignments'];
   events: WeeklyContentResponse['events'];
   courses: WeeklyContentResponse['courses'];
   articles: WeeklyContentResponse['articles'];
@@ -89,6 +90,7 @@ export function useProgramWeeklyContent(
       events: [],
       courses: [],
       articles: [],
+      resourceAssignments: [],
       downloads: [],
       links: [],
       summaries: [],
@@ -122,6 +124,7 @@ export function useProgramWeeklyContent(
     return {
       week: demoContent.week,
       days: demoContent.days,
+      resourceAssignments: demoContent.resourceAssignments,
       events: demoContent.events,
       courses: demoContent.courses,
       articles: demoContent.articles,
@@ -138,6 +141,7 @@ export function useProgramWeeklyContent(
   return {
     week: data?.week ?? null,
     days: data?.days ?? [],
+    resourceAssignments: data?.resourceAssignments ?? [],
     events: data?.events ?? [],
     courses: data?.courses ?? [],
     articles: data?.articles ?? [],

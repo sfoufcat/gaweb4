@@ -1514,7 +1514,7 @@ export interface ContentProgress {
 
 // Week Resource Assignment Types
 // Supports single day (number), multiple days (number[]), or preset options
-export type ResourceDayTag = 'week' | 'daily' | number | number[];
+export type ResourceDayTag = 'week' | 'daily' | 'spread' | number | number[];
 
 export interface WeekResourceAssignment {
   id: string;                     // Unique ID for this assignment
@@ -1523,9 +1523,11 @@ export interface WeekResourceAssignment {
 
   // Day targeting (mirrors task dayTag)
   dayTag: ResourceDayTag;
-  // 'week' = available all week (current behavior)
-  // 'daily' = shows every day
+  // 'week' = available all week (self-paced)
+  // 'daily' = shows every day (for articles, downloads, etc.)
+  // 'spread' = auto-spread lessons across all active days (courses only)
   // 1-7 = specific day of week
+  // [1,3,5] = specific days array (lessons spread across those days)
 
   // For courses, optionally scope to specific content
   moduleIds?: string[];           // Specific modules to assign
