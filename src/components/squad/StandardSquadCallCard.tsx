@@ -395,7 +395,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-brand-accent" />
               <h3 className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
-                Next squad call
+                Next community call
               </h3>
             </div>
             

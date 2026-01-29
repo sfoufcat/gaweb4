@@ -5421,6 +5421,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       cohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
                       cohortName={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortName : undefined}
                       instanceId={instanceId}
+                      clientWeeklyTaskCompletion={isClientMode ? clientTaskCompletion : undefined}
                       onSummaryGenerated={refetchCallSummaries}
                       onCallScheduled={refetchEvents}
                       includeWeekends={selectedProgram?.includeWeekends !== false}

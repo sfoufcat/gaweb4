@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import useSWR from 'swr';
-import { Calendar, MessageCircle, Download, Pencil } from 'lucide-react';
+import { Calendar, Video, Download, Pencil } from 'lucide-react';
 import type { UnifiedEvent } from '@/types';
 import { ScheduleCohortEventModal } from '@/components/scheduling/ScheduleCohortEventModal';
 import { useChatSheet } from '@/contexts/ChatSheetContext';
@@ -218,24 +218,31 @@ export function CohortSessionCard({
                 )}
               </p>
 
-              {/* Location */}
-              {event.locationLabel && (
-                <p className="font-albert text-[14px] text-text-secondary">
-                  <span className="font-medium text-text-primary">Location:</span>{' '}
-                  {event.locationLabel.startsWith('http') ? (
-                    <a
-                      href={event.locationLabel}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-brand-accent hover:underline"
-                    >
-                      {event.locationLabel}
-                    </a>
-                  ) : (
-                    event.locationLabel
-                  )}
-                </p>
-              )}
+              {/* Location - show link or "Available soon" based on time */}
+              {(() => {
+                const eventStart = new Date(event.startDateTime);
+                const now = new Date();
+                const oneHourBefore = new Date(eventStart.getTime() - 60 * 60 * 1000);
+                const showLink = event.meetingLink && now >= oneHourBefore;
+
+                return (
+                  <p className="font-albert text-[14px] text-text-secondary">
+                    <span className="font-medium text-text-primary">Location:</span>{' '}
+                    {showLink ? (
+                      <a
+                        href={event.meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-accent hover:underline"
+                      >
+                        {event.locationLabel || 'Join link'}
+                      </a>
+                    ) : (
+                      <span>Available soon</span>
+                    )}
+                  </p>
+                );
+              })()}
 
               {/* Hosted by (Coach info) */}
               {coachInfo && (
@@ -270,24 +277,25 @@ export function CohortSessionCard({
             </div>
 
             {/* Right: Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 shrink-0">
-              <button
-                onClick={handleAddToCalendar}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#11141b] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22] rounded-full font-albert text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Add to calendar
-              </button>
-
-              {chatChannelId && (
+            <div className="flex flex-col items-start gap-2 shrink-0">
+              <div className="flex flex-row gap-3">
                 <button
-                  onClick={handleGoToChat}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                  onClick={handleAddToCalendar}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#11141b] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22] rounded-full font-albert text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] transition-colors"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  Go to chat
+                  <Download className="w-4 h-4" />
+                  Add to calendar
                 </button>
-              )}
+                <button
+                  disabled
+                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-full font-albert text-[14px] font-medium bg-brand-accent opacity-60 text-white cursor-not-allowed"
+                >
+                  Join Call
+                </button>
+              </div>
+              <span className="w-full text-[12px] text-text-secondary sm:text-right">
+                Link available 1 hr before call
+              </span>
             </div>
           </div>
         ) : (
@@ -307,15 +315,12 @@ export function CohortSessionCard({
                 Add to calendar
               </button>
 
-              {chatChannelId && (
-                <button
-                  onClick={handleGoToChat}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Go to chat
-                </button>
-              )}
+              <button
+                disabled
+                className="inline-flex items-center justify-center px-4 py-2.5 bg-brand-accent opacity-60 rounded-full font-albert text-[14px] font-medium text-white cursor-not-allowed"
+              >
+                Join Call
+              </button>
             </div>
           </div>
         )}

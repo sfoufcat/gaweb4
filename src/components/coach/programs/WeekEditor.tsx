@@ -176,6 +176,8 @@ interface WeekEditorProps {
   onSummaryDeleted?: (summaryId: string) => void;
   // Cohort task completion for weekly tasks (aggregate)
   cohortWeeklyTaskCompletion?: Map<string, CohortWeeklyTaskCompletionData>;
+  // Client task completion for weekly tasks (1:1 programs)
+  clientWeeklyTaskCompletion?: Map<string, { completed: boolean; completedAt?: string }>;
   // Completion threshold
   completionThreshold?: number;
   // NEW: Instance ID for migrated data (uses new unified API when present)
@@ -224,6 +226,8 @@ interface SortableWeeklyTaskProps {
   actualStartDayOfWeek?: number;
   // Cohort completion data (optional)
   cohortCompletion?: CohortWeeklyTaskCompletionData;
+  // Client completion data (1:1 programs)
+  clientCompletion?: { completed: boolean; completedAt?: string };
   // Expand functionality for cohort mode
   isCohortMode: boolean;
   isExpanded: boolean;
@@ -247,6 +251,7 @@ function SortableWeeklyTask({
   calendarStartDate,
   actualStartDayOfWeek,
   cohortCompletion,
+  clientCompletion,
   isCohortMode,
   isExpanded,
   isLoading,
@@ -269,7 +274,8 @@ function SortableWeeklyTask({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const isCompleted = task.completed || false;
+  // For 1:1 client mode, use clientCompletion; otherwise fall back to task.completed
+  const isCompleted = clientCompletion?.completed ?? task.completed ?? false;
   const [cadenceModalOpen, setCadenceModalOpen] = useState(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -990,6 +996,7 @@ export function WeekEditor({
   onSummaryUpdated,
   onSummaryDeleted,
   cohortWeeklyTaskCompletion = EMPTY_MAP,
+  clientWeeklyTaskCompletion,
   completionThreshold = 50,
   instanceId,
   includeWeekends = true,
@@ -3354,6 +3361,9 @@ export function WeekEditor({
                     const cohortCompletion = cohortId
                       ? (task.id && cohortWeeklyTaskCompletion.get(task.id)) || cohortWeeklyTaskCompletion.get(task.label)
                       : undefined;
+                    const clientCompletion = isClientView
+                      ? (task.id && clientWeeklyTaskCompletion?.get(task.id)) || clientWeeklyTaskCompletion?.get(task.label)
+                      : undefined;
                     return (
                       <SortableWeeklyTask
                         key={taskKey}
@@ -3370,6 +3380,7 @@ export function WeekEditor({
                         calendarStartDate={weekCalendarStartDate}
                         actualStartDayOfWeek={actualStartDayOfWeek}
                         cohortCompletion={cohortCompletion}
+                        clientCompletion={clientCompletion}
                         isCohortMode={isCohortMode}
                         isExpanded={expandedTasks.has(taskKey)}
                         isLoading={loadingTasks.has(taskKey)}
