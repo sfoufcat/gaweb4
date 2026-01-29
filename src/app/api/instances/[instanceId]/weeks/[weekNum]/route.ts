@@ -700,15 +700,14 @@ export async function PATCH(
       }
 
       // Step 4: Add specific-day tasks to their designated day (only if within active range)
-      // For partial weeks, dayTag is the absolute day-of-week (1=Mon, 3=Wed, etc.)
-      // The days array only contains ACTIVE days, so we need to offset by actualStartDayOfWeek
-      const actualStartDayOfWeek = updatedWeek.actualStartDayOfWeek || 1;
+      // dayTag is the program day within this week (1=first day, 2=second day, etc.)
+      // The days array only contains ACTIVE days, so we offset by the first day's dayIndex
+      const firstDayIndex = daysToUpdate[0]?.dayIndex || 1;
       for (const [dayNum, tasks] of specificDayTasks) {
-        // Map absolute day-of-week to array index
-        // e.g., for partial week starting Wed (actualStartDayOfWeek=3):
-        //   dayNum=3 (Wed) → dayIdx=0, dayNum=4 (Thu) → dayIdx=1, dayNum=5 (Fri) → dayIdx=2
-        const dayIdx = dayNum - actualStartDayOfWeek;
-        console.log(`[INSTANCE_WEEK_PATCH] Distributing ${tasks.length} tasks with dayTag ${dayNum} -> dayIdx ${dayIdx} (actualStartDayOfWeek=${actualStartDayOfWeek})`);
+        // Map program day number to array index
+        // e.g., for week with days[0].dayIndex=1: dayNum=3 → dayIdx=2
+        const dayIdx = dayNum - firstDayIndex;
+        console.log(`[INSTANCE_WEEK_PATCH] Distributing ${tasks.length} tasks with dayTag ${dayNum} -> dayIdx ${dayIdx} (firstDayIndex=${firstDayIndex})`);
         console.log(`[INSTANCE_WEEK_PATCH]   daysToUpdate structure:`, daysToUpdate.map((d, i) => ({ idx: i, dayIndex: d.dayIndex, globalDayIndex: d.globalDayIndex, calendarDate: d.calendarDate })));
         if (dayIdx >= 0 && dayIdx < numDays) {
           console.log(`[INSTANCE_WEEK_PATCH]   Adding tasks to daysToUpdate[${dayIdx}] which has dayIndex=${daysToUpdate[dayIdx]?.dayIndex}, calendarDate=${daysToUpdate[dayIdx]?.calendarDate}`);

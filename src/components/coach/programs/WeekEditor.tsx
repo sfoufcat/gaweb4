@@ -899,6 +899,9 @@ export function WeekEditor({
   
   const effectiveInstanceId = instanceId || lookedUpInstanceId;
 
+  // Debug: Log instance lookup values
+  console.log('[WeekEditor] Instance values:', { instanceId, lookedUpInstanceId, effectiveInstanceId, cohortId, programId, weekNumber: week?.weekNumber });
+
   // Determine if we're in a client/cohort context (not template mode)
   const isInstanceContext = !!(cohortId || enrollmentId);
 
@@ -3880,17 +3883,21 @@ export function WeekEditor({
 
       {/* Schedule Session Modal (group programs - using CreateEventModal) */}
       {isCohortMode && cohortId && programId && (
-        <CreateEventModal
-          isOpen={showScheduleCohortModal}
-          onClose={() => setShowScheduleCohortModal(false)}
-          programId={programId}
-          cohortId={cohortId}
-          instanceId={instanceId || undefined}
-          onSuccess={() => {
-            setShowScheduleCohortModal(false);
-            onCallScheduled?.();
-          }}
-        />
+        <>
+          {showScheduleCohortModal && console.log('[WeekEditor] Rendering CreateEventModal with:', { effectiveInstanceId, weekNumber: week.weekNumber, cohortId, programId })}
+          <CreateEventModal
+            isOpen={showScheduleCohortModal}
+            onClose={() => setShowScheduleCohortModal(false)}
+            programId={programId}
+            cohortId={cohortId}
+            instanceId={effectiveInstanceId || undefined}
+            weekIndex={week.weekNumber}
+            onSuccess={() => {
+              setShowScheduleCohortModal(false);
+              onCallScheduled?.();
+            }}
+          />
+        </>
       )}
     </div>
   );

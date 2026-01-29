@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import type { UserAlignment, UserAlignmentSummary, AlignmentActivityConfig, AlignmentActivityKey, CompletionThreshold } from '@/types';
 import { DEFAULT_ALIGNMENT_CONFIG } from '@/types';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 // Fire icon SVG component
 function FireIcon({ size = 24, className = '' }: { size?: number; className?: string }) {
@@ -339,6 +340,9 @@ export function AlignmentSheet({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-[420px] p-0 gap-0">
+        <VisuallyHidden>
+          <DialogTitle>Alignment Details</DialogTitle>
+        </VisuallyHidden>
         <SheetContent />
       </DialogContent>
     </Dialog>

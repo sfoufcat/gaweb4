@@ -164,12 +164,13 @@ interface FullStructureSaveSyncProps {
 
 function FullStructureSaveSync({ programId, viewContext, clientContextId, instanceId }: FullStructureSaveSyncProps) {
   const context = useProgramEditorOptional();
+  const setFullStructureSaveOptions = context?.setFullStructureSaveOptions;
 
   React.useEffect(() => {
-    if (!context?.setFullStructureSaveOptions || !programId) return;
+    if (!setFullStructureSaveOptions || !programId) return;
 
     // Enable full structure save for all views
-    context.setFullStructureSaveOptions({
+    setFullStructureSaveOptions({
       programId,
       viewContext,
       clientContextId,
@@ -178,9 +179,9 @@ function FullStructureSaveSync({ programId, viewContext, clientContextId, instan
 
     // Cleanup: disable full structure save when unmounting
     return () => {
-      context.setFullStructureSaveOptions(null);
+      setFullStructureSaveOptions(null);
     };
-  }, [context, programId, viewContext, clientContextId, instanceId]);
+  }, [setFullStructureSaveOptions, programId, viewContext, clientContextId, instanceId]);
 
   return null;
 }
@@ -2434,10 +2435,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         );
         setAvailableEvents(callEvents);
       }
+      // Also refresh instance to get updated linkedCallEventIds
+      if (instanceId) {
+        refreshInstance();
+      }
     } catch (err) {
       console.error('Error refetching events:', err);
     }
-  }, [selectedProgram]);
+  }, [selectedProgram, instanceId, refreshInstance]);
 
   // Refresh client/cohort data handler
   const handleRefreshData = useCallback(async () => {

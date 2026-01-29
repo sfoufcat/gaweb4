@@ -120,6 +120,24 @@ export async function POST(request: NextRequest) {
             updatedAt: now,
           });
         });
+
+        // Also cancel the parent recurring event if we're cancelling from the first instance
+        // or if all remaining instances are being cancelled
+        const parentRef = adminDb.collection('events').doc(parentEventId);
+        const parentDoc = await parentRef.get();
+        if (parentDoc.exists) {
+          const parentEvent = parentDoc.data();
+          // Cancel parent if: cancelling from first instance OR parent's startDateTime >= fromDate
+          if (parentEvent && parentEvent.startDateTime && parentEvent.startDateTime >= fromDate) {
+            batch.update(parentRef, {
+              schedulingStatus: 'cancelled',
+              status: 'canceled',
+              updatedAt: now,
+            });
+            console.log(`[SCHEDULING_CANCEL] Also cancelling parent event ${parentEventId}`);
+          }
+        }
+
         await batch.commit();
         cancelledCount = futureInstancesSnapshot.size;
 
@@ -134,6 +152,18 @@ export async function POST(request: NextRequest) {
           const jobBatch = adminDb.batch();
           jobsSnapshot.docs.forEach(doc => jobBatch.delete(doc.ref));
           await jobBatch.commit();
+        }
+
+        // Also delete reminder jobs for the parent event
+        const parentJobsSnapshot = await adminDb
+          .collection('eventScheduledJobs')
+          .where('eventId', '==', parentEventId)
+          .where('executed', '==', false)
+          .get();
+        if (!parentJobsSnapshot.empty) {
+          const parentJobBatch = adminDb.batch();
+          parentJobsSnapshot.docs.forEach(doc => parentJobBatch.delete(doc.ref));
+          await parentJobBatch.commit();
         }
 
         console.log(`[SCHEDULING_CANCEL] Cancelled ${cancelledCount} instances from ${fromDate} forward`);

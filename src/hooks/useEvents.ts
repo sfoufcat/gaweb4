@@ -16,7 +16,7 @@ import type { UnifiedEvent, EventType, EventScope, EventStatus } from '@/types';
 
 // SWR fetcher
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error('Failed to fetch');
   }
@@ -351,7 +351,8 @@ export function useProgramEvents(programId: string | null, options: { upcoming?:
     isDemoMode ? null : url,
     fetcher,
     {
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      revalidateOnMount: true,
     }
   );
 

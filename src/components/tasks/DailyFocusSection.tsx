@@ -30,6 +30,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { useActiveEnrollment } from '@/hooks/useActiveEnrollment';
 import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { getTodayInTimezone, getClientTimezone } from '@/lib/timezone';
 import type { Task } from '@/types';
 
 // Empty drop zone component for when Daily Focus has no tasks
@@ -79,7 +80,7 @@ export function DailyFocusSection({
   programName,
   onLoadProgramTasks,
 }: DailyFocusSectionProps) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayInTimezone(getClientTimezone());
   const {
     focusTasks,
     backlogTasks,

@@ -187,6 +187,19 @@ export function getYesterdayDate(timezone?: string): string {
   return date.toISOString().split('T')[0];
 }
 
+/**
+ * Get the browser's current timezone
+ * Safe to use on client-side only
+ * @returns IANA timezone string (e.g., "America/New_York")
+ */
+export function getClientTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return 'UTC';
+  }
+}
+
 
 
 

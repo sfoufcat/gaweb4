@@ -340,8 +340,9 @@ export async function createEventCore(params: CreateEventCoreParams): Promise<Cr
     await generateRecurringInstances(createdEvent);
   }
 
-  // Link event to program instance week/day if applicable
-  if (params.instanceId && params.weekIndex !== undefined && params.dayIndex !== undefined) {
+  // Link event to program instance week (and optionally day) if applicable
+  // Note: weekIndex here is actually weekNumber (0=Onboarding, 1=Week 1, -1=Closing, etc.)
+  if (params.instanceId && params.weekIndex !== undefined) {
     try {
       const instanceRef = adminDb.collection('program_instances').doc(params.instanceId);
       const instanceDoc = await instanceRef.get();
@@ -350,24 +351,29 @@ export async function createEventCore(params: CreateEventCoreParams): Promise<Cr
         const currentData = instanceDoc.data() as ProgramInstance;
         const weeks = [...(currentData.weeks || [])];
 
-        if (weeks[params.weekIndex]) {
+        // Find week by weekNumber (not array index) since weeks might not be ordered
+        const weekArrayIndex = weeks.findIndex(w => w.weekNumber === params.weekIndex);
+
+        if (weekArrayIndex !== -1) {
           // Add to week's linkedCallEventIds
-          const weekLinkedCallEventIds = weeks[params.weekIndex].linkedCallEventIds || [];
+          const weekLinkedCallEventIds = weeks[weekArrayIndex].linkedCallEventIds || [];
           if (!weekLinkedCallEventIds.includes(eventId)) {
-            weeks[params.weekIndex].linkedCallEventIds = [...weekLinkedCallEventIds, eventId];
+            weeks[weekArrayIndex].linkedCallEventIds = [...weekLinkedCallEventIds, eventId];
           }
 
-          // Find the day within the week and add to linkedEventIds
-          const days = weeks[params.weekIndex].days || [];
-          const weekStartDayIndex = weeks[params.weekIndex].startDayIndex || 1;
-          const dayIndexInWeek = params.dayIndex - weekStartDayIndex;
+          // If dayIndex is provided, also link to the specific day
+          if (params.dayIndex !== undefined) {
+            const days = weeks[weekArrayIndex].days || [];
+            const weekStartDayIndex = weeks[weekArrayIndex].startDayIndex || 1;
+            const dayIndexInWeek = params.dayIndex - weekStartDayIndex;
 
-          if (days[dayIndexInWeek]) {
-            const dayLinkedEventIds = days[dayIndexInWeek].linkedEventIds || [];
-            if (!dayLinkedEventIds.includes(eventId)) {
-              days[dayIndexInWeek].linkedEventIds = [...dayLinkedEventIds, eventId];
+            if (days[dayIndexInWeek]) {
+              const dayLinkedEventIds = days[dayIndexInWeek].linkedEventIds || [];
+              if (!dayLinkedEventIds.includes(eventId)) {
+                days[dayIndexInWeek].linkedEventIds = [...dayLinkedEventIds, eventId];
+              }
+              weeks[weekArrayIndex].days = days;
             }
-            weeks[params.weekIndex].days = days;
           }
 
           await instanceRef.update({
@@ -375,7 +381,9 @@ export async function createEventCore(params: CreateEventCoreParams): Promise<Cr
             updatedAt: FieldValue.serverTimestamp(),
           });
 
-          console.log(`[EVENT_CORE] Linked event ${eventId} to instance ${params.instanceId} week ${params.weekIndex} day ${params.dayIndex}`);
+          console.log(`[EVENT_CORE] Linked event ${eventId} to instance ${params.instanceId} weekNumber ${params.weekIndex}${params.dayIndex !== undefined ? ` day ${params.dayIndex}` : ''}`);
+        } else {
+          console.log(`[EVENT_CORE] Week with weekNumber ${params.weekIndex} not found in instance ${params.instanceId} (available weekNumbers: ${weeks.map(w => w.weekNumber).join(', ')})`);
         }
       }
     } catch (err) {

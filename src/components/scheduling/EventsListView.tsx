@@ -69,11 +69,21 @@ const EVENT_TYPE_FILTERS: { value: EventTypeFilter; label: string; icon: typeof 
 // Event type badge colors
 const EVENT_TYPE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
   coaching_1on1: { bg: 'bg-orange-100 dark:bg-orange-900/20', text: 'text-orange-700 dark:text-orange-300', label: '1:1 Call' },
-  cohort_call: { bg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-300', label: 'Group Call' },
+  cohort_call: { bg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-300', label: 'Cohort Call' },
+  community_call: { bg: 'bg-indigo-100 dark:bg-indigo-900/20', text: 'text-indigo-700 dark:text-indigo-300', label: 'Community Call' },
   squad_call: { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-300', label: 'Squad Call' },
-  community_event: { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300', label: 'Community' },
+  community_event: { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300', label: 'Community Event' },
   intake_call: { bg: 'bg-teal-100 dark:bg-teal-900/20', text: 'text-teal-700 dark:text-teal-300', label: 'Intake Call' },
 };
+
+// Helper to get the right badge for an event
+// cohort_call with cohortId = "Cohort Call", cohort_call without cohortId = "Community Call"
+function getEventTypeBadge(event: UnifiedEvent): { bg: string; text: string; label: string } {
+  if (event.eventType === 'cohort_call') {
+    return event.cohortId ? EVENT_TYPE_BADGE.cohort_call : EVENT_TYPE_BADGE.community_call;
+  }
+  return EVENT_TYPE_BADGE[event.eventType] || EVENT_TYPE_BADGE.community_event;
+}
 
 // Status colors
 const STATUS_BADGE: Record<string, { bg: string; text: string; icon: typeof CheckCircle }> = {
@@ -538,7 +548,7 @@ export function EventsListView({ mode = 'coach', startDate, endDate, typeFilter 
               {/* Events for this day */}
               <div className="space-y-2">
                 {dayEvents.map((event) => {
-                  const typeBadge = EVENT_TYPE_BADGE[event.eventType] || EVENT_TYPE_BADGE.community_event;
+                  const typeBadge = getEventTypeBadge(event);
                   const statusBadge = event.schedulingStatus ? STATUS_BADGE[event.schedulingStatus] : null;
                   const StatusIcon = statusBadge?.icon || CheckCircle;
                   const isPending = event.schedulingStatus === 'proposed' || event.schedulingStatus === 'counter_proposed';

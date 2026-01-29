@@ -142,7 +142,10 @@ export async function GET(
     // Apply final limit
     const finalEvents = events.slice(0, limit);
 
-    return NextResponse.json({ events: finalEvents });
+    return NextResponse.json(
+      { events: finalEvents },
+      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
+    );
   } catch (error) {
     console.error('[PROGRAM_EVENTS_GET] Error:', error);
     return NextResponse.json(

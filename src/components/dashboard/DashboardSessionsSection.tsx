@@ -14,14 +14,18 @@ interface DashboardSessionsSectionProps {
 const EVENT_TYPE_BADGES = {
   squad_call: {
     label: 'Squad Call',
-    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+    color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   },
   cohort_call: {
     label: 'Cohort Call',
     color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
   },
+  community_call: {
+    label: 'Community Call',
+    color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
+  },
   community_event: {
-    label: 'Event',
+    label: 'Community Event',
     color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
   },
   coaching_1on1: {
@@ -30,9 +34,20 @@ const EVENT_TYPE_BADGES = {
   },
   intake_call: {
     label: 'Intake',
-    color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+    color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
   },
 } as const;
+
+// Helper to get the right badge for an event
+function getEventBadge(event: UnifiedEvent): { label: string; color: string } {
+  if (event.eventType === 'cohort_call') {
+    return event.cohortId ? EVENT_TYPE_BADGES.cohort_call : EVENT_TYPE_BADGES.community_call;
+  }
+  return EVENT_TYPE_BADGES[event.eventType as keyof typeof EVENT_TYPE_BADGES] || {
+    label: 'Session',
+    color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  };
+}
 
 function formatEventDateTime(startDateTime: string): { date: string; time: string } {
   const eventDate = new Date(startDateTime);
@@ -67,10 +82,7 @@ function formatEventDateTime(startDateTime: string): { date: string; time: strin
 
 function SessionCard({ event, isLast }: { event: UnifiedEvent; isLast: boolean }) {
   const { date, time } = formatEventDateTime(event.startDateTime);
-  const badge = EVENT_TYPE_BADGES[event.eventType as keyof typeof EVENT_TYPE_BADGES] || {
-    label: 'Session',
-    color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  };
+  const badge = getEventBadge(event);
 
   return (
     <Link

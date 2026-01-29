@@ -42,6 +42,7 @@ import { SessionCalendarPicker } from './SessionCalendarPicker';
 import { useOrgCredits } from '@/hooks/useOrgCredits';
 import { Sparkles } from 'lucide-react';
 import { CreditPurchaseModal } from '@/components/coach/CreditPurchaseModal';
+import { refreshSchedulingEvents } from '@/hooks/useScheduling';
 import type { RecurrenceFrequency, Squad, ProgramCohort } from '@/types';
 
 interface CreateEventModalProps {
@@ -51,6 +52,7 @@ interface CreateEventModalProps {
   cohortId?: string;
   squadId?: string;
   instanceId?: string;
+  weekIndex?: number;
   organizationId?: string;
   onSuccess?: (event: any) => void;
 }
@@ -94,7 +96,7 @@ const COMMON_TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
 ];
 
-type RecurrenceEndType = 'specific_date' | 'occurrences';
+type RecurrenceEndType = 'specific_date' | 'occurrences' | 'end_of_program';
 
 // Simple fetcher for SWR
 const fetcher = (url: string) => fetch(url).then(res => res.json());
@@ -129,9 +131,13 @@ export function CreateEventModal({
   cohortId: propCohortId,
   squadId: propSquadId,
   instanceId,
+  weekIndex,
   organizationId,
   onSuccess,
 }: CreateEventModalProps) {
+  // Debug: Log props on every render
+  console.log('[CreateEventModal] Props received:', { instanceId, weekIndex, programId: propProgramId, cohortId: propCohortId, isOpen });
+
   const [step, setStep] = useState<WizardStep>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
@@ -203,13 +209,25 @@ export function CreateEventModal({
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [recurrenceOccurrences, setRecurrenceOccurrences] = useState(4);
 
+  // Check if user has selected a program/cohort (either via props or manual selection)
+  const hasProgramSelection = !!(selectedProgramId && selectedCohortId);
+
   // Fetch cohorts when a program is selected
   const { data: cohortsData, mutate: mutateCohorts } = useSWR<{ cohorts: ProgramCohort[] }>(
     isOpen && selectedProgramId ? `/api/coach/org-programs/${selectedProgramId}/cohorts?status=upcoming,active` : null,
     fetcher
   );
 
+  // Fetch specific cohort data to get endDate (for program context or manual selection)
+  const { data: cohortData } = useSWR<{ cohort: ProgramCohort }>(
+    isOpen && selectedProgramId && selectedCohortId
+      ? `/api/coach/org-programs/${selectedProgramId}/cohorts/${selectedCohortId}`
+      : null,
+    fetcher
+  );
+
   // Fetch available slots for the calendar picker (next 30 days)
+  // Include isOpen in deps to refetch when modal reopens (e.g., after event cancellation)
   const availabilityDateRange = React.useMemo(() => {
     const start = new Date();
     const end = new Date();
@@ -218,13 +236,20 @@ export function CreateEventModal({
       startDate: start.toISOString().split('T')[0],
       endDate: end.toISOString().split('T')[0],
     };
-  }, []);
+  }, [isOpen]);
 
-  const { slots: availableSlots, isLoading: slotsLoading, timezone: coachTimezone } = useAvailableSlots(
+  const { slots: availableSlots, isLoading: slotsLoading, timezone: coachTimezone, refetch: refetchSlots } = useAvailableSlots(
     availabilityDateRange.startDate,
     availabilityDateRange.endDate,
     duration
   );
+
+  // Refetch slots when modal opens to get fresh availability
+  React.useEffect(() => {
+    if (isOpen) {
+      refetchSlots();
+    }
+  }, [isOpen, refetchSlots]);
 
   // Group slots by date (for date pill display)
   const slotsByDate = React.useMemo(() => {
@@ -289,6 +314,56 @@ export function CreateEventModal({
   // Get selected program for cohort creation
   const selectedProgram = selectablePrograms.find(p => p.id === selectedProgramId);
 
+  // Get selected cohort (for program context or manual selection)
+  // Prefer the directly fetched cohort data (has full details including endDate)
+  const selectedCohort = React.useMemo(() => {
+    // First try the directly fetched cohort
+    if (cohortData?.cohort) {
+      return cohortData.cohort;
+    }
+    // Fallback to finding in the list
+    if (!selectedCohortId) return null;
+    return cohorts.find(c => c.id === selectedCohortId) || null;
+  }, [cohortData, cohorts, selectedCohortId]);
+
+  // Calculate program end date for "Ends at end of program" option
+  // Works for both program context (props) and manual selection
+  const programEndDate = React.useMemo(() => {
+    if (!hasProgramSelection || !selectedCohort) return null;
+    // Use cohort endDate if available
+    if (selectedCohort.endDate) return selectedCohort.endDate;
+    // Fallback: calculate from startDate + lengthDays
+    if (selectedCohort.startDate && selectedProgram?.lengthDays) {
+      const startDate = new Date(selectedCohort.startDate);
+      startDate.setDate(startDate.getDate() + selectedProgram.lengthDays - 1);
+      return startDate.toISOString().split('T')[0];
+    }
+    return null;
+  }, [hasProgramSelection, selectedCohort, selectedProgram]);
+
+  // Calculate occurrences until end of program
+  const programOccurrences = React.useMemo(() => {
+    if (!programEndDate || !date || recurrence === 'none') return null;
+    const startDate = new Date(date + 'T00:00:00');
+    const endDate = new Date(programEndDate + 'T00:00:00');
+    const daysBetween = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysBetween <= 0) return null;
+
+    switch (recurrence) {
+      case 'weekly':
+        return Math.ceil(daysBetween / 7) + 1; // +1 to include start date
+      case 'biweekly':
+        return Math.ceil(daysBetween / 14) + 1;
+      case 'monthly':
+        // Count months between dates
+        const startMonth = startDate.getMonth() + startDate.getFullYear() * 12;
+        const endMonth = endDate.getMonth() + endDate.getFullYear() * 12;
+        return endMonth - startMonth + 1;
+      default:
+        return null;
+    }
+  }, [programEndDate, date, recurrence]);
+
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -315,7 +390,7 @@ export function CreateEventModal({
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       setDate(tomorrow.toISOString().split('T')[0]);
-      setTime('10:00');
+      setTime(''); // Require explicit time selection
       setDuration(60);
       setTimezone('local');
       setRecurrence('none');
@@ -578,7 +653,9 @@ export function CreateEventModal({
         time,
         timezone: resolvedTimezone,
         startDate: date,
-        endDate: recurrenceEndType === 'specific_date' ? recurrenceEndDate : undefined,
+        endDate: recurrenceEndType === 'specific_date' ? recurrenceEndDate
+          : recurrenceEndType === 'end_of_program' && programEndDate ? programEndDate
+          : undefined,
         count: recurrenceEndType === 'occurrences' ? recurrenceOccurrences : undefined,
       } : undefined;
 
@@ -633,6 +710,7 @@ export function CreateEventModal({
         cohortId: finalCohortId || undefined,
         squadId: finalSquadId || undefined,
         instanceId: instanceId || undefined,
+        weekIndex: weekIndex,
 
         isRecurring: recurrence !== 'none',
         recurrence: recurrencePattern,
@@ -643,6 +721,8 @@ export function CreateEventModal({
         autoFillWeek: (autoGenerateSummary && autoFillWeek) || undefined,
         autoFillTarget: (autoGenerateSummary && autoFillWeek) ? autoFillTarget : undefined,
       };
+
+      console.log('[CreateEventModal] Sending event with instanceId:', instanceId, 'weekIndex:', weekIndex);
 
       const response = await fetch('/api/events', {
         method: 'POST',
@@ -656,6 +736,9 @@ export function CreateEventModal({
       }
 
       const { event } = await response.json();
+
+      // Refresh all scheduling event caches so all views update
+      await refreshSchedulingEvents();
 
       onClose();
       if (onSuccess) {
@@ -1343,6 +1426,38 @@ export function CreateEventModal({
                           End after
                         </p>
 
+                        {/* End of Program option - only show in program context with valid end date */}
+                        {hasProgramSelection && programEndDate && (
+                          <button
+                            type="button"
+                            onClick={() => setRecurrenceEndType('end_of_program')}
+                            className={`w-full flex items-start gap-3 p-3 rounded-xl border-2 transition-colors ${
+                              recurrenceEndType === 'end_of_program'
+                                ? 'border-brand-accent bg-brand-accent/5'
+                                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                            }`}
+                          >
+                            <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                              recurrenceEndType === 'end_of_program'
+                                ? 'border-brand-accent bg-brand-accent'
+                                : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                            }`}>
+                              {recurrenceEndType === 'end_of_program' && (
+                                <Check className="w-3 h-3 text-white" />
+                              )}
+                            </div>
+                            <div className="flex-1 text-left">
+                              <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                                End of program
+                              </span>
+                              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                                {new Date(programEndDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {programOccurrences && ` (${programOccurrences} occurrence${programOccurrences !== 1 ? 's' : ''})`}
+                              </p>
+                            </div>
+                          </button>
+                        )}
+
                         {/* Occurrences option */}
                         <button
                           type="button"
@@ -1526,6 +1641,38 @@ export function CreateEventModal({
                     <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">
                       End after
                     </p>
+
+                    {/* End of Program option - only show in program context with valid end date */}
+                    {hasProgramSelection && programEndDate && (
+                      <button
+                        type="button"
+                        onClick={() => setRecurrenceEndType('end_of_program')}
+                        className={`w-full flex items-start gap-3 p-3 rounded-xl border-2 transition-colors ${
+                          recurrenceEndType === 'end_of_program'
+                            ? 'border-brand-accent bg-brand-accent/5'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          recurrenceEndType === 'end_of_program'
+                            ? 'border-brand-accent bg-brand-accent'
+                            : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                        }`}>
+                          {recurrenceEndType === 'end_of_program' && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                            End of program
+                          </span>
+                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                            {new Date(programEndDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {programOccurrences && ` (${programOccurrences} occurrence${programOccurrences !== 1 ? 's' : ''})`}
+                          </p>
+                        </div>
+                      </button>
+                    )}
 
                     {/* Occurrences option */}
                     <button

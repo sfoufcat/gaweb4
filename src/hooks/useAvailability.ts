@@ -171,7 +171,9 @@ export function useAvailableSlots(
         params.set('duration', duration.toString());
       }
 
-      const response = await fetch(`/api/scheduling/available-slots?${params}`);
+      const response = await fetch(`/api/scheduling/available-slots?${params}`, {
+        cache: 'no-store',
+      });
 
       if (!response.ok) {
         const data = await response.json();

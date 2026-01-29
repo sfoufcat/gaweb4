@@ -336,7 +336,7 @@ export function EnrollClientsModal({
       )}
 
       {/* Combined Controls Row */}
-      <div className="px-4 pt-4 flex items-center gap-3">
+      <div className={`px-4 flex items-center gap-3 ${isGroupProgram ? 'pt-4' : 'pt-2'}`}>
         {/* Cohort Selector - pill style with status badge */}
         {isGroupProgram && !loadingCohorts && cohorts.length > 0 && (
           <Select value={selectedCohortId || ''} onValueChange={setSelectedCohortId}>

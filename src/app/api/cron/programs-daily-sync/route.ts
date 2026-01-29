@@ -20,6 +20,7 @@
 
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getTodayInTimezone } from '@/lib/timezone';
 import type { ProgramInstance, ProgramInstanceDay, ProgramInstanceTask, ProgramInstanceModule, ProgramHabitTemplate, FrequencyType, Program } from '@/types';
 
 // Vercel cron job secret (set in environment)
@@ -46,12 +47,16 @@ function mapHabitFrequency(template: ProgramHabitTemplate): {
 
 /**
  * Calculate user's current day index based on enrollment start date
+ * Uses user's timezone to determine "today" correctly
  */
-function calculateCurrentDayIndex(startedAt: string, includeWeekends: boolean = false): number {
-  const startDate = new Date(startedAt);
-  const today = new Date();
-  startDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
+function calculateCurrentDayIndex(startedAt: string, includeWeekends: boolean = false, userTimezone: string = 'UTC'): number {
+  // Parse startedAt as date-only to avoid timezone conversion issues
+  const startDateStr = startedAt.split('T')[0]; // "2024-01-27"
+  const startDate = new Date(startDateStr + 'T12:00:00'); // Noon avoids DST issues
+
+  // Get today in user's timezone
+  const todayStr = getTodayInTimezone(userTimezone);
+  const today = new Date(todayStr + 'T12:00:00');
 
   if (includeWeekends) {
     const diffMs = today.getTime() - startDate.getTime();
@@ -101,12 +106,13 @@ async function syncHabitsForUser(
   programId: string,
   instance: ProgramInstance,
   startedAt: string,
-  includeWeekends: boolean
+  includeWeekends: boolean,
+  userTimezone: string = 'UTC'
 ): Promise<{ created: number; updated: number; archived: number }> {
   const now = new Date().toISOString();
   let created = 0, updated = 0, archived = 0;
 
-  const currentDayIndex = calculateCurrentDayIndex(startedAt, includeWeekends);
+  const currentDayIndex = calculateCurrentDayIndex(startedAt, includeWeekends, userTimezone);
   const instanceModules = instance.modules || [];
   
   if (instanceModules.length === 0) {
@@ -417,16 +423,85 @@ export async function GET(request: Request) {
     // Build lookup maps
     const instanceByEnrollmentId = new Map<string, ProgramInstance>();
     const instanceByCohortId = new Map<string, ProgramInstance>();
+    const validInstanceIds = new Set<string>();
 
     for (const doc of instancesSnapshot.docs) {
       const data = doc.data();
       const instance = { ...data, id: doc.id } as ProgramInstance;
+      validInstanceIds.add(doc.id);
 
       if (instance.type === 'individual' && instance.enrollmentId) {
         instanceByEnrollmentId.set(instance.enrollmentId, instance);
       } else if (instance.type === 'cohort' && instance.cohortId) {
         instanceByCohortId.set(instance.cohortId, instance);
       }
+    }
+
+    // Batch fetch user timezones for timezone-aware date calculations
+    const userIds = [...new Set(enrollments.map(e => e.userId))];
+    const userTimezoneMap = new Map<string, string>();
+
+    // Fetch in batches of 10 (Firestore 'in' query limit)
+    for (let i = 0; i < userIds.length; i += 10) {
+      const batchIds = userIds.slice(i, i + 10);
+      const usersSnapshot = await adminDb.collection('users')
+        .where('__name__', 'in', batchIds)
+        .get();
+
+      for (const doc of usersSnapshot.docs) {
+        const userData = doc.data();
+        userTimezoneMap.set(doc.id, userData.timezone || 'UTC');
+      }
+    }
+
+    // Default UTC for users not found
+    for (const userId of userIds) {
+      if (!userTimezoneMap.has(userId)) {
+        userTimezoneMap.set(userId, 'UTC');
+      }
+    }
+
+    console.log(`[CRON_PROGRAMS_SYNC] Fetched timezones for ${userTimezoneMap.size} users`);
+
+    // Clean orphan tasks (tasks referencing non-existent instances)
+    // This prevents orphaned tasks from polluting focus slot counts
+    let orphansDeleted = 0;
+    try {
+      const orphanTasksQuery = await adminDb.collection('tasks')
+        .where('sourceType', '==', 'program')
+        .get();
+
+      const orphanBatch = adminDb.batch();
+      let orphanBatchCount = 0;
+
+      for (const doc of orphanTasksQuery.docs) {
+        const taskData = doc.data();
+        const instanceId = taskData.instanceId;
+        // If task has instanceId but instance doesn't exist, it's orphaned
+        if (instanceId && !validInstanceIds.has(instanceId)) {
+          orphanBatch.delete(doc.ref);
+          orphanBatchCount++;
+          orphansDeleted++;
+
+          // Commit in batches of 500 (Firestore limit)
+          if (orphanBatchCount >= 500) {
+            await orphanBatch.commit();
+            orphanBatchCount = 0;
+          }
+        }
+      }
+
+      // Commit remaining
+      if (orphanBatchCount > 0) {
+        await orphanBatch.commit();
+      }
+
+      if (orphansDeleted > 0) {
+        console.log(`[CRON_PROGRAMS_SYNC] Cleaned ${orphansDeleted} orphaned tasks`);
+      }
+    } catch (orphanError) {
+      console.error('[CRON_PROGRAMS_SYNC] Error cleaning orphan tasks:', orphanError);
+      // Continue with sync even if orphan cleanup fails
     }
 
     let syncedToday = 0;
@@ -450,6 +525,18 @@ export async function GET(request: Request) {
 
       await Promise.all(batch.map(async (enrollment) => {
         try {
+          // Get user's timezone for accurate date calculations
+          const userTimezone = userTimezoneMap.get(enrollment.userId) || 'UTC';
+          const userTodayStr = getTodayInTimezone(userTimezone);
+          const userTomorrow = new Date(userTodayStr + 'T12:00:00');
+          userTomorrow.setDate(userTomorrow.getDate() + 1);
+          const userTomorrowStr = new Intl.DateTimeFormat('en-CA', {
+            timeZone: userTimezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).format(userTomorrow);
+
           // Find the instance for this enrollment
           let instance: ProgramInstance | undefined;
 
@@ -473,8 +560,8 @@ export async function GET(request: Request) {
             return;
           }
 
-          // Sync TODAY's tasks
-          const todayDay = findDayByCalendarDate(instance, todayStr);
+          // Sync TODAY's tasks (using user's timezone-aware today)
+          const todayDay = findDayByCalendarDate(instance, userTodayStr);
           if (todayDay && todayDay.day.tasks.length > 0) {
             // Check if tasks already exist for today
             const todayExisting = await adminDb
@@ -491,7 +578,7 @@ export async function GET(request: Request) {
                 enrollment.userId,
                 todayDay.globalDayIndex,
                 todayDay.day.tasks,
-                todayStr,
+                userTodayStr,
                 enrollment.organizationId
               );
               if (tasksCreated > 0) {
@@ -507,8 +594,8 @@ export async function GET(request: Request) {
             skippedCount++;
           }
 
-          // Sync TOMORROW's tasks
-          const tomorrowDay = findDayByCalendarDate(instance, tomorrowStr);
+          // Sync TOMORROW's tasks (using user's timezone-aware tomorrow)
+          const tomorrowDay = findDayByCalendarDate(instance, userTomorrowStr);
           if (tomorrowDay && tomorrowDay.day.tasks.length > 0) {
             const tomorrowExisting = await adminDb
               .collection('tasks')
@@ -524,7 +611,7 @@ export async function GET(request: Request) {
                 enrollment.userId,
                 tomorrowDay.globalDayIndex,
                 tomorrowDay.day.tasks,
-                tomorrowStr,
+                userTomorrowStr,
                 enrollment.organizationId
               );
               if (tasksCreated > 0) {
@@ -553,7 +640,8 @@ export async function GET(request: Request) {
               enrollment.programId,
               instance,
               enrollment.startedAt,
-              includeWeekends
+              includeWeekends,
+              userTimezone
             );
             habitsCreated += habitResult.created;
             habitsUpdated += habitResult.updated;

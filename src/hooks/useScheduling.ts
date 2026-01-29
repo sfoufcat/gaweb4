@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { mutate } from 'swr';
+import useSWR, { mutate } from 'swr';
 import type { UnifiedEvent, ProposedTime } from '@/types';
 
 interface UseSchedulingEventsOptions {
@@ -18,71 +18,85 @@ interface UseSchedulingEventsReturn {
   removeEvents: (eventIds: string[]) => void;
 }
 
+// SWR fetcher for scheduling events
+const schedulingEventsFetcher = async (url: string): Promise<UnifiedEvent[]> => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || 'Failed to fetch events');
+  }
+  const data = await response.json();
+  return data.events || [];
+};
+
+// Build the SWR key for scheduling events
+function buildSchedulingEventsKey(options: UseSchedulingEventsOptions): string | null {
+  const { startDate, endDate, types, status, role } = options;
+  if (!startDate || !endDate) return null;
+
+  const params = new URLSearchParams({ startDate, endDate });
+  if (types && types.length > 0) params.set('types', types.join(','));
+  if (status && status.length > 0) params.set('status', status.join(','));
+  if (role) params.set('role', role);
+
+  return `/api/scheduling/events?${params}`;
+}
+
+/**
+ * Globally refresh all scheduling events caches
+ * Call this after creating/updating/deleting events to refresh all views
+ */
+export function refreshSchedulingEvents(): Promise<void> {
+  // Revalidate all keys that match the scheduling events pattern
+  return mutate(
+    (key) => typeof key === 'string' && key.startsWith('/api/scheduling/events'),
+    undefined,
+    { revalidate: true }
+  ) as Promise<void>;
+}
+
 /**
  * Hook for fetching scheduled events
+ * Uses SWR for caching and automatic revalidation across all instances
  */
 export function useSchedulingEvents(options: UseSchedulingEventsOptions): UseSchedulingEventsReturn {
-  const { startDate, endDate, types, status, role } = options;
-  const [events, setEvents] = useState<UnifiedEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const swrKey = buildSchedulingEventsKey(options);
+  const [localRemovedIds, setLocalRemovedIds] = useState<Set<string>>(new Set());
 
-  const fetchEvents = useCallback(async () => {
-    if (!startDate || !endDate) {
-      setEvents([]);
-      return;
+  const { data, error, isLoading, mutate: mutateSWR } = useSWR<UnifiedEvent[]>(
+    swrKey,
+    schedulingEventsFetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5000,
     }
+  );
 
-    try {
-      setIsLoading(true);
-      setError(null);
+  // Filter out locally removed events for optimistic updates
+  const events = (data || []).filter(e => !localRemovedIds.has(e.id));
 
-      const params = new URLSearchParams({
-        startDate,
-        endDate,
-      });
-      if (types && types.length > 0) {
-        params.set('types', types.join(','));
-      }
-      if (status && status.length > 0) {
-        params.set('status', status.join(','));
-      }
-      if (role) {
-        params.set('role', role);
-      }
-
-      const response = await fetch(`/api/scheduling/events?${params}`);
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to fetch events');
-      }
-
-      const data = await response.json();
-      setEvents(data.events || []);
-    } catch (err) {
-      console.error('[useSchedulingEvents] Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch events');
-      setEvents([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [startDate, endDate, types, status, role]);
-
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+  const refetch = useCallback(async () => {
+    // Clear local removals on refetch
+    setLocalRemovedIds(new Set());
+    await mutateSWR();
+    // Also trigger global refresh to update other views with different date ranges
+    await refreshSchedulingEvents();
+  }, [mutateSWR]);
 
   // Optimistically remove events from local state (e.g., after cancellation)
   const removeEvents = useCallback((eventIds: string[]) => {
-    setEvents(prev => prev.filter(e => !eventIds.includes(e.id)));
+    setLocalRemovedIds(prev => {
+      const next = new Set(prev);
+      eventIds.forEach(id => next.add(id));
+      return next;
+    });
   }, []);
 
   return {
     events,
     isLoading,
-    error,
-    refetch: fetchEvents,
+    error: error?.message || null,
+    refetch,
     removeEvents,
   };
 }

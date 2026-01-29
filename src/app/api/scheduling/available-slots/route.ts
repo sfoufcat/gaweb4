@@ -210,12 +210,19 @@ export async function GET(request: NextRequest) {
       console.log('[AVAILABLE_SLOTS] First slot:', availableSlots[0]);
     }
 
-    return NextResponse.json({
-      slots: availableSlots,
-      timezone: availability.timezone,
-      duration,
-      buffer,
-    });
+    return NextResponse.json(
+      {
+        slots: availableSlots,
+        timezone: availability.timezone,
+        duration,
+        buffer,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (error) {
     console.error('[AVAILABLE_SLOTS_GET] Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

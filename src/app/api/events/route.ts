@@ -380,21 +380,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Program instance linking - calculate week/day if instanceId is provided
+    // Program instance linking - use explicit weekIndex if provided, otherwise calculate from date
     let instanceId: string | undefined = body.instanceId;
-    let weekIndex: number | undefined;
+    let weekIndex: number | undefined = typeof body.weekIndex === 'number' ? body.weekIndex : undefined;
     let dayIndex: number | undefined;
     let instanceData: ProgramInstance | null = null;
 
-    if (instanceId && body.startDateTime) {
+    console.log(`[EVENTS_POST] Received instanceId=${instanceId}, weekIndex=${weekIndex}, body.weekIndex=${body.weekIndex}`);
+
+    if (instanceId) {
       try {
-        // Fetch the program instance to get start date and program info
+        // Fetch the program instance to validate it exists
         const instanceDoc = await adminDb.collection('program_instances').doc(instanceId).get();
         if (instanceDoc.exists) {
           instanceData = instanceDoc.data() as ProgramInstance;
 
-          // We need program info to get totalDays and includeWeekends
-          if (instanceData.programId) {
+          // If weekIndex was explicitly provided, use it (e.g., when scheduling from week editor)
+          if (weekIndex !== undefined) {
+            console.log(`[EVENTS_POST] Using explicit weekIndex: ${weekIndex}`);
+          } else if (body.startDateTime && instanceData.programId) {
+            // Calculate week/day from event date if not explicitly provided
             const programDoc = await adminDb.collection('programs').doc(instanceData.programId).get();
             if (programDoc.exists) {
               const programData = programDoc.data();
@@ -428,7 +433,7 @@ export async function POST(request: NextRequest) {
           instanceId = undefined;
         }
       } catch (err) {
-        console.error('[EVENTS_POST] Error calculating program day:', err);
+        console.error('[EVENTS_POST] Error processing program instance:', err);
         // Don't fail the request, just skip program linking
         instanceId = undefined;
       }

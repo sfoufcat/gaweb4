@@ -3,8 +3,22 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { getTodayInTimezone } from '@/lib/timezone';
 import type { ProgramWeek, ProgramTaskTemplate, ProgramHabitTemplate, UnifiedEvent, CallSummary, DiscoverArticle, ProgramInstanceDay, WeekResourceAssignment } from '@/types';
 import type { DiscoverCourse } from '@/types/discover';
+
+/**
+ * Helper to format a date as YYYY-MM-DD in a specific timezone
+ * Uses Intl.DateTimeFormat to get timezone-aware date string
+ */
+function formatDateInTimezone(date: Date, timezone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
 
 /**
  * Helper to convert task template to instance task
@@ -167,6 +181,10 @@ export async function GET(
     // Get org context
     const organizationId = await getEffectiveOrgId();
 
+    // Fetch user timezone for consistent date calculations
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userTimezone = userDoc.exists ? (userDoc.data()?.timezone || 'UTC') : 'UTC';
+
     // Verify enrollment
     const enrollmentSnapshot = await adminDb
       .collection('program_enrollments')
@@ -200,11 +218,12 @@ export async function GET(
     const includeWeekends = program.includeWeekends !== false;
     const daysPerWeek = includeWeekends ? 7 : 5;
 
-    // Calculate current day and week
-    const startDate = new Date(enrollment.startedAt);
-    startDate.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Calculate current day and week using user's timezone
+    // Parse startedAt as date-only to avoid timezone conversion issues
+    const startDateStr = enrollment.startedAt.split('T')[0]; // "2024-01-27"
+    const startDate = new Date(startDateStr + 'T12:00:00'); // Noon avoids DST edge cases
+    const todayStr = getTodayInTimezone(userTimezone);
+    const today = new Date(todayStr + 'T12:00:00'); // Use noon to avoid DST edge cases
     const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
@@ -483,7 +502,7 @@ export async function GET(
             continue;
           }
 
-          const calendarDate = dayDate.toISOString().split('T')[0];
+          const calendarDate = formatDateInTimezone(dayDate, userTimezone);
           const globalDayIndex = (targetWeek.startDayIndex || 1) + dayIdx - 1;
 
           // Map calendar day index to instance day index
@@ -635,7 +654,7 @@ export async function GET(
           daysData.push({
             dayIndex: addedDays,
             globalDayIndex,
-            calendarDate: dayDate.toISOString().split('T')[0],
+            calendarDate: formatDateInTimezone(dayDate, userTimezone),
             dayName: dayNames[dayDateOfWeek],
             isToday: dayDate.toDateString() === today.toDateString(),
             isPast: dayDate < today,

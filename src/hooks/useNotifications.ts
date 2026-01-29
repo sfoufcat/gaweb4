@@ -95,6 +95,8 @@ export function useNotifications(): UseNotificationsReturn {
   // Uses defensive patterns to prevent Firestore 11.x internal assertion errors
   // caused by rapid mount/unmount cycles when switching views
   useEffect(() => {
+    // Reset flag at effect start to handle React 18 StrictMode double-mounting
+    listenerSetupStartedRef.current = false;
     let isMounted = true;
 
     // In demo mode, fetch from API (which returns demo notifications)
@@ -115,79 +117,84 @@ export function useNotifications(): UseNotificationsReturn {
       return;
     }
 
-    // Prevent duplicate listener setups during rapid re-renders
-    if (listenerSetupStartedRef.current) {
-      return;
-    }
-    listenerSetupStartedRef.current = true;
-
-    if (isMounted) setIsLoading(true);
-
-    // Query for user's notifications, scoped by organization for multi-tenancy
-    const notificationsRef = collection(db, 'notifications');
-
-    // Build query with organization filtering if available
-    let q;
-    if (organizationId) {
-      // Multi-tenant query: filter by both userId and organizationId
-      q = query(
-        notificationsRef,
-        where('userId', '==', user.id),
-        where('organizationId', '==', organizationId),
-        orderBy('createdAt', 'desc'),
-        limit(30)
-      );
-    } else {
-      // Legacy fallback: no organization filtering (for backward compatibility)
-      q = query(
-        notificationsRef,
-        where('userId', '==', user.id),
-        orderBy('createdAt', 'desc'),
-        limit(30)
-      );
-    }
-
-    // Subscribe to real-time updates
-    unsubscribeRef.current = onSnapshot(
-      q,
-      (snapshot) => {
-        // Guard against state updates after unmount
-        if (!isMounted) return;
-
-        const notificationsList: Notification[] = [];
-        let unread = 0;
-
-        snapshot.forEach((doc) => {
-          const notification = { id: doc.id, ...doc.data() } as Notification;
-          notificationsList.push(notification);
-          if (!notification.read) {
-            unread++;
-          }
-        });
-
-        setNotifications(notificationsList);
-        setUnreadCount(unread);
-        setIsLoading(false);
-        setError(null);
-      },
-      (err) => {
-        // Guard against state updates after unmount
-        if (!isMounted) return;
-
-        // Firestore 11.x has a known bug with internal state assertions during rapid mount/unmount
-        // These errors are safe to ignore - the listener will reconnect automatically
-        if (err.message?.includes('INTERNAL ASSERTION FAILED')) {
-          console.debug('[useNotifications] Firestore internal state error (safe to ignore):', err.message);
-          setIsLoading(false);
-          return;
-        }
-        // Handle Firestore permission/index errors gracefully
-        console.warn('[useNotifications] Firestore subscription error (falling back to API):', err.message);
-        // Fall back to API fetch if real-time fails (e.g., missing index)
-        setIsLoading(false);
-        fetchNotifications();
+    // Guarded listener setup function to prevent race conditions
+    const setupListener = () => {
+      // Prevent duplicate listener setups during rapid re-renders
+      if (listenerSetupStartedRef.current || unsubscribeRef.current || !isMounted) {
+        return;
       }
-    );
+      listenerSetupStartedRef.current = true;
+
+      // Query for user's notifications, scoped by organization for multi-tenancy
+      const notificationsRef = collection(db, 'notifications');
+
+      // Build query with organization filtering if available
+      let q;
+      if (organizationId) {
+        // Multi-tenant query: filter by both userId and organizationId
+        q = query(
+          notificationsRef,
+          where('userId', '==', user.id),
+          where('organizationId', '==', organizationId),
+          orderBy('createdAt', 'desc'),
+          limit(30)
+        );
+      } else {
+        // Legacy fallback: no organization filtering (for backward compatibility)
+        q = query(
+          notificationsRef,
+          where('userId', '==', user.id),
+          orderBy('createdAt', 'desc'),
+          limit(30)
+        );
+      }
+
+      // Subscribe to real-time updates
+      unsubscribeRef.current = onSnapshot(
+        q,
+        (snapshot) => {
+          // Guard against state updates after unmount
+          if (!isMounted) return;
+
+          const notificationsList: Notification[] = [];
+          let unread = 0;
+
+          snapshot.forEach((doc) => {
+            const notification = { id: doc.id, ...doc.data() } as Notification;
+            notificationsList.push(notification);
+            if (!notification.read) {
+              unread++;
+            }
+          });
+
+          setNotifications(notificationsList);
+          setUnreadCount(unread);
+          setIsLoading(false);
+          setError(null);
+        },
+        (err) => {
+          // Guard against state updates after unmount
+          if (!isMounted) return;
+
+          // Firestore 11.x has a known bug with internal state assertions during rapid mount/unmount
+          // These errors are safe to ignore - the listener will reconnect automatically
+          if (err.message?.includes('INTERNAL ASSERTION FAILED')) {
+            console.debug('[useNotifications] Firestore internal state error (safe to ignore):', err.message);
+            setIsLoading(false);
+            return;
+          }
+          // Handle Firestore permission/index errors gracefully
+          console.warn('[useNotifications] Firestore subscription error (falling back to API):', err.message);
+          // Fall back to API fetch if real-time fails (e.g., missing index)
+          setIsLoading(false);
+          fetchNotifications();
+        }
+      );
+    };
+
+    // Set loading state and set up listener
+    setIsLoading(true);
+    setupListener();
 
     // Comprehensive cleanup to prevent Firestore internal state issues
     return () => {
