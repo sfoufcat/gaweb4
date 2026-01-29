@@ -96,6 +96,7 @@ export function generateTasksFromResources(
 /**
  * Merge generated resource tasks with existing weekly tasks
  * - Adds new generated tasks
+ * - Updates existing resource tasks with new dayTag values
  * - Removes generated tasks for resources that no longer have alsoCreateTask
  * - Preserves manually-added tasks
  *
@@ -116,21 +117,32 @@ export function mergeResourceTasks(
       .map(a => a.id)
   );
 
-  // Remove existing generated tasks for resources that are no longer enabled
-  const manualTasks = existingTasks.filter(task => {
-    if (!task.sourceResourceId) return true; // Keep manual tasks
-    return enabledResourceIds.has(task.sourceResourceId);
-  });
+  // Build a map of generated task ID -> generated task for quick lookup
+  const generatedTaskMap = new Map(generatedTasks.map(t => [t.id, t]));
 
-  // Create a map of existing generated task IDs
-  const existingGeneratedIds = new Set(
-    manualTasks
-      .filter(t => t.sourceResourceId)
-      .map(t => t.id)
-  );
+  // Process existing tasks:
+  // - Keep manual tasks unchanged
+  // - Remove resource tasks for disabled resources
+  // - Update resource tasks with new dayTag from generated tasks
+  const updatedExistingTasks = existingTasks
+    .filter(task => {
+      if (!task.sourceResourceId) return true; // Keep manual tasks
+      return enabledResourceIds.has(task.sourceResourceId);
+    })
+    .map(task => {
+      // If this is a resource task, update its dayTag from the generated version
+      if (task.sourceResourceId && generatedTaskMap.has(task.id)) {
+        const generated = generatedTaskMap.get(task.id)!;
+        return { ...task, dayTag: generated.dayTag };
+      }
+      return task;
+    });
+
+  // Create a set of existing task IDs (after filtering)
+  const existingTaskIds = new Set(updatedExistingTasks.map(t => t.id));
 
   // Add new generated tasks that don't already exist
-  const newTasks = generatedTasks.filter(task => !existingGeneratedIds.has(task.id));
+  const newTasks = generatedTasks.filter(task => !existingTaskIds.has(task.id));
 
-  return [...manualTasks, ...newTasks];
+  return [...updatedExistingTasks, ...newTasks];
 }

@@ -37,6 +37,7 @@ interface AddAsTaskModalProps {
   resourceTitle: string;
   dayTag: ResourceDayTag;
   calendarStartDate?: string;
+  actualStartDayOfWeek?: number;
   enabled: boolean;
   onToggle: (enabled: boolean) => void;
 }
@@ -95,13 +96,14 @@ export function AddAsTaskModal({
   resourceTitle,
   dayTag,
   calendarStartDate,
+  actualStartDayOfWeek,
   enabled,
   onToggle,
 }: AddAsTaskModalProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const ResourceIcon = getResourceIcon(resourceType);
   const taskLabel = getTaskLabelForResource(resourceType, resourceTitle);
-  const cadenceLabel = getResourceCadenceLabel(dayTag, calendarStartDate);
+  const cadenceLabel = getResourceCadenceLabel(dayTag, calendarStartDate, actualStartDayOfWeek);
 
   const content = (
     <div className="space-y-5 pt-2">

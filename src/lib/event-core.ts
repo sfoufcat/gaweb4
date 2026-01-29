@@ -342,14 +342,17 @@ export async function createEventCore(params: CreateEventCoreParams): Promise<Cr
 
   // Link event to program instance week (and optionally day) if applicable
   // Note: weekIndex here is actually weekNumber (0=Onboarding, 1=Week 1, -1=Closing, etc.)
+  console.log(`[EVENT_CORE] Checking instance linking: instanceId=${params.instanceId}, weekIndex=${params.weekIndex}`);
   if (params.instanceId && params.weekIndex !== undefined) {
     try {
       const instanceRef = adminDb.collection('program_instances').doc(params.instanceId);
       const instanceDoc = await instanceRef.get();
+      console.log(`[EVENT_CORE] Instance doc exists: ${instanceDoc.exists}`);
 
       if (instanceDoc.exists) {
         const currentData = instanceDoc.data() as ProgramInstance;
         const weeks = [...(currentData.weeks || [])];
+        console.log(`[EVENT_CORE] Instance has ${weeks.length} weeks, looking for weekNumber=${params.weekIndex}`);
 
         // Find week by weekNumber (not array index) since weeks might not be ordered
         const weekArrayIndex = weeks.findIndex(w => w.weekNumber === params.weekIndex);

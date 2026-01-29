@@ -514,7 +514,13 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
 
     // CRITICAL: Filter out template changes if cohort/client change exists for same entity
     // This is a defensive measure to prevent dual saves even if discardChange timing failed
+    // Also skip unchanged weeks (dirty-tracking optimization)
     const filteredWeekChanges = weekChanges.filter(change => {
+      // Skip unchanged weeks - if originalData and pendingData are the same reference, no edits were made
+      if (change.originalData === change.pendingData) {
+        console.log(`[ProgramEditor] SKIPPING unchanged week ${change.entityId}`);
+        return false;
+      }
       if (change.viewContext === 'template') {
         const hasCohortClientChange = weekChanges.some(c =>
           c.viewContext !== 'template' && c.entityId === change.entityId
@@ -527,7 +533,13 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
       return true;
     });
 
+    // Also skip unchanged days (dirty-tracking optimization)
     const filteredDayChanges = dayChanges.filter(change => {
+      // Skip unchanged days
+      if (change.originalData === change.pendingData) {
+        console.log(`[ProgramEditor] SKIPPING unchanged day ${change.entityId}`);
+        return false;
+      }
       if (change.viewContext === 'template') {
         const hasCohortClientChange = dayChanges.some(c =>
           c.viewContext !== 'template' && c.entityId === change.entityId
@@ -606,140 +618,151 @@ export function ProgramEditorProvider({ children, programId }: ProgramEditorProv
       });
     }
 
-    // 2. Save weeks (sequential to avoid race conditions with task distribution)
-    for (const change of filteredWeekChanges) {
-      try {
-        // More robust task change detection
-        const originalTasks = (change.originalData.weeklyTasks as unknown[]) || [];
-        const pendingTasks = (change.pendingData.weeklyTasks as unknown[]) || [];
-        const hasTaskChanges = JSON.stringify(originalTasks) !== JSON.stringify(pendingTasks);
-        const isNewWeek = change.httpMethod === 'POST';
-        const hasTasks = pendingTasks.length > 0;
-        const isClientWeek = change.viewContext === 'client';
-        const isCohortWeek = change.viewContext === 'cohort';
-        
-        // Extract cohort-specific flags
-        const createCohortContentAfter = change.pendingData._createCohortContentAfter as boolean;
-        const cohortIdForContent = change.pendingData._cohortId as string | undefined;
-        
-        // Build the body with proper properties for the API
-        const body: Record<string, unknown> = {
-          ...change.pendingData,
-        };
-        
-        // Remove internal flags from body
-        delete body._createCohortContentAfter;
-        delete body._cohortId;
-        
-        // ONLY distribute for cohort/client (instance) week saves, NEVER for templates
-        // Template saves should NOT auto-sync to user tasks - only manual sync does that
-        const shouldDistribute = (isClientWeek || isCohortWeek) && (hasTaskChanges || (isNewWeek && hasTasks));
-          
-        if (shouldDistribute) {
-          body.distributeTasksNow = true;
-          // Different APIs use different flag names for overwrite
-          body.overwriteExisting = true; // Used by client weeks API
-          body.overwriteExistingTasks = true; // Used by cohort weeks API
-        }
+    // 2. Save weeks (parallelized for performance - dirty-tracking ensures only changed weeks are saved)
+    if (filteredWeekChanges.length > 0) {
+      console.log(`[ProgramEditor] Saving ${filteredWeekChanges.length} changed weeks in parallel`);
 
-        console.log(`[ProgramEditor] Saving week ${change.entityId} to ${change.apiEndpoint}`, {
-          method: change.httpMethod,
-          hasTaskChanges,
-          isNewWeek,
-          hasTasks,
-          isClientWeek,
-          isCohortWeek,
-          shouldDistribute,
-          distributeTasksNow: body.distributeTasksNow,
-          originalTasksCount: originalTasks.length,
-          pendingTasksCount: pendingTasks.length,
-          viewContext: change.viewContext,
-          createCohortContentAfter,
-          // Add task details for debugging - include sourceResourceId to track resource tasks
-          weeklyTasks: Array.isArray(body.weeklyTasks)
-            ? (body.weeklyTasks as Array<{ id?: string; label?: string; sourceResourceId?: string }>).map(t => ({ id: t.id, label: t.label, sourceResourceId: t.sourceResourceId }))
-            : undefined,
-        });
+      const weekResults = await Promise.allSettled(
+        filteredWeekChanges.map(async (change) => {
+          // More robust task change detection
+          const originalTasks = (change.originalData.weeklyTasks as unknown[]) || [];
+          const pendingTasks = (change.pendingData.weeklyTasks as unknown[]) || [];
+          const hasTaskChanges = JSON.stringify(originalTasks) !== JSON.stringify(pendingTasks);
+          const isNewWeek = change.httpMethod === 'POST';
+          const hasTasks = pendingTasks.length > 0;
+          const isClientWeek = change.viewContext === 'client';
+          const isCohortWeek = change.viewContext === 'cohort';
 
-        const response = await fetch(change.apiEndpoint, {
-          method: change.httpMethod,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
+          // Extract cohort-specific flags
+          const createCohortContentAfter = change.pendingData._createCohortContentAfter as boolean;
+          const cohortIdForContent = change.pendingData._cohortId as string | undefined;
 
-        if (!response.ok) {
-          let errorMessage = `HTTP ${response.status}`;
-          try {
-            // Read body as text first, then try to parse as JSON
-            const errorText = await response.text();
+          // Build the body with proper properties for the API
+          const body: Record<string, unknown> = {
+            ...change.pendingData,
+          };
+
+          // Remove internal flags from body
+          delete body._createCohortContentAfter;
+          delete body._cohortId;
+
+          // ONLY distribute for cohort/client (instance) week saves, NEVER for templates
+          // Template saves should NOT auto-sync to user tasks - only manual sync does that
+          const shouldDistribute = (isClientWeek || isCohortWeek) && (hasTaskChanges || (isNewWeek && hasTasks));
+
+          if (shouldDistribute) {
+            body.distributeTasksNow = true;
+            // Different APIs use different flag names for overwrite
+            body.overwriteExisting = true; // Used by client weeks API
+            body.overwriteExistingTasks = true; // Used by cohort weeks API
+          }
+
+          console.log(`[ProgramEditor] Saving week ${change.entityId} to ${change.apiEndpoint}`, {
+            method: change.httpMethod,
+            hasTaskChanges,
+            isNewWeek,
+            hasTasks,
+            isClientWeek,
+            isCohortWeek,
+            shouldDistribute,
+            distributeTasksNow: body.distributeTasksNow,
+            originalTasksCount: originalTasks.length,
+            pendingTasksCount: pendingTasks.length,
+            viewContext: change.viewContext,
+            createCohortContentAfter,
+            // Add task details for debugging - include sourceResourceId to track resource tasks
+            weeklyTasks: Array.isArray(body.weeklyTasks)
+              ? (body.weeklyTasks as Array<{ id?: string; label?: string; sourceResourceId?: string }>).map(t => ({ id: t.id, label: t.label, sourceResourceId: t.sourceResourceId }))
+              : undefined,
+          });
+
+          const response = await fetch(change.apiEndpoint, {
+            method: change.httpMethod,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+
+          if (!response.ok) {
+            let errorMessage = `HTTP ${response.status}`;
             try {
-              const errorData = JSON.parse(errorText);
-              errorMessage = errorData.error || errorData.message || errorMessage;
-            } catch {
-              if (errorText) errorMessage = errorText;
-            }
-          } catch {
-            // Couldn't read body at all
-          }
-          throw new Error(errorMessage);
-        }
-
-        const responseData = await response.json();
-        console.log(`[ProgramEditor] Week ${change.entityId} saved successfully`, responseData);
-        result.savedCount++;
-        
-        // If this was a template week creation that needs cohort content, create it now
-        if (createCohortContentAfter && cohortIdForContent && responseData.week?.id) {
-          const newWeekId = responseData.week.id;
-          console.log(`[ProgramEditor] Creating cohort content for newly created week ${newWeekId}`);
-          
-          try {
-            // Extract the programId from the API endpoint
-            const programIdMatch = change.apiEndpoint.match(/\/org-programs\/([^/]+)\//);
-            const programId = programIdMatch ? programIdMatch[1] : null;
-            
-            if (programId) {
-              const cohortContentEndpoint = `/api/coach/org-programs/${programId}/cohorts/${cohortIdForContent}/week-content/${newWeekId}`;
-              const cohortBody = {
-                weeklyTasks: body.weeklyTasks,
-                weeklyHabits: body.weeklyHabits,
-                weeklyPrompt: body.weeklyPrompt,
-                distribution: body.distribution,
-                manualNotes: body.manualNotes,
-                coachRecordingUrl: body.coachRecordingUrl,
-                coachRecordingNotes: body.coachRecordingNotes,
-                linkedSummaryIds: body.linkedSummaryIds,
-                linkedCallEventIds: body.linkedCallEventIds,
-                distributeTasksNow: hasTasks,
-                overwriteExistingTasks: true, // Cohort API uses this flag name
-              };
-              
-              const cohortResponse = await fetch(cohortContentEndpoint, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(cohortBody),
-              });
-              
-              if (!cohortResponse.ok) {
-                console.error(`[ProgramEditor] Failed to create cohort content for week ${newWeekId}`);
-              } else {
-                console.log(`[ProgramEditor] Cohort content created for week ${newWeekId}`);
+              // Read body as text first, then try to parse as JSON
+              const errorText = await response.text();
+              try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.error || errorData.message || errorMessage;
+              } catch {
+                if (errorText) errorMessage = errorText;
               }
+            } catch {
+              // Couldn't read body at all
             }
-          } catch (cohortErr) {
-            console.error(`[ProgramEditor] Error creating cohort content:`, cohortErr);
-            // Don't fail the whole save - the template week was created successfully
+            throw new Error(errorMessage);
           }
+
+          const responseData = await response.json();
+          console.log(`[ProgramEditor] Week ${change.entityId} saved successfully`, responseData);
+
+          // If this was a template week creation that needs cohort content, create it now
+          if (createCohortContentAfter && cohortIdForContent && responseData.week?.id) {
+            const newWeekId = responseData.week.id;
+            console.log(`[ProgramEditor] Creating cohort content for newly created week ${newWeekId}`);
+
+            try {
+              // Extract the programId from the API endpoint
+              const programIdMatch = change.apiEndpoint.match(/\/org-programs\/([^/]+)\//);
+              const programId = programIdMatch ? programIdMatch[1] : null;
+
+              if (programId) {
+                const cohortContentEndpoint = `/api/coach/org-programs/${programId}/cohorts/${cohortIdForContent}/week-content/${newWeekId}`;
+                const cohortBody = {
+                  weeklyTasks: body.weeklyTasks,
+                  weeklyHabits: body.weeklyHabits,
+                  weeklyPrompt: body.weeklyPrompt,
+                  distribution: body.distribution,
+                  manualNotes: body.manualNotes,
+                  coachRecordingUrl: body.coachRecordingUrl,
+                  coachRecordingNotes: body.coachRecordingNotes,
+                  linkedSummaryIds: body.linkedSummaryIds,
+                  linkedCallEventIds: body.linkedCallEventIds,
+                  distributeTasksNow: hasTasks,
+                  overwriteExistingTasks: true, // Cohort API uses this flag name
+                };
+
+                const cohortResponse = await fetch(cohortContentEndpoint, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(cohortBody),
+                });
+
+                if (!cohortResponse.ok) {
+                  console.error(`[ProgramEditor] Failed to create cohort content for week ${newWeekId}`);
+                } else {
+                  console.log(`[ProgramEditor] Cohort content created for week ${newWeekId}`);
+                }
+              }
+            } catch (cohortErr) {
+              console.error(`[ProgramEditor] Error creating cohort content:`, cohortErr);
+              // Don't fail the whole save - the template week was created successfully
+            }
+          }
+
+          return change;
+        })
+      );
+
+      weekResults.forEach((r, i) => {
+        if (r.status === 'fulfilled') {
+          result.savedCount++;
+        } else {
+          console.error(`[ProgramEditor] Failed to save week ${filteredWeekChanges[i].entityId}:`, r.reason);
+          result.success = false;
+          result.errors.push({
+            entityType: 'week',
+            entityId: filteredWeekChanges[i].entityId,
+            error: r.reason?.message || 'Unknown error',
+          });
         }
-      } catch (err) {
-        console.error(`[ProgramEditor] Failed to save week ${change.entityId}:`, err);
-        result.success = false;
-        result.errors.push({
-          entityType: 'week',
-          entityId: change.entityId,
-          error: err instanceof Error ? err.message : 'Unknown error',
-        });
-      }
+      });
     }
 
     // 3. Save days (can parallelize, after weeks complete)

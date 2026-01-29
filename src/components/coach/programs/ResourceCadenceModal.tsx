@@ -40,18 +40,23 @@ interface ResourceCadenceModalProps {
   courseInfo?: CourseInfo;
   calendarStartDate?: string;
   resourceType?: 'course' | 'article' | 'download' | 'link' | 'questionnaire' | 'video';
+  actualStartDayOfWeek?: number;
+  actualEndDayOfWeek?: number;
 }
 
 // Helper to get display label for current value
-export function getResourceCadenceLabel(value: ResourceDayTag, calendarStartDate?: string): string {
+// Note: value is programDayIndex (1-based relative to active days), not visual position
+export function getResourceCadenceLabel(value: ResourceDayTag, calendarStartDate?: string, actualStartDayOfWeek?: number): string {
   if (value === 'week') return 'Week-level';
   if (value === 'daily') return 'Daily';
   if (value === 'spread') return 'Auto-spread';
+  // Add offset for partial weeks - dayTag is programDayIndex, need to convert to calendar position
+  const offset = (actualStartDayOfWeek || 1) - 1;
   if (typeof value === 'number') {
     if (calendarStartDate) {
       const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
-      const dayDate = new Date(year, month - 1, dayOfMonth + value - 1);
+      const dayDate = new Date(year, month - 1, dayOfMonth + offset + value - 1);
       return WEEKDAYS[dayDate.getDay()];
     }
     return `Day ${value}`;
@@ -61,7 +66,7 @@ export function getResourceCadenceLabel(value: ResourceDayTag, calendarStartDate
       const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
       return value.map(v => {
-        const dayDate = new Date(year, month - 1, dayOfMonth + v - 1);
+        const dayDate = new Date(year, month - 1, dayOfMonth + offset + v - 1);
         return WEEKDAYS[dayDate.getDay()];
       }).join(', ');
     }
@@ -79,10 +84,14 @@ export function ResourceCadenceModal({
   courseInfo,
   calendarStartDate,
   resourceType,
+  actualStartDayOfWeek,
+  actualEndDayOfWeek,
 }: ResourceCadenceModalProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const daysInWeek = includeWeekends ? 7 : 5;
   const isCourse = resourceType === 'course';
+  // Offset for partial weeks - used to convert between visual position and programDayIndex
+  const dayOffset = (actualStartDayOfWeek && actualStartDayOfWeek > 1) ? actualStartDayOfWeek - 1 : 0;
 
   // Calculate spread info for multi-day selection or auto-spread
   const spreadInfo = useMemo(() => {
@@ -201,6 +210,10 @@ export function ResourceCadenceModal({
         <div className="grid grid-cols-7 gap-2">
           {Array.from({ length: daysInWeek }, (_, i) => {
             const dayNum = i + 1;
+            // Convert visual position to program dayIndex for partial weeks
+            const programDayIndex = dayNum - dayOffset;
+            const isInactiveDaySlot = programDayIndex < 1;
+
             let dayLabel = `${dayNum}`;
             let fullDayLabel = `Day ${dayNum}`;
             if (calendarStartDate) {
@@ -211,46 +224,51 @@ export function ResourceCadenceModal({
               dayLabel = WEEKDAYS_SHORT[dayDate.getDay()];
               fullDayLabel = WEEKDAYS_FULL[dayDate.getDay()];
             }
-            // Support both single number and array of numbers
-            const isSelected = Array.isArray(value)
-              ? value.includes(dayNum)
-              : value === dayNum;
+            // Support both single number and array of numbers - compare against programDayIndex
+            const isSelected = !isInactiveDaySlot && (Array.isArray(value)
+              ? value.includes(programDayIndex)
+              : value === programDayIndex);
             return (
               <button
                 key={dayNum}
                 type="button"
+                disabled={isInactiveDaySlot}
                 onClick={() => {
+                  if (isInactiveDaySlot) return;
                   // Toggle day in/out of selection (multi-select mode)
+                  // Use programDayIndex (not visual dayNum) for storage
                   let newDayTag: ResourceDayTag;
                   if (Array.isArray(value)) {
-                    if (value.includes(dayNum)) {
+                    if (value.includes(programDayIndex)) {
                       // Remove day from array
-                      const filtered = value.filter(d => d !== dayNum);
+                      const filtered = value.filter(d => d !== programDayIndex);
                       newDayTag = filtered.length === 1 ? filtered[0] : filtered.length === 0 ? 'week' : filtered;
                     } else {
                       // Add day to array
-                      newDayTag = [...value, dayNum].sort((a, b) => a - b);
+                      newDayTag = [...value, programDayIndex].sort((a, b) => a - b);
                     }
                   } else if (typeof value === 'number') {
-                    if (value === dayNum) {
+                    if (value === programDayIndex) {
                       // Deselect single day → back to week
                       newDayTag = 'week';
                     } else {
                       // Add second day → create array
-                      newDayTag = [value, dayNum].sort((a, b) => a - b);
+                      newDayTag = [value, programDayIndex].sort((a, b) => a - b);
                     }
                   } else {
                     // Was week/daily, select single day
-                    newDayTag = dayNum;
+                    newDayTag = programDayIndex;
                   }
                   onChange(newDayTag);
                   // Don't close modal - allow multiple selections
                 }}
                 className={cn(
                   "aspect-square rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center border",
-                  isSelected
-                    ? "bg-brand-accent text-white shadow-md border-brand-accent"
-                    : "bg-white dark:bg-[#1e222a] text-[#3d3a36] dark:text-[#d1d5db] border-[#e1ddd8] dark:border-[#262b35] hover:bg-brand-accent/10 hover:text-brand-accent hover:border-brand-accent/30"
+                  isInactiveDaySlot
+                    ? "opacity-30 cursor-not-allowed bg-gray-100 dark:bg-[#15181f] border-gray-200 dark:border-[#262b35]"
+                    : isSelected
+                      ? "bg-brand-accent text-white shadow-md border-brand-accent"
+                      : "bg-white dark:bg-[#1e222a] text-[#3d3a36] dark:text-[#d1d5db] border-[#e1ddd8] dark:border-[#262b35] hover:bg-brand-accent/10 hover:text-brand-accent hover:border-brand-accent/30"
                 )}
                 title={fullDayLabel}
               >

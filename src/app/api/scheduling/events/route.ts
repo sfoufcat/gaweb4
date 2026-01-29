@@ -143,6 +143,15 @@ export async function GET(request: NextRequest) {
     // Combine both sources (deduplicated)
     const userSquadIds = [...new Set([...userSquadIdsFromDoc, ...squadIdsFromMembership])];
 
+    // Fetch user's cohort enrollments (for cohort_call events)
+    const cohortEnrollmentsQuery = await adminDb.collection('enrollments')
+      .where('userId', '==', userId)
+      .where('status', 'in', ['active', 'in_progress'])
+      .get();
+    const userCohortIds = cohortEnrollmentsQuery.docs
+      .map(doc => doc.data().cohortId)
+      .filter((id): id is string => !!id);
+
     // Also fetch squads where user is the coach (for host role filtering)
     const coachedSquadsQuery = await adminDb.collection('squads')
       .where('coachId', '==', userId)
@@ -346,6 +355,7 @@ export async function GET(request: NextRequest) {
 
     // Filter by user participation based on role
     // Note: For squad events, user is considered a participant if they're in the squad
+    // Note: For cohort events, user is considered a participant if they have an active enrollment
     // Note: For coaches, include events from their coached squads even if hostUserId is null
     // Note: For org coaches, include community_event types in their organization
     // Note: For intake_call events, include for org coaches even if hostUserId is 'system'
@@ -353,6 +363,8 @@ export async function GET(request: NextRequest) {
       const attendeeIds = e.attendeeIds || [];
       const isSquadMember = e.squadId && userSquadIds.includes(e.squadId);
       const isSquadCoach = e.squadId && coachedSquadIds.includes(e.squadId);
+      // Include cohort events for users enrolled in the cohort
+      const isCohortMember = e.cohortId && userCohortIds.includes(e.cohortId);
       // Include org community events for coaches (both new format with eventType and legacy format with date field)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const eventData = e as any;
@@ -366,10 +378,10 @@ export async function GET(request: NextRequest) {
         // Include events where user is host OR where user is coach of the squad OR org community events OR intake calls
         return e.hostUserId === userId || isSquadCoach || isOrgCommunityEvent || isOrgIntakeCall;
       } else if (roleParam === 'attendee') {
-        return (attendeeIds.includes(userId) || isSquadMember) && e.hostUserId !== userId;
+        return (attendeeIds.includes(userId) || isSquadMember || isCohortMember) && e.hostUserId !== userId;
       } else {
-        // 'all' - user is either host, attendee, squad member, squad coach, or org coach viewing community/intake events
-        return e.hostUserId === userId || attendeeIds.includes(userId) || isSquadMember || isSquadCoach || isOrgCommunityEvent || isOrgIntakeCall;
+        // 'all' - user is either host, attendee, squad member, cohort member, squad coach, or org coach viewing community/intake events
+        return e.hostUserId === userId || attendeeIds.includes(userId) || isSquadMember || isCohortMember || isSquadCoach || isOrgCommunityEvent || isOrgIntakeCall;
       }
     });
 

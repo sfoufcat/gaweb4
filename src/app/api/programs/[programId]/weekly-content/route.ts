@@ -119,7 +119,8 @@ export interface WeeklyContentResponse {
     resourceAssignments?: WeekResourceAssignment[];
   } | null;
   days: Array<{
-    dayIndex: number;
+    dayIndex: number;          // Calendar position (1=Mon, 2=Tue, etc.) for partial week detection
+    programDayIndex?: number | null;  // For resource assignment lookups (matches dayTag)
     globalDayIndex: number;
     calendarDate?: string;
     dayName: string;           // "Monday", "Tuesday", etc.
@@ -462,7 +463,7 @@ export async function GET(
         // For partial weeks, we need to map calendar day to instance day
         const actualStartDayOfWeek = targetWeek.actualStartDayOfWeek || 1;
         const actualEndDayOfWeek = targetWeek.actualEndDayOfWeek || daysPerWeek;
-        const instanceDayMap = new Map(instanceDays.map((d: ProgramInstanceDay) => [d.dayIndex, d]));
+        const instanceDayMap = new Map(instanceDays.map((d: ProgramInstanceDay) => [d.calendarDate, d]));
 
         // Calculate the week's calendar start date (Monday of this week)
         // Use calendarStartDate from instance week if available, otherwise calculate
@@ -505,13 +506,8 @@ export async function GET(
           const calendarDate = formatDateInTimezone(dayDate, userTimezone);
           const globalDayIndex = (targetWeek.startDayIndex || 1) + dayIdx - 1;
 
-          // Map calendar day index to instance day index
-          // For partial weeks: calendar day 1 (Mon) maps to nothing if actualStartDayOfWeek=2
-          // Calendar day 2 (Tue) maps to instance dayIndex 1, etc.
-          const instanceDayIndex = dayIdx >= actualStartDayOfWeek && dayIdx <= actualEndDayOfWeek
-            ? dayIdx - actualStartDayOfWeek + 1
-            : null;
-          const instanceDay = instanceDayIndex ? instanceDayMap.get(instanceDayIndex) : undefined;
+          // Look up instance day by calendarDate (simpler and more reliable than index math)
+          const instanceDay = instanceDayMap.get(calendarDate);
 
           // Inherit week-level resources if day-level is empty
           const dayEventIds = instanceDay?.linkedEventIds?.length ? instanceDay.linkedEventIds : weekLinkedCallEventIds;
@@ -533,7 +529,8 @@ export async function GET(
           });
 
           daysData.push({
-            dayIndex: dayIdx,
+            dayIndex: dayIdx, // Calendar position (1=Mon, 2=Tue, etc.) for partial week detection
+            programDayIndex: instanceDay?.dayIndex ?? null, // For resource assignment lookups
             globalDayIndex,
             calendarDate,
             dayName: dayNames[dayDateOfWeek],

@@ -73,6 +73,8 @@ interface DayPreviewPopupProps {
   contentProgress?: ContentProgress[];
   // Content completion data by resourceId (for showing "X/Y completed" badges)
   contentCompletion?: Map<string, ContentCompletionData>;
+  // Global day offset for display (e.g., week 2 starts at day 8, so offset = 7)
+  globalDayOffset?: number;
 }
 
 export function DayPreviewPopup({
@@ -90,6 +92,7 @@ export function DayPreviewPopup({
   articles = {},
   contentProgress = [],
   contentCompletion,
+  globalDayOffset = 0,
 }: DayPreviewPopupProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -294,7 +297,7 @@ export function DayPreviewPopup({
                   </div>
                   <div>
                     <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                      Day {dayNumber} Preview
+                      Day {globalDayOffset + dayNumber} Preview
                     </h3>
                     <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
                       {weekNumber === 0 ? 'Onboarding' : weekNumber === -1 ? 'Closing' : `Week ${weekNumber}`} &middot; {day.title || `Day ${dayNumber}`}

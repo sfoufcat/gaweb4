@@ -80,8 +80,9 @@ export function ProgramSchedule({
     (day.linkedQuestionnaireIds?.length ?? 0) > 0;
 
   // Check resourceAssignments for the selected day (new cadence-based system)
-  const selectedDayOfWeek = selectedDay.dayIndex;
-  const selectedDayResources = getResourcesForDay({ resourceAssignments }, selectedDayOfWeek);
+  // Use programDayIndex for resource lookups (matches dayTag in resourceAssignments)
+  const selectedProgramDayIndex = selectedDay.programDayIndex ?? selectedDay.dayIndex;
+  const selectedDayResources = getResourcesForDay({ resourceAssignments }, selectedProgramDayIndex);
   const hasAssignedResources = selectedDayResources.length > 0;
 
   const hasContent = selectedDay.tasks.length > 0 || hasLinkedResources(selectedDay) || hasAssignedResources;
@@ -112,8 +113,9 @@ export function ProgramSchedule({
             const dayNum = date?.getDate() || '';
             const dayName = day.isToday ? 'Today' : day.dayName.slice(0, 3);
             // Check both legacy linked resources and new resourceAssignments for content indicator
-            const dayOfWeek = day.dayIndex;
-            const dayAssignedResources = getResourcesForDay({ resourceAssignments }, dayOfWeek);
+            // Use programDayIndex for resource lookups (matches dayTag in resourceAssignments)
+            const programDayIdx = day.programDayIndex ?? day.dayIndex;
+            const dayAssignedResources = getResourcesForDay({ resourceAssignments }, programDayIdx);
             const hasItems = day.tasks.length > 0 || hasLinkedResources(day) || dayAssignedResources.length > 0;
             
             // Check if this day is inactive (outside the partial week range)

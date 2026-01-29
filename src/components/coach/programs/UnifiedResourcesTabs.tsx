@@ -117,12 +117,14 @@ function CadenceTriggerButton({
   value,
   onClick,
   calendarStartDate,
+  actualStartDayOfWeek,
 }: {
   value: ResourceDayTag;
   onClick: () => void;
   calendarStartDate?: string;
+  actualStartDayOfWeek?: number;
 }) {
-  const label = getResourceCadenceLabel(value, calendarStartDate);
+  const label = getResourceCadenceLabel(value, calendarStartDate, actualStartDayOfWeek);
 
   return (
     <button
@@ -155,6 +157,8 @@ function LinkedResourceItem({
   isEditing,
   // Course edit panel props
   editPanelContent,
+  actualStartDayOfWeek,
+  actualEndDayOfWeek,
 }: {
   assignment: WeekResourceAssignment;
   title: string;
@@ -171,6 +175,8 @@ function LinkedResourceItem({
   onEdit?: () => void;
   isEditing?: boolean;
   editPanelContent?: React.ReactNode;
+  actualStartDayOfWeek?: number;
+  actualEndDayOfWeek?: number;
 }) {
   const [cadenceModalOpen, setCadenceModalOpen] = useState(false);
   const [addAsTaskModalOpen, setAddAsTaskModalOpen] = useState(false);
@@ -241,7 +247,7 @@ function LinkedResourceItem({
                 <Calendar className="w-4 h-4" />
                 {assignment.dayTag !== 'week' && (
                   <span className="text-xs font-medium">
-                    {getResourceCadenceLabel(assignment.dayTag, calendarStartDate)}
+                    {getResourceCadenceLabel(assignment.dayTag, calendarStartDate, actualStartDayOfWeek)}
                   </span>
                 )}
               </button>
@@ -307,7 +313,7 @@ function LinkedResourceItem({
                     Cadence
                     {assignment.dayTag !== 'week' && (
                       <span className="ml-1 text-brand-accent">
-                        ({getResourceCadenceLabel(assignment.dayTag, calendarStartDate)})
+                        ({getResourceCadenceLabel(assignment.dayTag, calendarStartDate, actualStartDayOfWeek)})
                       </span>
                     )}
                   </span>
@@ -377,6 +383,8 @@ function LinkedResourceItem({
         courseInfo={courseInfo}
         calendarStartDate={calendarStartDate}
         resourceType={assignment.resourceType}
+        actualStartDayOfWeek={actualStartDayOfWeek}
+        actualEndDayOfWeek={actualEndDayOfWeek}
       />
 
       {onAlsoCreateTaskChange && (
@@ -387,6 +395,7 @@ function LinkedResourceItem({
           resourceTitle={title}
           dayTag={assignment.dayTag}
           calendarStartDate={calendarStartDate}
+          actualStartDayOfWeek={actualStartDayOfWeek}
           enabled={assignment.alsoCreateTask ?? false}
           onToggle={onAlsoCreateTaskChange}
         />
@@ -1073,6 +1082,8 @@ export function UnifiedResourcesTabs({
                       subtext={getCourseSubtext(assignment)}
                       onEdit={() => isEditing ? handleCancelCourseEdit() : handleEditCourse(assignment)}
                       isEditing={isEditing}
+                      actualStartDayOfWeek={actualStartDayOfWeek}
+                      actualEndDayOfWeek={actualEndDayOfWeek}
                       editPanelContent={course?.modules && (
                         <CourseEditPanel
                           modules={course.modules}
@@ -1248,6 +1259,8 @@ export function UnifiedResourcesTabs({
                       includeWeekends={includeWeekends}
                       completion={contentCompletion?.get(assignment.resourceId)}
                       calendarStartDate={calendarStartDate}
+                      actualStartDayOfWeek={actualStartDayOfWeek}
+                      actualEndDayOfWeek={actualEndDayOfWeek}
                     />
                   );
                 })}
@@ -1299,6 +1312,8 @@ export function UnifiedResourcesTabs({
                     includeWeekends={includeWeekends}
                     completion={contentCompletion?.get(assignment.resourceId)}
                     calendarStartDate={calendarStartDate}
+                    actualStartDayOfWeek={actualStartDayOfWeek}
+                    actualEndDayOfWeek={actualEndDayOfWeek}
                   />
                 ))}
               </div>
@@ -1348,6 +1363,8 @@ export function UnifiedResourcesTabs({
                     onAlsoCreateTaskChange={(enabled) => updateAlsoCreateTask(assignment.id, enabled)}
                     includeWeekends={includeWeekends}
                     calendarStartDate={calendarStartDate}
+                    actualStartDayOfWeek={actualStartDayOfWeek}
+                    actualEndDayOfWeek={actualEndDayOfWeek}
                   />
                 ))}
               </div>
@@ -1397,6 +1414,8 @@ export function UnifiedResourcesTabs({
                     onAlsoCreateTaskChange={(enabled) => updateAlsoCreateTask(assignment.id, enabled)}
                     includeWeekends={includeWeekends}
                     calendarStartDate={calendarStartDate}
+                    actualStartDayOfWeek={actualStartDayOfWeek}
+                    actualEndDayOfWeek={actualEndDayOfWeek}
                   />
                 ))}
               </div>
@@ -1446,6 +1465,8 @@ export function UnifiedResourcesTabs({
                     onAlsoCreateTaskChange={(enabled) => updateAlsoCreateTask(assignment.id, enabled)}
                     includeWeekends={includeWeekends}
                     calendarStartDate={calendarStartDate}
+                    actualStartDayOfWeek={actualStartDayOfWeek}
+                    actualEndDayOfWeek={actualEndDayOfWeek}
                   />
                 ))}
               </div>

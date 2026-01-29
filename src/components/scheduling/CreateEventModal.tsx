@@ -560,6 +560,9 @@ export function CreateEventModal({
 
   // Handle form submission
   const handleSubmit = async () => {
+    // Debug: Log props at submission time
+    console.log('[CreateEventModal:handleSubmit] Props at submission:', { instanceId, weekIndex, programId: propProgramId, cohortId: propCohortId });
+
     if (!validateStep('schedule')) return;
     if (isSubmitting) return;
 

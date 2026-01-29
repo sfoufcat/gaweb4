@@ -386,57 +386,80 @@ export async function POST(request: NextRequest) {
     let dayIndex: number | undefined;
     let instanceData: ProgramInstance | null = null;
 
-    console.log(`[EVENTS_POST] Received instanceId=${instanceId}, weekIndex=${weekIndex}, body.weekIndex=${body.weekIndex}`);
+    console.log(`[EVENTS_POST] Received instanceId=${instanceId}, weekIndex=${weekIndex}, body.weekIndex=${body.weekIndex}, cohortId=${body.cohortId}`);
 
-    if (instanceId) {
+    // If no instanceId provided but we have a cohortId, look up the instance for that cohort
+    if (!instanceId && body.cohortId) {
       try {
-        // Fetch the program instance to validate it exists
+        const instancesSnapshot = await adminDb
+          .collection('program_instances')
+          .where('cohortId', '==', body.cohortId)
+          .where('type', '==', 'cohort')
+          .limit(1)
+          .get();
+
+        if (!instancesSnapshot.empty) {
+          const instanceDoc = instancesSnapshot.docs[0];
+          instanceId = instanceDoc.id;
+          instanceData = instanceDoc.data() as ProgramInstance;
+          console.log(`[EVENTS_POST] Found instance ${instanceId} for cohort ${body.cohortId}`);
+        } else {
+          console.log(`[EVENTS_POST] No instance found for cohort ${body.cohortId}`);
+        }
+      } catch (err) {
+        console.error('[EVENTS_POST] Error looking up instance for cohort:', err);
+      }
+    }
+
+    // Fetch instance data if we have instanceId but not instanceData yet
+    if (instanceId && !instanceData) {
+      try {
         const instanceDoc = await adminDb.collection('program_instances').doc(instanceId).get();
         if (instanceDoc.exists) {
           instanceData = instanceDoc.data() as ProgramInstance;
-
-          // If weekIndex was explicitly provided, use it (e.g., when scheduling from week editor)
-          if (weekIndex !== undefined) {
-            console.log(`[EVENTS_POST] Using explicit weekIndex: ${weekIndex}`);
-          } else if (body.startDateTime && instanceData.programId) {
-            // Calculate week/day from event date if not explicitly provided
-            const programDoc = await adminDb.collection('programs').doc(instanceData.programId).get();
-            if (programDoc.exists) {
-              const programData = programDoc.data();
-              const totalDays = programData?.lengthDays || 30;
-              const includeWeekends = programData?.includeWeekends !== false;
-              const instanceStartDate = instanceData.startDate;
-
-              if (instanceStartDate) {
-                // Extract date part from startDateTime (it's in ISO format)
-                const eventDate = body.startDateTime.split('T')[0];
-
-                const dayInfo = calculateProgramDayForDate(
-                  instanceStartDate,
-                  eventDate,
-                  totalDays,
-                  includeWeekends
-                );
-
-                if (dayInfo) {
-                  weekIndex = dayInfo.weekIndex;
-                  dayIndex = dayInfo.globalDayIndex; // Use global day index (1-based across program)
-                  console.log(`[EVENTS_POST] Calculated program position: week ${weekIndex}, day ${dayIndex}`);
-                } else {
-                  console.log(`[EVENTS_POST] Event date ${eventDate} is outside program range`);
-                }
-              }
-            }
-          }
         } else {
           console.log(`[EVENTS_POST] Instance ${instanceId} not found, skipping program linking`);
           instanceId = undefined;
         }
       } catch (err) {
-        console.error('[EVENTS_POST] Error processing program instance:', err);
-        // Don't fail the request, just skip program linking
+        console.error('[EVENTS_POST] Error fetching program instance:', err);
         instanceId = undefined;
       }
+    }
+
+    // Calculate weekIndex from event date if we have instance but no explicit weekIndex
+    if (instanceId && instanceData && weekIndex === undefined && body.startDateTime) {
+      try {
+        const programDoc = await adminDb.collection('programs').doc(instanceData.programId).get();
+        if (programDoc.exists) {
+          const programData = programDoc.data();
+          const totalDays = programData?.lengthDays || 30;
+          const includeWeekends = programData?.includeWeekends !== false;
+          const instanceStartDate = instanceData.startDate;
+
+          if (instanceStartDate) {
+            const eventDate = body.startDateTime.split('T')[0];
+            const dayInfo = calculateProgramDayForDate(
+              instanceStartDate,
+              eventDate,
+              totalDays,
+              includeWeekends
+            );
+
+            if (dayInfo) {
+              weekIndex = dayInfo.weekIndex;
+              dayIndex = dayInfo.globalDayIndex;
+              console.log(`[EVENTS_POST] Calculated program position: week ${weekIndex}, day ${dayIndex}`);
+            } else {
+              console.log(`[EVENTS_POST] Event date ${eventDate} is outside program range`);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[EVENTS_POST] Error calculating week/day position:', err);
+      }
+    } else if (weekIndex !== undefined) {
+      console.log(`[EVENTS_POST] Using explicit weekIndex: ${weekIndex}`);
     }
 
     // Use shared core function for event creation

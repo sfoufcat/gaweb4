@@ -138,6 +138,8 @@ interface SortableWeeklyTaskProps {
   daysInWeek: number;
   // Calendar date for weekday name display
   calendarStartDate?: string;
+  // For partial weeks: offset from visual position to program dayIndex
+  actualStartDayOfWeek?: number;
   // Cohort completion data (optional)
   cohortCompletion?: CohortWeeklyTaskCompletionData;
   // Expand functionality for cohort mode
@@ -161,6 +163,7 @@ function SortableWeeklyTask({
   includeWeekends,
   daysInWeek,
   calendarStartDate,
+  actualStartDayOfWeek,
   cohortCompletion,
   isCohortMode,
   isExpanded,
@@ -354,7 +357,9 @@ function SortableWeeklyTask({
                       if (typeof dayTag === 'number' && calendarStartDate) {
                         const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                         const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
-                        const dayDate = new Date(year, month - 1, dayOfMonth + dayTag - 1);
+                        // Add offset for partial weeks - dayTag is programDayIndex, need to convert to calendar position
+                        const offset = (actualStartDayOfWeek || 1) - 1;
+                        const dayDate = new Date(year, month - 1, dayOfMonth + offset + dayTag - 1);
                         return WEEKDAYS[dayDate.getDay()];
                       }
                       return `Day ${dayTag}`;
@@ -410,7 +415,9 @@ function SortableWeeklyTask({
                           if (typeof dayTag === 'number' && calendarStartDate) {
                             const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                             const [year, month, dayOfMonth] = calendarStartDate.split('-').map(Number);
-                            const dayDate = new Date(year, month - 1, dayOfMonth + dayTag - 1);
+                            // Add offset for partial weeks - dayTag is programDayIndex, need to convert to calendar position
+                            const offset = (actualStartDayOfWeek || 1) - 1;
+                            const dayDate = new Date(year, month - 1, dayOfMonth + offset + dayTag - 1);
                             return WEEKDAYS[dayDate.getDay()];
                           }
                           return `Day ${dayTag}`;
@@ -528,6 +535,11 @@ function SortableWeeklyTask({
                     <div className="grid grid-cols-7 gap-2">
                       {Array.from({ length: daysInWeek }, (_, i) => {
                         const dayNum = i + 1;
+                        // Convert visual position to program dayIndex for partial weeks
+                        const dayOffset = (actualStartDayOfWeek && actualStartDayOfWeek > 1) ? actualStartDayOfWeek - 1 : 0;
+                        const programDayIndex = dayNum - dayOffset;
+                        const isInactiveDaySlot = programDayIndex < 1;
+
                         let dayLabel = `${dayNum}`;
                         let fullDayLabel = `Day ${dayNum}`;
                         if (calendarStartDate) {
@@ -538,46 +550,51 @@ function SortableWeeklyTask({
                           dayLabel = WEEKDAYS_SHORT[dayDate.getDay()];
                           fullDayLabel = WEEKDAYS_FULL[dayDate.getDay()];
                         }
-                        // Support both single number and array of numbers
-                        const isSelected = Array.isArray(dayTag)
-                          ? dayTag.includes(dayNum)
-                          : dayTag === dayNum;
+                        // Support both single number and array of numbers - compare against programDayIndex
+                        const isSelected = !isInactiveDaySlot && (Array.isArray(dayTag)
+                          ? dayTag.includes(programDayIndex)
+                          : dayTag === programDayIndex);
                         return (
                           <button
                             key={dayNum}
                             type="button"
+                            disabled={isInactiveDaySlot}
                             onClick={() => {
+                              if (isInactiveDaySlot) return;
                               // Toggle day in/out of selection (multi-select mode)
+                              // Use programDayIndex (not visual dayNum) for storage
                               let newDayTag: number | number[] | 'auto';
                               if (Array.isArray(dayTag)) {
-                                if (dayTag.includes(dayNum)) {
+                                if (dayTag.includes(programDayIndex)) {
                                   // Remove day from array
-                                  const filtered = dayTag.filter(d => d !== dayNum);
+                                  const filtered = dayTag.filter(d => d !== programDayIndex);
                                   newDayTag = filtered.length === 1 ? filtered[0] : filtered.length === 0 ? 'auto' : filtered;
                                 } else {
                                   // Add day to array
-                                  newDayTag = [...dayTag, dayNum].sort((a, b) => a - b);
+                                  newDayTag = [...dayTag, programDayIndex].sort((a, b) => a - b);
                                 }
                               } else if (typeof dayTag === 'number') {
-                                if (dayTag === dayNum) {
+                                if (dayTag === programDayIndex) {
                                   // Deselect single day → back to auto
                                   newDayTag = 'auto';
                                 } else {
                                   // Add second day → create array
-                                  newDayTag = [dayTag, dayNum].sort((a, b) => a - b);
+                                  newDayTag = [dayTag, programDayIndex].sort((a, b) => a - b);
                                 }
                               } else {
                                 // Was auto/spread/daily, select single day
-                                newDayTag = dayNum;
+                                newDayTag = programDayIndex;
                               }
                               onDayTagChange(index, newDayTag as number | number[]);
                               // Don't close modal - allow multiple selections
                             }}
                             className={cn(
                               "aspect-square rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center border",
-                              isSelected
-                                ? "bg-brand-accent text-white shadow-md border-brand-accent"
-                                : "bg-white dark:bg-[#1e222a] text-[#3d3a36] dark:text-[#d1d5db] border-[#e1ddd8] dark:border-[#262b35] hover:bg-brand-accent/10 hover:text-brand-accent hover:border-brand-accent/30"
+                              isInactiveDaySlot
+                                ? "opacity-30 cursor-not-allowed bg-gray-100 dark:bg-[#15181f] border-gray-200 dark:border-[#262b35]"
+                                : isSelected
+                                  ? "bg-brand-accent text-white shadow-md border-brand-accent"
+                                  : "bg-white dark:bg-[#1e222a] text-[#3d3a36] dark:text-[#d1d5db] border-[#e1ddd8] dark:border-[#262b35] hover:bg-brand-accent/10 hover:text-brand-accent hover:border-brand-accent/30"
                             )}
                             title={fullDayLabel}
                           >
@@ -683,6 +700,11 @@ function SortableWeeklyTask({
                     <div className="grid grid-cols-7 gap-2">
                       {Array.from({ length: daysInWeek }, (_, i) => {
                         const dayNum = i + 1;
+                        // Convert visual position to program dayIndex for partial weeks
+                        const dayOffset = (actualStartDayOfWeek && actualStartDayOfWeek > 1) ? actualStartDayOfWeek - 1 : 0;
+                        const programDayIndex = dayNum - dayOffset;
+                        const isInactiveDaySlot = programDayIndex < 1;
+
                         let dayLabel = `${dayNum}`;
                         let fullDayLabel = `Day ${dayNum}`;
                         if (calendarStartDate) {
@@ -693,46 +715,51 @@ function SortableWeeklyTask({
                           dayLabel = WEEKDAYS_SHORT[dayDate.getDay()];
                           fullDayLabel = WEEKDAYS_FULL[dayDate.getDay()];
                         }
-                        // Support both single number and array of numbers
-                        const isSelected = Array.isArray(dayTag)
-                          ? dayTag.includes(dayNum)
-                          : dayTag === dayNum;
+                        // Support both single number and array of numbers - compare against programDayIndex
+                        const isSelected = !isInactiveDaySlot && (Array.isArray(dayTag)
+                          ? dayTag.includes(programDayIndex)
+                          : dayTag === programDayIndex);
                         return (
                           <button
                             key={dayNum}
                             type="button"
+                            disabled={isInactiveDaySlot}
                             onClick={() => {
+                              if (isInactiveDaySlot) return;
                               // Toggle day in/out of selection (multi-select mode)
+                              // Use programDayIndex (not visual dayNum) for storage
                               let newDayTag: number | number[] | 'auto';
                               if (Array.isArray(dayTag)) {
-                                if (dayTag.includes(dayNum)) {
+                                if (dayTag.includes(programDayIndex)) {
                                   // Remove day from array
-                                  const filtered = dayTag.filter(d => d !== dayNum);
+                                  const filtered = dayTag.filter(d => d !== programDayIndex);
                                   newDayTag = filtered.length === 1 ? filtered[0] : filtered.length === 0 ? 'auto' : filtered;
                                 } else {
                                   // Add day to array
-                                  newDayTag = [...dayTag, dayNum].sort((a, b) => a - b);
+                                  newDayTag = [...dayTag, programDayIndex].sort((a, b) => a - b);
                                 }
                               } else if (typeof dayTag === 'number') {
-                                if (dayTag === dayNum) {
+                                if (dayTag === programDayIndex) {
                                   // Deselect single day → back to auto
                                   newDayTag = 'auto';
                                 } else {
                                   // Add second day → create array
-                                  newDayTag = [dayTag, dayNum].sort((a, b) => a - b);
+                                  newDayTag = [dayTag, programDayIndex].sort((a, b) => a - b);
                                 }
                               } else {
                                 // Was auto/spread/daily, select single day
-                                newDayTag = dayNum;
+                                newDayTag = programDayIndex;
                               }
                               onDayTagChange(index, newDayTag as number | number[]);
                               // Don't close modal - allow multiple selections
                             }}
                             className={cn(
                               "aspect-square rounded-xl text-sm font-medium transition-all flex flex-col items-center justify-center border",
-                              isSelected
-                                ? "bg-brand-accent text-white shadow-md border-brand-accent"
-                                : "bg-white dark:bg-[#1e222a] text-[#3d3a36] dark:text-[#d1d5db] border-[#e1ddd8] dark:border-[#262b35] hover:bg-brand-accent/10 hover:text-brand-accent hover:border-brand-accent/30"
+                              isInactiveDaySlot
+                                ? "opacity-30 cursor-not-allowed bg-gray-100 dark:bg-[#15181f] border-gray-200 dark:border-[#262b35]"
+                                : isSelected
+                                  ? "bg-brand-accent text-white shadow-md border-brand-accent"
+                                  : "bg-white dark:bg-[#1e222a] text-[#3d3a36] dark:text-[#d1d5db] border-[#e1ddd8] dark:border-[#262b35] hover:bg-brand-accent/10 hover:text-brand-accent hover:border-brand-accent/30"
                             )}
                             title={fullDayLabel}
                           >
@@ -2481,14 +2508,16 @@ export function WeekEditor({
         spreadTasks.push(task);
       } else if (Array.isArray(dayTag)) {
         // Multiple specific days - add task to each specified day
+        // dayNum is programDayIndex (1-based, relative to active days in week)
         for (const dayNum of dayTag) {
-          if (dayNum >= 1 && dayNum <= numDays) {
+          if (dayNum >= 1 && dayNum <= activeRange) {
             const existing = specificDayTasks.get(dayNum) || [];
             existing.push(task);
             specificDayTasks.set(dayNum, existing);
           }
         }
-      } else if (typeof dayTag === 'number' && dayTag >= 1 && dayTag <= numDays) {
+      } else if (typeof dayTag === 'number' && dayTag >= 1 && dayTag <= activeRange) {
+        // dayTag is programDayIndex (1-based, relative to active days in week)
         const existing = specificDayTasks.get(dayTag) || [];
         existing.push(task);
         specificDayTasks.set(dayTag, existing);
@@ -2506,8 +2535,11 @@ export function WeekEditor({
     }
 
     // Add specific-day tasks to their designated day (only if within active range)
-    for (const [dayNum, tasks] of specificDayTasks) {
-      const dayIdx = dayNum - 1;
+    // Note: dayNum from specificDayTasks is now programDayIndex (1-based, relative to active days)
+    // We need to convert to computedDays index by adding the activeStartIdx offset
+    for (const [programDayNum, tasks] of specificDayTasks) {
+      // programDayIndex 1 → first active day → computedDays[activeStartIdx]
+      const dayIdx = activeStartIdx + (programDayNum - 1);
       if (dayIdx >= activeStartIdx && dayIdx <= activeEndIdx) {
         for (const task of tasks) {
           computedDays[dayIdx].tasks.push({ ...task, source: 'week' as const });
@@ -3242,6 +3274,7 @@ export function WeekEditor({
                         includeWeekends={includeWeekends}
                         daysInWeek={daysInWeek}
                         calendarStartDate={weekCalendarStartDate}
+                        actualStartDayOfWeek={actualStartDayOfWeek}
                         cohortCompletion={cohortCompletion}
                         isCohortMode={isCohortMode}
                         isExpanded={expandedTasks.has(taskKey)}
@@ -3321,6 +3354,10 @@ export function WeekEditor({
                   const isPostProgram = week.weekNumber === -1 && !!actualEndDayOfWeek && dayNum > actualEndDayOfWeek;
                   const isInactive = isPreEnrollment || isPostProgram;
 
+                  // Convert visual position to program dayIndex for partial weeks
+                  const dayOffset = (actualStartDayOfWeek && actualStartDayOfWeek > 1) ? actualStartDayOfWeek - 1 : 0;
+                  const programDayIndex = dayNum - dayOffset;
+
                   // Status-based styles
                   const statusBgClass = isInactive
                     ? 'bg-gray-100 dark:bg-[#15181f]'
@@ -3334,7 +3371,7 @@ export function WeekEditor({
                     <button
                       key={dayNum}
                       type="button"
-                      onClick={() => !isInactive && setPreviewDayNumber(dayNum)}
+                      onClick={() => !isInactive && setPreviewDayNumber(programDayIndex)}
                       disabled={isInactive}
                       className={cn(
                         'relative flex-1 flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all border',
@@ -3651,7 +3688,10 @@ export function WeekEditor({
                   )}
                   {isCohortMode && cohortId && (
                     <Button
-                      onClick={() => setShowScheduleCohortModal(true)}
+                      onClick={() => {
+                        console.log('[WeekEditor] Schedule Session button clicked! Setting showScheduleCohortModal=true', { effectiveInstanceId, weekNumber: week.weekNumber });
+                        setShowScheduleCohortModal(true);
+                      }}
                       className="gap-1.5"
                     >
                       <CalendarPlus className="w-4 h-4" />
@@ -3849,11 +3889,13 @@ export function WeekEditor({
       )}
 
       {/* Day Preview Popup */}
+      {/* previewDayNumber is now programDayIndex (1-based), but previewDays is indexed by visual position.
+          Need to add offset to convert programDayIndex back to visual position index for lookup. */}
       <DayPreviewPopup
         isOpen={previewDayNumber !== null}
         onClose={() => setPreviewDayNumber(null)}
         dayNumber={previewDayNumber || 1}
-        day={previewDayNumber !== null ? previewDays[previewDayNumber - 1] || null : null}
+        day={previewDayNumber !== null ? previewDays[(actualStartDayOfWeek || 1) - 1 + previewDayNumber - 1] || null : null}
         habits={week.weeklyHabits}
         weekNumber={week.weekNumber}
         // Pass week data for resource assignments - use formData for live updates
@@ -3865,6 +3907,8 @@ export function WeekEditor({
         articles={availableArticles.reduce((acc, a) => ({ ...acc, [a.id]: a }), {})}
         // Pass completion data for badges
         contentCompletion={contentCompletion}
+        // Global day offset for display (e.g., week 2 day 1 shows as "Day 8")
+        globalDayOffset={(week.startDayIndex || 1) - 1}
       />
 
       {/* Schedule Call Modal (1:1 programs) */}
@@ -3882,22 +3926,32 @@ export function WeekEditor({
       )}
 
       {/* Schedule Session Modal (group programs - using CreateEventModal) */}
+      {(() => {
+        // Debug: Log all conditions and values ALWAYS (not just when modal is open)
+        console.log('[WeekEditor:ModalRender] Checking conditions:', {
+          isCohortMode,
+          cohortId,
+          programId,
+          effectiveInstanceId,
+          weekNumber: week?.weekNumber,
+          showScheduleCohortModal,
+          willRenderModal: !!(isCohortMode && cohortId && programId),
+        });
+        return null;
+      })()}
       {isCohortMode && cohortId && programId && (
-        <>
-          {showScheduleCohortModal && console.log('[WeekEditor] Rendering CreateEventModal with:', { effectiveInstanceId, weekNumber: week.weekNumber, cohortId, programId })}
-          <CreateEventModal
-            isOpen={showScheduleCohortModal}
-            onClose={() => setShowScheduleCohortModal(false)}
-            programId={programId}
-            cohortId={cohortId}
-            instanceId={effectiveInstanceId || undefined}
-            weekIndex={week.weekNumber}
-            onSuccess={() => {
-              setShowScheduleCohortModal(false);
-              onCallScheduled?.();
-            }}
-          />
-        </>
+        <CreateEventModal
+          isOpen={showScheduleCohortModal}
+          onClose={() => setShowScheduleCohortModal(false)}
+          programId={programId}
+          cohortId={cohortId}
+          instanceId={effectiveInstanceId || undefined}
+          weekIndex={week.weekNumber}
+          onSuccess={() => {
+            setShowScheduleCohortModal(false);
+            onCallScheduled?.();
+          }}
+        />
       )}
     </div>
   );
