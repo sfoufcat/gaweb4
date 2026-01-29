@@ -123,6 +123,8 @@ export function useNotifications(): UseNotificationsReturn {
       if (listenerSetupStartedRef.current || unsubscribeRef.current || !isMounted) {
         return;
       }
+      // Guard: db must be non-null (TypeScript can't infer from outer scope)
+      if (!db) return;
       listenerSetupStartedRef.current = true;
 
       // Query for user's notifications, scoped by organization for multi-tenancy
