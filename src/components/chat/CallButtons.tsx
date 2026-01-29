@@ -3,20 +3,9 @@
 import { useCallback, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import { Phone, Calendar, Check, Clock, Loader2, AlertTriangle } from 'lucide-react';
+import { Phone, Calendar, Check, Clock, Loader2 } from 'lucide-react';
 import { useStreamVideoClient } from '@/contexts/StreamVideoContext';
 import { useUpcomingCall } from '@/hooks/useUpcomingCall';
-import { useOrgCredits } from '@/hooks/useOrgCredits';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogAction,
-  AlertDialogCancel,
-} from '@/components/ui/alert-dialog';
 import type { Channel } from 'stream-chat';
 import type { UnifiedEvent } from '@/types';
 
@@ -153,8 +142,6 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
   const { user: clerkUser } = useUser();
   const { videoClient, activeCall, setActiveCall } = useStreamVideoClient();
   const [isJoiningCall, setIsJoiningCall] = useState(false);
-  const [showCreditWarning, setShowCreditWarning] = useState(false);
-  const [pendingCallEvent, setPendingCallEvent] = useState<UnifiedEvent | null>(null);
 
   // Determine channel call type
   const callType = getChannelCallType(channel);
@@ -173,8 +160,6 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
     callType === 'dm'
   );
 
-  // Check org credits for non-program calls
-  const { hasCredits: orgHasCredits } = useOrgCredits(callType === 'dm');
 
   // For DMs, check if the current user can call the other user
   const canCall = useMemo(() => {
@@ -199,8 +184,6 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
 
     try {
       setIsJoiningCall(true);
-      setShowCreditWarning(false);
-      setPendingCallEvent(null);
 
       // Create call ID using event ID for tracking
       const callId = `event-${event.id}-${Date.now()}`;
@@ -265,7 +248,7 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
     }
   }, [videoClient, channel, router, setActiveCall, clerkUser]);
 
-  // Handle join button click - ALL in-app calls require org credits
+  // Handle join button click
   const handleJoinClick = useCallback((event: UnifiedEvent) => {
     // Check if event has external meeting link - if so, open that instead
     if (event.meetingLink) {
@@ -273,76 +256,22 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
       return;
     }
 
-    // ALL in-app calls require org credits
-    if (!orgHasCredits) {
-      // Block join, show dialog
-      setPendingCallEvent(event);
-      setShowCreditWarning(true);
-      return;
-    }
-
-    // Has credits, proceed with in-app call
+    // Proceed with in-app call
     joinCall(event);
-  }, [orgHasCredits, joinCall]);
-
-  // No credits dialog - blocks in-app call
-  const creditWarningDialog = (
-    <AlertDialog open={showCreditWarning} onOpenChange={setShowCreditWarning}>
-      <AlertDialogContent className="max-w-md">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-500" />
-            No Credits Available
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-left">
-            Your organization has no transcription credits remaining.
-            In-app calls require credits for recording and AI summary generation.
-            <br /><br />
-            To make this call, you can:
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>Purchase more credits</li>
-              <li>Use an external meeting link (Zoom, Meet, etc.)</li>
-            </ul>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => {
-            setShowCreditWarning(false);
-            setPendingCallEvent(null);
-          }}>
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              setShowCreditWarning(false);
-              setPendingCallEvent(null);
-              // Navigate to billing/credits page
-              router.push('/coach/settings?tab=billing');
-            }}
-            className="bg-primary hover:bg-primary/90"
-          >
-            Buy Credits
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
+  }, [joinCall]);
 
   // If there's an active call, show "Return to call" button
   if (activeCall) {
     return (
-      <>
-        {creditWarningDialog}
-        <div className={`flex items-center gap-2 ${className}`}>
-          <button
-            onClick={() => router.push(`/call/${activeCall.id}`)}
-            className="px-3 py-1.5 bg-green-500 text-white rounded-full text-xs font-albert font-medium hover:bg-green-600 transition-colors flex items-center gap-1.5"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            Return to call
-          </button>
-        </div>
-      </>
+      <div className={`flex items-center gap-2 ${className}`}>
+        <button
+          onClick={() => router.push(`/call/${activeCall.id}`)}
+          className="px-3 py-1.5 bg-green-500 text-white rounded-full text-xs font-albert font-medium hover:bg-green-600 transition-colors flex items-center gap-1.5"
+        >
+          <Phone className="w-3.5 h-3.5" />
+          Return to call
+        </button>
+      </div>
     );
   }
 
@@ -421,9 +350,7 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
       const hasStarted = startTime <= now;
 
       return (
-        <>
-          {creditWarningDialog}
-          <div className={`flex items-center gap-1 ${className}`}>
+        <div className={`flex items-center gap-1 ${className}`}>
             <button
               onClick={() => handleJoinClick(upcomingCall)}
               disabled={isJoiningCall || !videoClient}
@@ -443,8 +370,7 @@ export function CallButtons({ channel, className = '', onSquadCallClick, onSched
                 </span>
               )}
             </button>
-          </div>
-        </>
+        </div>
       );
     }
   }

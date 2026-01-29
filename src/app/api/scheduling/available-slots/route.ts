@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const durationParam = searchParams.get('duration');
+    const isCoach = searchParams.get('isCoach') === 'true';
 
     if (!startDate || !endDate) {
       return NextResponse.json(
@@ -195,6 +196,7 @@ export async function GET(request: NextRequest) {
     console.log('[AVAILABLE_SLOTS] Date range:', startDate, 'to', endDate);
 
     // Calculate available slots
+    // For coach-initiated scheduling, bypass minimum notice time (pass 0)
     const availableSlots = calculateAvailableSlots(
       rangeStart,
       rangeEnd,
@@ -202,7 +204,8 @@ export async function GET(request: NextRequest) {
       existingEvents,
       duration,
       buffer,
-      externalBusyTimes
+      externalBusyTimes,
+      isCoach ? 0 : undefined
     );
 
     console.log('[AVAILABLE_SLOTS] Generated slots count:', availableSlots.length);
@@ -303,15 +306,18 @@ function calculateAvailableSlots(
   existingEvents: BlockingEvent[],
   duration: number,
   buffer: number,
-  externalBusyTimes: Array<{ start: string; end: string }> = []
+  externalBusyTimes: Array<{ start: string; end: string }> = [],
+  minNoticeHoursOverride?: number
 ): AvailableSlot[] {
   const slots: AvailableSlot[] = [];
   const now = new Date();
-  const minNoticeMs = availability.minNoticeHours * 60 * 60 * 1000;
+  // Use override if provided (e.g., 0 for coach-initiated scheduling), otherwise use availability setting
+  const minNoticeHours = minNoticeHoursOverride ?? availability.minNoticeHours;
+  const minNoticeMs = minNoticeHours * 60 * 60 * 1000;
   const timezone = availability.timezone || 'America/New_York';
 
   console.log('[CALC_SLOTS] now:', now.toISOString());
-  console.log('[CALC_SLOTS] minNoticeMs:', minNoticeMs, '(', availability.minNoticeHours, 'hours)');
+  console.log('[CALC_SLOTS] minNoticeMs:', minNoticeMs, '(', minNoticeHours, 'hours)');
   console.log('[CALC_SLOTS] Earliest allowed slot:', new Date(now.getTime() + minNoticeMs).toISOString());
 
   // Work with date strings (YYYY-MM-DD) to avoid timezone confusion

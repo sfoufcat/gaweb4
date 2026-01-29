@@ -21,6 +21,28 @@ function formatDateInTimezone(date: Date, timezone: string): string {
 }
 
 /**
+ * Parse a date string (YYYY-MM-DD) as a local date without timezone conversion.
+ * This avoids the issue where "2024-01-27" parsed as Date becomes Jan 26 in EST.
+ */
+function parseDateStringAsLocal(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0); // Noon to avoid DST issues
+}
+
+/**
+ * Add days to a date string (YYYY-MM-DD) and return the new date string.
+ * Handles date arithmetic without timezone conversion issues.
+ */
+function addDaysToDateString(dateStr: string, days: number): string {
+  const date = parseDateStringAsLocal(dateStr);
+  date.setDate(date.getDate() + days);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Helper to convert task template to instance task
  */
 function toInstanceTask(task: ProgramTaskTemplate): ProgramInstanceDay['tasks'][0] {
@@ -467,11 +489,16 @@ export async function GET(
 
         // Calculate the week's calendar start date (Monday of this week)
         // Use calendarStartDate from instance week if available, otherwise calculate
+        // IMPORTANT: Use parseDateStringAsLocal to avoid timezone conversion issues
+        // (e.g., "2024-01-27" parsed as new Date() becomes Jan 26 in EST)
         let weekCalendarStart: Date;
+        let weekCalendarStartStr: string;
         if (targetWeek.calendarStartDate) {
-          weekCalendarStart = new Date(targetWeek.calendarStartDate);
+          weekCalendarStartStr = targetWeek.calendarStartDate;
+          weekCalendarStart = parseDateStringAsLocal(targetWeek.calendarStartDate);
         } else {
           // Fallback: calculate from enrollment start + week's startDayIndex
+          // startDate was already parsed safely at line 225 with T12:00:00
           weekCalendarStart = new Date(startDate);
           if (includeWeekends) {
             weekCalendarStart.setDate(weekCalendarStart.getDate() + (targetWeek.startDayIndex || 1) - 1);
@@ -490,6 +517,11 @@ export async function GET(
           } else if (dow === 0) {
             weekCalendarStart.setDate(weekCalendarStart.getDate() - 6);
           }
+          // Convert to string for consistent date arithmetic
+          const year = weekCalendarStart.getFullYear();
+          const month = String(weekCalendarStart.getMonth() + 1).padStart(2, '0');
+          const day = String(weekCalendarStart.getDate()).padStart(2, '0');
+          weekCalendarStartStr = `${year}-${month}-${day}`;
         }
 
         // Generate all days in the week (5 for weekday programs)
@@ -503,7 +535,9 @@ export async function GET(
             continue;
           }
 
-          const calendarDate = formatDateInTimezone(dayDate, userTimezone);
+          // Calculate calendar date using string arithmetic to avoid timezone issues
+          // This ensures "2024-01-27" stored in instance matches "2024-01-27" we're looking up
+          const calendarDate = addDaysToDateString(weekCalendarStartStr, dayIdx - 1);
           const globalDayIndex = (targetWeek.startDayIndex || 1) + dayIdx - 1;
 
           // Look up instance day by calendarDate (simpler and more reliable than index math)
@@ -717,7 +751,7 @@ export async function GET(
     }
 
     // Fetch linked resources
-    const [events, courses, articles, downloads, links, questionnaires, videos, summaries] = await Promise.all([
+    const [eventsRaw, courses, articles, downloads, links, questionnaires, videos, summaries] = await Promise.all([
       fetchDocsByIds<UnifiedEvent>('events', Array.from(allLinkedEventIds)),
       fetchDocsByIds<DiscoverCourse>('courses', Array.from(allLinkedCourseIds)),
       fetchDocsByIds<DiscoverArticle>('articles', Array.from(allLinkedArticleIds)),
@@ -727,6 +761,9 @@ export async function GET(
       fetchDocsByIds<{ id: string; title: string; thumbnailUrl?: string; }>('videos', Array.from(allLinkedVideoIds)),
       fetchDocsByIds<CallSummary>('call_summaries', Array.from(allLinkedSummaryIds)),
     ]);
+
+    // Filter out canceled events (soft-deleted events still exist in DB)
+    const events = eventsRaw.filter(e => e.status !== 'canceled');
 
     return NextResponse.json({
       success: true,

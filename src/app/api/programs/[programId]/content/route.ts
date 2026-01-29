@@ -302,9 +302,9 @@ export async function GET(
       }
     }
 
-    // Filter to upcoming events, sort by date, and limit
+    // Filter to upcoming non-canceled events, sort by date, and limit
     const events: DiscoverEvent[] = mergedEvents
-      .filter(e => e.date && e.date >= now)
+      .filter(e => e.date && e.date >= now && e.status !== 'canceled')
       .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
       .slice(0, 10);
 

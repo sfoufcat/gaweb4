@@ -58,6 +58,8 @@ interface EventDetailPopupProps {
   inlineSummary?: CallSummary | null;
   /** Callback when recording is uploaded and summary is generated */
   onRecordingUploaded?: (eventId: string, summaryId: string) => void;
+  /** Whether the org has video call credits (for showing warning on in-app calls) */
+  hasOrgCredits?: boolean;
 }
 
 /**
@@ -84,6 +86,7 @@ export function EventDetailPopup({
   onEdit,
   inlineSummary,
   onRecordingUploaded,
+  hasOrgCredits = true,
 }: EventDetailPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
   const [computedPosition, setComputedPosition] = useState<{ top: number; left: number } | null>(null);
@@ -399,9 +402,9 @@ export function EventDetailPopup({
                 Squad Event
               </span>
             ) : event.eventType === 'cohort_call' ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
                 <Users className="w-3.5 h-3.5" />
-                Cohort Event
+                Group Call
               </span>
             ) : event.eventType === 'intake_call' ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300">
@@ -535,6 +538,7 @@ export function EventDetailPopup({
                   Video call will be in-app
                 </div>
               )}
+
 
               {/* No link placeholder for non-hosts */}
               {!isEditingLink && !event.meetingLink && !isHost && event.locationType !== 'chat' && event.meetingProvider !== 'stream' && (

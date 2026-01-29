@@ -138,11 +138,13 @@ export function useAvailability(): UseAvailabilityReturn {
 
 /**
  * Hook for fetching available time slots for scheduling
+ * @param isCoach - If true, bypasses minimum notice time restriction (for coach-initiated scheduling)
  */
 export function useAvailableSlots(
   startDate: string | null,
   endDate: string | null,
-  duration?: number
+  duration?: number,
+  isCoach?: boolean
 ) {
   const [slots, setSlots] = useState<Array<{ start: string; end: string; duration: number }>>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -170,6 +172,9 @@ export function useAvailableSlots(
       if (duration) {
         params.set('duration', duration.toString());
       }
+      if (isCoach) {
+        params.set('isCoach', 'true');
+      }
 
       const response = await fetch(`/api/scheduling/available-slots?${params}`, {
         cache: 'no-store',
@@ -190,7 +195,7 @@ export function useAvailableSlots(
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate, duration]);
+  }, [startDate, endDate, duration, isCoach]);
 
   useEffect(() => {
     fetchSlots();

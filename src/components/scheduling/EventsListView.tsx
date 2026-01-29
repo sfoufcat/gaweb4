@@ -69,7 +69,7 @@ const EVENT_TYPE_FILTERS: { value: EventTypeFilter; label: string; icon: typeof 
 // Event type badge colors
 const EVENT_TYPE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
   coaching_1on1: { bg: 'bg-orange-100 dark:bg-orange-900/20', text: 'text-orange-700 dark:text-orange-300', label: '1:1 Call' },
-  cohort_call: { bg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-300', label: 'Cohort Call' },
+  cohort_call: { bg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-300', label: 'Group Call' },
   community_call: { bg: 'bg-indigo-100 dark:bg-indigo-900/20', text: 'text-indigo-700 dark:text-indigo-300', label: 'Community Call' },
   squad_call: { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-300', label: 'Squad Call' },
   community_event: { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300', label: 'Community Event' },

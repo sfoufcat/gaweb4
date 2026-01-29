@@ -182,6 +182,13 @@ export async function GET(
       const hasPartialEnd = week.actualEndDayOfWeek && week.actualEndDayOfWeek < daysPerWeek;
 
       if ((hasPartialStart || hasPartialEnd) && week.weeklyTasks?.length && week.days?.length) {
+        // Skip migration for new-format instances where days array only contains active days
+        // New instances have days.length < daysPerWeek for partial weeks
+        // Old instances have days.length == daysPerWeek (always full week)
+        if (week.days.length < daysPerWeek) {
+          continue;
+        }
+
         // Calculate active range
         const activeStartIdx = (week.actualStartDayOfWeek || 1) - 1;
         const activeEndIdx = (week.actualEndDayOfWeek || daysPerWeek) - 1;

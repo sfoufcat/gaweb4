@@ -62,7 +62,7 @@ interface UseProgramCoachingDataReturn {
  */
 export function useProgramCoachingData(): UseProgramCoachingDataReturn {
   const { user, isLoaded } = useUser();
-  
+
   const [coachingData, setCoachingData] = useState<ClientCoachingData | null>(null);
   const [coach, setCoach] = useState<CoachInfo | null>(null);
   const [callCredits, setCallCredits] = useState<CallCreditsInfo | null>(null);
@@ -70,6 +70,8 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
   const [hasActiveEnrollment, setHasActiveEnrollment] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Next call from events collection (primary source)
+  const [nextCall, setNextCall] = useState<NextCallInfo | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!isLoaded || !user) {
@@ -90,72 +92,86 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
       
       setHasActiveEnrollment(promoData.hasActiveIndividualEnrollment || false);
       
-      // If user has active enrollment, fetch full coaching data
-      // Note: chatChannelId may not exist if coach hasn't started a chat yet
+      // If user has active enrollment, fetch all data in parallel
       if (promoData.hasActiveIndividualEnrollment) {
-        // Set coach info from promo data
+        // Set coach info from promo data immediately
         if (promoData.coachInfo) {
           setCoach({
-            id: '', // Will be filled from coaching data
+            id: '',
             name: promoData.coachInfo.name,
             imageUrl: promoData.coachInfo.imageUrl,
           });
         }
 
-        // Fetch full coaching data (nextCall, focus areas, etc.)
-        try {
-          const coachingResponse = await fetch('/api/coaching/data');
-          if (coachingResponse.ok) {
-            const coachingResult = await coachingResponse.json();
-            if (coachingResult.exists && coachingResult.data) {
-              setCoachingData(coachingResult.data);
-              
-              // Update coach with full info if available
-              if (coachingResult.coach) {
-                setCoach({
-                  id: coachingResult.coach.id || coachingResult.data.coachId,
-                  name: coachingResult.coach.name || promoData.coachInfo?.name || 'Coach',
-                  imageUrl: coachingResult.coach.imageUrl || promoData.coachInfo?.imageUrl || '',
-                  email: coachingResult.coach.email,
-                });
-              }
-            }
-          }
-        } catch (coachingErr) {
-          console.warn('[useProgramCoachingData] Could not fetch coaching data:', coachingErr);
-          // Don't fail - we still have promo data
-        }
+        // Build events URL
+        const now = new Date().toISOString();
+        const futureDate = new Date();
+        futureDate.setMonth(futureDate.getMonth() + 3);
+        const eventsParams = new URLSearchParams({
+          startDate: now,
+          endDate: futureDate.toISOString(),
+          types: 'coaching_1on1',
+          status: 'confirmed',
+          role: 'all',
+        });
 
-        // Fetch call credits
-        try {
-          const creditsResponse = await fetch('/api/scheduling/credits');
-          if (creditsResponse.ok) {
-            const creditsResult = await creditsResponse.json();
-            if (creditsResult.credits) {
-              setCallCredits({
-                creditsRemaining: creditsResult.credits.creditsRemaining,
-                monthlyAllowance: creditsResult.credits.monthlyAllowance,
-                creditsUsedThisMonth: creditsResult.credits.creditsUsedThisMonth,
+        // Fetch all data in parallel
+        const [coachingRes, creditsRes, settingsRes, eventsRes] = await Promise.all([
+          fetch('/api/coaching/data').catch(() => null),
+          fetch('/api/scheduling/credits').catch(() => null),
+          fetch('/api/scheduling/call-settings').catch(() => null),
+          fetch(`/api/scheduling/events?${eventsParams}`).catch(() => null),
+        ]);
+
+        // Process coaching data
+        if (coachingRes?.ok) {
+          const coachingResult = await coachingRes.json();
+          if (coachingResult.exists && coachingResult.data) {
+            setCoachingData(coachingResult.data);
+            if (coachingResult.coach) {
+              setCoach({
+                id: coachingResult.coach.id || coachingResult.data.coachId,
+                name: coachingResult.coach.name || promoData.coachInfo?.name || 'Coach',
+                imageUrl: coachingResult.coach.imageUrl || promoData.coachInfo?.imageUrl || '',
+                email: coachingResult.coach.email,
               });
             }
           }
-        } catch (creditsErr) {
-          console.warn('[useProgramCoachingData] Could not fetch call credits:', creditsErr);
-          // Don't fail - credits are optional
         }
 
-        // Fetch call settings
-        try {
-          const settingsResponse = await fetch('/api/scheduling/call-settings');
-          if (settingsResponse.ok) {
-            const settingsResult = await settingsResponse.json();
-            if (settingsResult.settings) {
-              setCallSettings(settingsResult.settings);
-            }
+        // Process credits
+        if (creditsRes?.ok) {
+          const creditsResult = await creditsRes.json();
+          if (creditsResult.credits) {
+            setCallCredits({
+              creditsRemaining: creditsResult.credits.creditsRemaining,
+              monthlyAllowance: creditsResult.credits.monthlyAllowance,
+              creditsUsedThisMonth: creditsResult.credits.creditsUsedThisMonth,
+            });
           }
-        } catch (settingsErr) {
-          console.warn('[useProgramCoachingData] Could not fetch call settings:', settingsErr);
-          // Don't fail - settings are optional
+        }
+
+        // Process settings
+        if (settingsRes?.ok) {
+          const settingsResult = await settingsRes.json();
+          if (settingsResult.settings) {
+            setCallSettings(settingsResult.settings);
+          }
+        }
+
+        // Process events (primary source for nextCall)
+        if (eventsRes?.ok) {
+          const eventsResult = await eventsRes.json();
+          const upcomingEvents = eventsResult.events || [];
+          if (upcomingEvents.length > 0) {
+            const nextEvent = upcomingEvents[0];
+            setNextCall({
+              datetime: nextEvent.startDateTime,
+              timezone: nextEvent.timezone || 'America/New_York',
+              location: nextEvent.locationType === 'chat' ? 'Chat' : (nextEvent.meetingLink || 'Online'),
+              title: nextEvent.title,
+            });
+          }
         }
       }
     } catch (err) {
@@ -170,14 +186,13 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
     fetchData();
   }, [fetchData]);
 
-  // Derive nextCall from coachingData - only include if the call hasn't started yet
-  let nextCall: NextCallInfo | null = null;
-  if (coachingData?.nextCall?.datetime) {
+  // If no nextCall from events, check coachingData.nextCall as fallback (legacy data)
+  let finalNextCall = nextCall;
+  if (!finalNextCall && coachingData?.nextCall?.datetime) {
     const callTime = new Date(coachingData.nextCall.datetime);
     const now = new Date();
-    // Only show call if it's in the future
     if (callTime > now) {
-      nextCall = {
+      finalNextCall = {
         datetime: coachingData.nextCall.datetime,
         timezone: coachingData.nextCall.timezone || 'America/New_York',
         location: coachingData.nextCall.location || 'Chat',
@@ -189,7 +204,7 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
   return {
     coachingData,
     coach,
-    nextCall,
+    nextCall: finalNextCall,
     chatChannelId: coachingData?.chatChannelId || null,
     callCredits,
     callSettings,

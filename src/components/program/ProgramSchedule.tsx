@@ -85,7 +85,26 @@ export function ProgramSchedule({
   const selectedDayResources = getResourcesForDay({ resourceAssignments }, selectedProgramDayIndex);
   const hasAssignedResources = selectedDayResources.length > 0;
 
-  const hasContent = selectedDay.tasks.length > 0 || hasLinkedResources(selectedDay) || hasAssignedResources;
+  // Filter events to only show on their actual day (by matching calendar date)
+  const sessionsForDay = (selectedDay.linkedEventIds || [])
+    .map(id => getEvent(id))
+    .filter((event): event is NonNullable<typeof event> => {
+      if (!event || !selectedDay.calendarDate) return false;
+      const eventDate = new Date(event.startDateTime).toISOString().split('T')[0];
+      const dayDate = new Date(selectedDay.calendarDate).toISOString().split('T')[0];
+      return eventDate === dayDate;
+    });
+
+  // Check if day has non-event resources
+  const hasNonEventResources =
+    (selectedDay.linkedCourseIds?.length ?? 0) > 0 ||
+    (selectedDay.linkedArticleIds?.length ?? 0) > 0 ||
+    (selectedDay.linkedDownloadIds?.length ?? 0) > 0 ||
+    (selectedDay.linkedLinkIds?.length ?? 0) > 0 ||
+    (selectedDay.linkedQuestionnaireIds?.length ?? 0) > 0 ||
+    hasAssignedResources;
+
+  const hasContent = selectedDay.tasks.length > 0 || sessionsForDay.length > 0 || hasNonEventResources;
 
   // Get month name for header
   const selectedDate = selectedDay.calendarDate ? new Date(selectedDay.calendarDate) : new Date();
@@ -199,27 +218,40 @@ export function ProgramSchedule({
                     </div>
                   )}
 
-                  {/* Resources */}
-                  {(hasLinkedResources(selectedDay) || hasAssignedResources) && (
+                  {/* Sessions - only show events that match this day's date */}
+                  {sessionsForDay.length > 0 && (
                     <div className={selectedDay.tasks.length > 0 ? "mt-6" : ""}>
+                      <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wide mb-2">
+                        Sessions
+                      </p>
+                      <div className="-space-y-1">
+                        {sessionsForDay.map(event => {
+                          const timeStr = new Date(event.startDateTime).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          });
+                          return (
+                            <ResourceCard
+                              key={event.id}
+                              icon={<Video className="w-4 h-4 text-brand-accent" />}
+                              label={event.title}
+                              sublabel={timeStr}
+                              href={`/discover/events/${event.id}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Resources - non-event resources only */}
+                  {hasNonEventResources && (
+                    <div className={selectedDay.tasks.length > 0 || sessionsForDay.length > 0 ? "mt-6" : ""}>
                       <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wide mb-2">
                         Resources
                       </p>
                     <div className="-space-y-1">
-                      {selectedDay.linkedEventIds?.map(eventId => {
-                        const event = getEvent(eventId);
-                        if (!event) return null;
-                        return (
-                          <ResourceCard
-                            key={eventId}
-                            icon={<Video className="w-4 h-4 text-brand-accent" />}
-                            label={event.title}
-                            sublabel={event.startTime}
-                            href={`/discover/events/${eventId}`}
-                          />
-                        );
-                      })}
-
                       {/* Use resourceAssignments if available, fallback to linkedCourseIds */}
                       {(() => {
                         const courseAssignments = selectedDayResources.filter(r => r.resourceType === 'course');
@@ -231,7 +263,7 @@ export function ProgramSchedule({
                             if (!course) return null;
 
                             // Get lessons for this specific day
-                            const lessonsForDay = getLessonsForDay(assignment, selectedDayOfWeek, course);
+                            const lessonsForDay = getLessonsForDay(assignment, selectedProgramDayIndex, course);
                             const hasLessons = lessonsForDay.length > 0;
 
                             // Build URL - link to first lesson if lessons exist for this day

@@ -2009,9 +2009,11 @@ export function WeekEditor({
       JSON.stringify(formData.resourceAssignments) !== JSON.stringify(week.resourceAssignments || []);
     
     // Debug logging for change detection
+    const resourceAssignmentsMatch = JSON.stringify(formData.resourceAssignments) === JSON.stringify(week.resourceAssignments || []);
     if (changed) {
       console.log('[WeekEditor:changeDetection] Changes detected for week', week.weekNumber, {
         tasksMatch,
+        resourceAssignmentsMatch,
         formDataTasksCount: formData.weeklyTasks?.length ?? 0,
         weekTasksCount: week.weeklyTasks?.length ?? 0,
         formDataTasks: formData.weeklyTasks?.map(t => ({ id: t.id, label: t.label, isPrimary: t.isPrimary, dayTag: t.dayTag })),
@@ -2021,6 +2023,8 @@ export function WeekEditor({
         themeMatch: formData.theme === (week.theme || ''),
         promptMatch: formData.weeklyPrompt === (week.weeklyPrompt || ''),
         distributionMatch: formData.distribution === (week.distribution || 'spread'),
+        formResourceAssignments: formData.resourceAssignments?.map(r => ({ id: r.id, alsoCreateTask: r.alsoCreateTask })),
+        weekResourceAssignments: (week.resourceAssignments || []).map(r => ({ id: r.id, alsoCreateTask: r.alsoCreateTask })),
       });
     }
 
@@ -2265,6 +2269,11 @@ export function WeekEditor({
   // Unified resource assignments handler (using UnifiedResourcesTabs)
   // Also generates/removes tasks for resources with alsoCreateTask enabled
   const handleResourceAssignmentsChange = (assignments: WeekResourceAssignment[]) => {
+    console.log('[WeekEditor:handleResourceAssignmentsChange] Called with:', {
+      assignmentsCount: assignments.length,
+      alsoCreateTaskValues: assignments.map(a => ({ id: a.id, alsoCreateTask: a.alsoCreateTask })),
+      currentFormDataResourceAssignments: formData.resourceAssignments?.map(a => ({ id: a.id, alsoCreateTask: a.alsoCreateTask })),
+    });
     // Build resource titles map from available resources
     const resourceTitles = new Map<string, string>();
     availableCourses.forEach(c => resourceTitles.set(c.id, c.title));
@@ -3255,7 +3264,10 @@ export function WeekEditor({
                   items={formData.weeklyTasks.filter(t => !t.sourceResourceId).map(t => t.id || t.label)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {formData.weeklyTasks.filter(t => !t.sourceResourceId).map((task, index) => {
+                  {formData.weeklyTasks
+                    .map((task, realIndex) => ({ task, realIndex }))
+                    .filter(({ task }) => !task.sourceResourceId)
+                    .map(({ task, realIndex }) => {
                     const taskKey = task.id || task.label;
                     const cohortCompletion = cohortId
                       ? (task.id && cohortWeeklyTaskCompletion.get(task.id)) || cohortWeeklyTaskCompletion.get(task.label)
@@ -3265,7 +3277,7 @@ export function WeekEditor({
                         key={taskKey}
                         id={taskKey}
                         task={task}
-                        index={index}
+                        index={realIndex}
                         showCompletionStatus={isClientView || !!cohortId}
                         onTogglePrimary={toggleTaskPrimary}
                         onRemove={removeTask}
@@ -3458,6 +3470,8 @@ export function WeekEditor({
                 <div className="space-y-2 mb-3">
                   {formData.linkedCallEventIds.map((eventId) => {
                     const event = availableEvents.find(e => e.id === eventId);
+                    // Skip canceled/deleted events (they're soft-deleted with status='canceled')
+                    if (!event || event.status === 'canceled') return null;
                     const isRecurringInstance = event?.parentEventId;
                     const eventDate = event?.startDateTime ? new Date(event.startDateTime) : null;
                     const isPast = eventDate ? eventDate < new Date() : false;

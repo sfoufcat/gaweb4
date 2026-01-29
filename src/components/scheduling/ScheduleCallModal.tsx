@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useSWRConfig } from 'swr';
 import {
   X,
   Calendar,
@@ -23,8 +24,11 @@ import { normalizeUrl } from '@/lib/url-utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { SessionCalendarPicker } from './SessionCalendarPicker';
 import { BrandedRadio } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ProgramEnrollment, ProgramInstance } from '@/types';
+import { ChevronLeft } from 'lucide-react';
 
+type ScheduleStep = 'details' | 'schedule';
 type CallTypeOption = 'program' | 'extra';
 
 interface ScheduleCallModalProps {
@@ -94,6 +98,10 @@ export function ScheduleCallModal({
 }: ScheduleCallModalProps) {
   const { proposeCall, isLoading, error } = useSchedulingActions();
   const { zoom, googleMeet } = useCoachIntegrations();
+  const { mutate } = useSWRConfig();
+
+  // Step state
+  const [step, setStep] = useState<ScheduleStep>('details');
 
   // Form state
   const [mode, setMode] = useState<'propose' | 'confirm'>('propose');
@@ -119,6 +127,13 @@ export function ScheduleCallModal({
   const [enrollmentData, setEnrollmentData] = useState<ClientEnrollmentData | null>(null);
   const [enrollmentLoading, setEnrollmentLoading] = useState(false);
   const [callType, setCallType] = useState<CallTypeOption>('program');
+
+  // Reset step when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStep('details');
+    }
+  }, [isOpen]);
 
   // Fetch client's active 1:1 enrollment when modal opens
   useEffect(() => {
@@ -169,11 +184,12 @@ export function ScheduleCallModal({
     };
   }, []);
 
-  // Fetch available slots
+  // Fetch available slots (isCoach=true bypasses minimum notice time restriction)
   const { slots, isLoading: slotsLoading, timezone } = useAvailableSlots(
     dateRange.startDate,
     dateRange.endDate,
-    duration
+    duration,
+    true // isCoach - allow booking without 24hr buffer
   );
 
   // Group slots by date
@@ -441,6 +457,17 @@ export function ScheduleCallModal({
         confirmDirectly: mode === 'confirm',
       });
 
+      // Invalidate SWR cache for event-related queries so UI updates immediately
+      mutate(
+        key => typeof key === 'string' && (
+          key.startsWith('/api/events') ||
+          key.startsWith('/api/scheduling/events') ||
+          key.includes('/events')
+        ),
+        undefined,
+        { revalidate: true }
+      );
+
       onSuccess?.();
       onClose();
     } catch (err) {
@@ -513,448 +540,512 @@ export function ScheduleCallModal({
 
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 sm:border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
-          <div>
-            <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-              Schedule Call
-            </h2>
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              with {clientName}
-            </p>
+          <div className="flex items-center gap-3">
+            {step === 'schedule' && (
+              <button
+                onClick={() => setStep('details')}
+                className="p-1.5 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+            <div>
+              <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                {step === 'details' ? 'Call Details' : 'Schedule'}
+              </h2>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                {step === 'details' ? `with ${clientName}` : 'Pick a date and time'}
+              </p>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Step indicator dots */}
+            <div className="flex items-center gap-1.5">
+              {(['details', 'schedule'] as const).map((s, i) => (
+                <div
+                  key={s}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    step === s
+                      ? 'bg-brand-accent'
+                      : i < (['details', 'schedule'] as const).indexOf(step)
+                        ? 'bg-brand-accent/50'
+                        : 'bg-[#d1cdc8] dark:bg-[#3a4150]'
+                  }`}
+                />
+              ))}
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Mode Toggle */}
-          <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl">
-            <button
-              onClick={() => setMode('propose')}
-              className={`flex-1 py-2 px-4 rounded-lg font-albert font-medium text-sm transition-colors ${
-                mode === 'propose'
-                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-              }`}
-            >
-              Propose Times
-            </button>
-            <button
-              onClick={() => setMode('confirm')}
-              className={`flex-1 py-2 px-4 rounded-lg font-albert font-medium text-sm transition-colors ${
-                mode === 'confirm'
-                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-              }`}
-            >
-              Confirm Directly
-            </button>
-          </div>
-
-          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-            {mode === 'propose'
-              ? 'Propose one or more time slots for the client to choose from.'
-              : 'Schedule a confirmed call at a specific time.'}
-          </p>
-
-          {/* Duration */}
-          <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-              Duration
-            </label>
-            <div className="relative">
-              <select
-                value={duration}
-                onChange={(e) => setDuration(parseInt(e.target.value))}
-                className="w-full px-4 py-3 pr-10 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent appearance-none cursor-pointer"
-              >
-                {DURATION_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                <svg className="h-5 w-5 text-brand-accent" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* Meeting Provider Selection */}
-          <MeetingProviderSelector
-            allowInApp={true}
-            value={meetingProvider}
-            onChange={setMeetingProvider}
-            manualLink={manualMeetingLink}
-            onManualLinkChange={setManualMeetingLink}
-            useManualOverride={useManualOverride}
-            onUseManualOverrideChange={setUseManualOverride}
-          />
-
-          {/* Meeting Error */}
-          {meetingError && (
-            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl text-amber-600 dark:text-amber-400">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <p className="text-sm">{meetingError}</p>
-            </div>
-          )}
-
-          {/* Date & Time Selection */}
-          <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
-            <div className="px-4 py-3 bg-[#f3f1ef] dark:bg-[#1e222a] border-b border-[#e1ddd8] dark:border-[#262b35]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                  <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Select Date & Time
-                  </span>
-                </div>
-                {timezone && (
-                  <div className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                    <Globe className="w-3 h-3" />
-                    <span>{formatTimezone(timezone)}</span>
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-                Times shown in your availability timezone.
-              </p>
-            </div>
-
-            <div className="p-4 space-y-4">
-              {/* Calendar Picker */}
-              <SessionCalendarPicker
-                value={selectedDate}
-                onChange={(date) => {
-                  setSelectedDate(date);
-                  setSelectedTime('');
-                }}
-                availableSlots={slots}
-                isLoading={slotsLoading}
-                className="border-0"
-              />
-
-              {/* Time Selection */}
-              {selectedDate && slotsByDate[selectedDate] && (
-                <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                    Time
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {slotsByDate[selectedDate].map((slot, index) => {
-                      const time = new Date(slot.start).toTimeString().slice(0, 5);
-                      // Check if this time slot is already selected/proposed
-                      const isSelected = proposedSlots.some(s => s.date === selectedDate && s.startTime === time);
-                      return (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            setSelectedTime(time);
-                            // Auto-add the time slot
-                            const startDateTime = new Date(`${selectedDate}T${time}`);
-                            const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
-                            const newSlot: ProposedTimeSlot = {
-                              id: `slot_${Date.now()}`,
-                              date: selectedDate,
-                              startTime: time,
-                              endTime: endDateTime.toTimeString().slice(0, 5),
-                            };
-                            if (mode === 'confirm') {
-                              // Replace - single slot only for confirm mode
-                              setProposedSlots([newSlot]);
-                            } else {
-                              // Append for propose mode (avoid duplicates)
-                              if (!isSelected) {
-                                setProposedSlots(prev => [...prev, newSlot]);
-                              }
-                            }
-                          }}
-                          className={`px-3 py-2 rounded-lg font-albert text-sm transition-colors ${
-                            isSelected
-                              ? 'bg-brand-accent text-white'
-                              : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]'
-                          }`}
-                        >
-                          {formatTime(time)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Proposed Times List */}
-          {proposedSlots.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                {mode === 'propose' ? 'Proposed Times' : 'Selected Time'}
-              </label>
-              <div className="space-y-2">
-                {proposedSlots.map(slot => (
-                  <div
-                    key={slot.id}
-                    className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Check className="w-4 h-4 text-green-500" />
-                      <span className="font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
-                        {formatDate(slot.date)} at {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => removeProposedSlot(slot.id)}
-                      className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Call Type Selector (when client has program with call allowance) */}
-          {!enrollmentLoading && !callUsageLoading && showCallTypeSelector && (
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                Call Type
-              </label>
-
-              {/* Program Call Option */}
-              <button
-                onClick={() => setCallType('program')}
-                className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                  callType === 'program'
-                    ? 'border-brand-accent bg-brand-accent/5'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#c5c0ba] dark:hover:border-[#3a4050]'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    callType === 'program' ? 'border-brand-accent bg-brand-accent' : 'border-[#c5c0ba] dark:border-[#4a5060]'
-                  }`}>
-                    {callType === 'program' && <Check className="w-3 h-3 text-white" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <Link2 className="w-4 h-4 text-brand-accent" />
-                      <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                        Program Call
-                      </span>
-                    </div>
-                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-                      Uses client&apos;s allowance: {formatCallUsageStatus(callUsage)}
-                    </p>
-                    <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
-                      Linked to: {enrollmentData?.program?.name}
-                    </p>
-                  </div>
-                </div>
-              </button>
-
-              {/* Extra Call Option */}
-              <button
-                onClick={() => setCallType('extra')}
-                className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                  callType === 'extra'
-                    ? 'border-brand-accent bg-brand-accent/5'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#c5c0ba] dark:hover:border-[#3a4050]'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    callType === 'extra' ? 'border-brand-accent bg-brand-accent' : 'border-[#c5c0ba] dark:border-[#4a5060]'
-                  }`}>
-                    {callType === 'extra' && <Check className="w-3 h-3 text-white" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                        Extra Session
-                      </span>
-                      {extraCallPrice > 0 && (
-                        <span className="text-sm text-green-600 dark:text-green-400">
-                          {formatExtraCallPrice(extraCallPrice)}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-                      Doesn&apos;t use client&apos;s allowance
-                    </p>
-                  </div>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {/* Program Linking info (when program call selected and has proposed slots) */}
-          {!enrollmentLoading && linkToProgram && proposedSlots.length > 0 && callType === 'program' && (
-            <div className="p-4 bg-brand-accent/5 dark:bg-brand-accent/10 border border-brand-accent/20 dark:border-brand-accent/30 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-brand-accent/10 dark:bg-brand-accent/20 rounded-lg flex items-center justify-center">
-                  <Link2 className="w-4 h-4 text-brand-accent" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Linked to {enrollmentData?.program?.name}
-                  </p>
-                  {calculatedProgramDay ? (
-                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
-                      Will appear in <strong>Week {calculatedProgramDay.weekIndex + 1}</strong>, <strong>Day {calculatedProgramDay.globalDayIndex}</strong>
-                    </p>
-                  ) : (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                      Selected date is outside program range
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Recurrence (for confirm mode) */}
-          {mode === 'confirm' && (
-            <div className="space-y-4">
+          {/* =============== STEP 1: DETAILS =============== */}
+          {step === 'details' && (
+            <>
+              {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                  <Repeat className="w-4 h-4 inline mr-2" />
-                  Repeat
+                  Title (optional)
                 </label>
-                <div className="relative">
-                  <select
-                    value={recurrence}
-                    onChange={(e) => setRecurrence(e.target.value)}
-                    className="w-full px-4 py-3 pr-10 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent appearance-none cursor-pointer"
-                  >
-                    {RECURRENCE_OPTIONS.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                    <Repeat className="h-5 w-5 text-brand-accent" />
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={`Call with ${clientName}`}
+                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                  Notes for {clientName} (optional)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  placeholder="What would you like to discuss?"
+                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent resize-none"
+                />
+              </div>
+
+              {/* Meeting Provider Selection */}
+              <MeetingProviderSelector
+                allowInApp={true}
+                value={meetingProvider}
+                onChange={setMeetingProvider}
+                manualLink={manualMeetingLink}
+                onManualLinkChange={setManualMeetingLink}
+                useManualOverride={useManualOverride}
+                onUseManualOverrideChange={setUseManualOverride}
+              />
+
+              {/* Meeting Error */}
+              {meetingError && (
+                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <p className="text-sm">{meetingError}</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* =============== STEP 2: SCHEDULE =============== */}
+          {step === 'schedule' && (
+            <>
+              {/* Mode Toggle */}
+              <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl">
+                <button
+                  onClick={() => setMode('propose')}
+                  className={`flex-1 py-2 px-4 rounded-lg font-albert font-medium text-sm transition-colors ${
+                    mode === 'propose'
+                      ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                  }`}
+                >
+                  Propose Times
+                </button>
+                <button
+                  onClick={() => setMode('confirm')}
+                  className={`flex-1 py-2 px-4 rounded-lg font-albert font-medium text-sm transition-colors ${
+                    mode === 'confirm'
+                      ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                  }`}
+                >
+                  Confirm Directly
+                </button>
+              </div>
+
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                {mode === 'propose'
+                  ? 'Propose one or more time slots for the client to choose from.'
+                  : 'Schedule a confirmed call at a specific time.'}
+              </p>
+
+              {/* Date & Time Selection */}
+              <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+                <div className="px-4 py-3 bg-[#f3f1ef] dark:bg-[#1e222a] border-b border-[#e1ddd8] dark:border-[#262b35]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                      <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        Select Date & Time
+                      </span>
+                    </div>
+                    {timezone && (
+                      <div className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                        <Globe className="w-3 h-3" />
+                        <span>{formatTimezone(timezone)}</span>
+                      </div>
+                    )}
                   </div>
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                    Times shown in your availability timezone.
+                  </p>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  {/* Calendar Picker */}
+                  <SessionCalendarPicker
+                    value={selectedDate}
+                    onChange={(date) => {
+                      setSelectedDate(date);
+                      setSelectedTime('');
+                    }}
+                    availableSlots={slots}
+                    isLoading={slotsLoading}
+                    className="border-0"
+                  />
+
+                  {/* Time Selection */}
+                  {selectedDate && slotsByDate[selectedDate] && (
+                    <div>
+                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                        Time
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {slotsByDate[selectedDate].map((slot, index) => {
+                          const time = new Date(slot.start).toTimeString().slice(0, 5);
+                          // Check if this time slot is already selected/proposed
+                          const isSelected = proposedSlots.some(s => s.date === selectedDate && s.startTime === time);
+                          return (
+                            <button
+                              key={index}
+                              onClick={() => {
+                                setSelectedTime(time);
+                                // Auto-add the time slot
+                                const startDateTime = new Date(`${selectedDate}T${time}`);
+                                const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
+                                const newSlot: ProposedTimeSlot = {
+                                  id: `slot_${Date.now()}`,
+                                  date: selectedDate,
+                                  startTime: time,
+                                  endTime: endDateTime.toTimeString().slice(0, 5),
+                                };
+                                if (mode === 'confirm') {
+                                  // Replace - single slot only for confirm mode
+                                  setProposedSlots([newSlot]);
+                                } else {
+                                  // Append for propose mode (avoid duplicates)
+                                  if (!isSelected) {
+                                    setProposedSlots(prev => [...prev, newSlot]);
+                                  }
+                                }
+                              }}
+                              className={`px-3 py-2 rounded-lg font-albert text-sm transition-colors ${
+                                isSelected
+                                  ? 'bg-brand-accent text-white'
+                                  : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#313746]'
+                              }`}
+                            >
+                              {formatTime(time)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Recurrence End Condition (only shown when recurring) */}
-              {recurrence !== 'none' && (
-                <div className="space-y-3 p-4 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl">
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    End Condition
+              {/* Duration - Pill Buttons */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                  Duration
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {DURATION_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setDuration(opt.value)}
+                      className={`px-4 py-2 rounded-full font-albert text-sm transition-colors ${
+                        duration === opt.value
+                          ? 'bg-brand-accent text-white'
+                          : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Repeat - Radix Select Dropdown */}
+              {mode === 'confirm' && (
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                    <Repeat className="inline w-4 h-4 mr-1 -mt-0.5" />
+                    Repeat
                   </label>
+                  <Select value={recurrence} onValueChange={(value) => setRecurrence(value)}>
+                    <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
+                      {RECURRENCE_OPTIONS.map(opt => (
+                        <SelectItem
+                          key={opt.value}
+                          value={opt.value}
+                          className="cursor-pointer font-albert"
+                        >
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-                  {/* End of Program option - only if client has active enrollment */}
-                  {enrollmentData?.program && programEndDate && (
-                    <label className="flex items-start gap-3 cursor-pointer" onClick={() => setRecurrenceEnd('end_of_program')}>
-                      <BrandedRadio
-                        name="recurrenceEnd"
-                        checked={recurrenceEnd === 'end_of_program'}
-                        onChange={() => setRecurrenceEnd('end_of_program')}
-                        className="mt-0.5"
-                      />
-                      <div>
-                        <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                          Ends at end of program
-                        </span>
-                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
-                          {formatDate(programEndDate)} ({enrollmentData.program.name})
-                        </p>
-                      </div>
-                    </label>
-                  )}
+                  {/* Recurrence End Condition - Card Selection Pattern */}
+                  {recurrence !== 'none' && (
+                    <div className="mt-3 p-3 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] space-y-3">
+                      <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">
+                        End after
+                      </p>
 
-                  {/* Specific date option */}
-                  <label className="flex items-start gap-3 cursor-pointer" onClick={() => setRecurrenceEnd('specific_date')}>
-                    <BrandedRadio
-                      name="recurrenceEnd"
-                      checked={recurrenceEnd === 'specific_date'}
-                      onChange={() => setRecurrenceEnd('specific_date')}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                        Ends on specific date
-                      </span>
-                      {recurrenceEnd === 'specific_date' && (
-                        <div className="mt-2">
-                          <DatePicker
-                            value={recurrenceEndDate}
-                            onChange={(date) => setRecurrenceEndDate(date)}
-                            minDate={proposedSlots[0]?.date ? new Date(proposedSlots[0].date + 'T00:00:00') : new Date()}
-                            placeholder="End date"
-                            displayFormat="MMM d, yyyy"
-                          />
-                        </div>
+                      {/* End of Program option */}
+                      {enrollmentData?.program && programEndDate && (
+                        <button
+                          type="button"
+                          onClick={() => setRecurrenceEnd('end_of_program')}
+                          className={`w-full flex items-start gap-3 p-3 rounded-xl border-2 transition-colors ${
+                            recurrenceEnd === 'end_of_program'
+                              ? 'border-brand-accent bg-brand-accent/5'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                          }`}
+                        >
+                          <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                            recurrenceEnd === 'end_of_program'
+                              ? 'border-brand-accent bg-brand-accent'
+                              : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                          }`}>
+                            {recurrenceEnd === 'end_of_program' && (
+                              <Check className="w-3 h-3 text-white" />
+                            )}
+                          </div>
+                          <div className="flex-1 text-left">
+                            <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                              End of program
+                            </span>
+                            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                              {formatDate(programEndDate)} ({enrollmentData.program.name})
+                            </p>
+                          </div>
+                        </button>
                       )}
-                    </div>
-                  </label>
 
-                  {/* Number of occurrences option */}
-                  <label className="flex items-start gap-3 cursor-pointer" onClick={() => setRecurrenceEnd('occurrences')}>
-                    <BrandedRadio
-                      name="recurrenceEnd"
-                      checked={recurrenceEnd === 'occurrences'}
-                      onChange={() => setRecurrenceEnd('occurrences')}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                        Ends after number of occurrences
-                      </span>
-                      {recurrenceEnd === 'occurrences' && (
-                        <div className="mt-2 flex items-center gap-2">
+                      {/* Occurrences option */}
+                      <button
+                        type="button"
+                        onClick={() => setRecurrenceEnd('occurrences')}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                          recurrenceEnd === 'occurrences'
+                            ? 'border-brand-accent bg-brand-accent/5'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          recurrenceEnd === 'occurrences'
+                            ? 'border-brand-accent bg-brand-accent'
+                            : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                        }`}>
+                          {recurrenceEnd === 'occurrences' && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                          Number of occurrences
+                        </span>
+                        {recurrenceEnd === 'occurrences' && (
                           <input
                             type="number"
                             value={recurrenceOccurrences}
                             onChange={(e) => setRecurrenceOccurrences(Math.max(1, parseInt(e.target.value) || 1))}
+                            onClick={(e) => e.stopPropagation()}
                             min={1}
                             max={52}
-                            className="w-20 px-3 py-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                            className="ml-auto w-16 px-2 py-1 text-sm bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent"
                           />
-                          <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">occurrences</span>
+                        )}
+                      </button>
+
+                      {/* Specific date option */}
+                      <button
+                        type="button"
+                        onClick={() => setRecurrenceEnd('specific_date')}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                          recurrenceEnd === 'specific_date'
+                            ? 'border-brand-accent bg-brand-accent/5'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          recurrenceEnd === 'specific_date'
+                            ? 'border-brand-accent bg-brand-accent'
+                            : 'border-[#d1ccc6] dark:border-[#3a4150]'
+                        }`}>
+                          {recurrenceEnd === 'specific_date' && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
                         </div>
+                        <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                          Specific date
+                        </span>
+                      </button>
+
+                      {recurrenceEnd === 'specific_date' && (
+                        <DatePicker
+                          value={recurrenceEndDate}
+                          onChange={(d) => setRecurrenceEndDate(d)}
+                          minDate={proposedSlots[0]?.date ? new Date(proposedSlots[0].date + 'T00:00:00') : new Date()}
+                          placeholder="End date"
+                          displayFormat="MMM d, yyyy"
+                        />
                       )}
                     </div>
-                  </label>
+                  )}
                 </div>
               )}
-            </div>
+
+              {/* Proposed Times List */}
+              {proposedSlots.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                    {mode === 'propose' ? 'Proposed Times' : 'Selected Time'}
+                  </label>
+                  <div className="space-y-2">
+                    {proposedSlots.map(slot => (
+                      <div
+                        key={slot.id}
+                        className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-xl"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Check className="w-4 h-4 text-green-500" />
+                          <span className="font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                            {formatDate(slot.date)} at {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeProposedSlot(slot.id)}
+                          className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Call Type Selector (when client has program with call allowance) */}
+              {!enrollmentLoading && !callUsageLoading && showCallTypeSelector && (
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Call Type
+                  </label>
+
+                  {/* Program Call Option */}
+                  <button
+                    onClick={() => setCallType('program')}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                      callType === 'program'
+                        ? 'border-brand-accent bg-brand-accent/5'
+                        : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#c5c0ba] dark:hover:border-[#3a4050]'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        callType === 'program' ? 'border-brand-accent bg-brand-accent' : 'border-[#c5c0ba] dark:border-[#4a5060]'
+                      }`}>
+                        {callType === 'program' && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Link2 className="w-4 h-4 text-brand-accent" />
+                          <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                            Program Call
+                          </span>
+                        </div>
+                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                          Uses client&apos;s allowance: {formatCallUsageStatus(callUsage)}
+                        </p>
+                        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
+                          Linked to: {enrollmentData?.program?.name}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Extra Call Option */}
+                  <button
+                    onClick={() => setCallType('extra')}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                      callType === 'extra'
+                        ? 'border-brand-accent bg-brand-accent/5'
+                        : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#c5c0ba] dark:hover:border-[#3a4050]'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        callType === 'extra' ? 'border-brand-accent bg-brand-accent' : 'border-[#c5c0ba] dark:border-[#4a5060]'
+                      }`}>
+                        {callType === 'extra' && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                            Extra Session
+                          </span>
+                          {extraCallPrice > 0 && (
+                            <span className="text-sm text-green-600 dark:text-green-400">
+                              {formatExtraCallPrice(extraCallPrice)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                          Doesn&apos;t use client&apos;s allowance
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {/* Program Linking info (when program call selected and has proposed slots) */}
+              {!enrollmentLoading && linkToProgram && proposedSlots.length > 0 && callType === 'program' && (
+                <div className="p-4 bg-brand-accent/5 dark:bg-brand-accent/10 border border-brand-accent/20 dark:border-brand-accent/30 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-brand-accent/10 dark:bg-brand-accent/20 rounded-lg flex items-center justify-center">
+                      <Link2 className="w-4 h-4 text-brand-accent" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        Linked to {enrollmentData?.program?.name}
+                      </p>
+                      {calculatedProgramDay ? (
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                          Will appear in <strong>Week {calculatedProgramDay.weekIndex + 1}</strong>, <strong>Day {calculatedProgramDay.globalDayIndex}</strong>
+                        </p>
+                      ) : (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                          Selected date is outside program range
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
-          {/* Title & Notes */}
-          <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-              Title (optional)
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={`Call with ${clientName}`}
-              className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-              Notes for {clientName} (optional)
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="What would you like to discuss?"
-              className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent resize-none"
-            />
-          </div>
-
-          {/* Error Message */}
+          {/* Error Message (shown on both steps) */}
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl text-red-600 dark:text-red-400">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -971,14 +1062,23 @@ export function ScheduleCallModal({
           >
             Cancel
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={proposedSlots.length === 0 || isLoading || isCreatingMeeting}
-            className="flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-          >
-            {(isLoading || isCreatingMeeting) && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isCreatingMeeting ? 'Creating Meeting...' : mode === 'propose' ? 'Send Proposal' : 'Confirm Call'}
-          </button>
+          {step === 'details' ? (
+            <button
+              onClick={() => setStep('schedule')}
+              className="flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 transition-opacity"
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={proposedSlots.length === 0 || isLoading || isCreatingMeeting}
+              className="flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            >
+              {(isLoading || isCreatingMeeting) && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isCreatingMeeting ? 'Creating Meeting...' : mode === 'propose' ? 'Send Proposal' : 'Confirm Call'}
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -95,7 +95,9 @@ export async function GET(request: NextRequest) {
     }
 
     const duration = durationParam ? parseInt(durationParam) : availability.defaultDuration;
-    const buffer = availability.bufferBetweenCalls;
+    // Coach-initiated scheduling: no buffer or minimum notice required - coach can book any available time
+    const buffer = 0;
+    const minNoticeHours = 0;
 
     // Get existing events in the date range
     const eventsSnapshot = await adminDb
@@ -133,7 +135,8 @@ export async function GET(request: NextRequest) {
       existingEvents,
       duration,
       buffer,
-      externalBusyTimes
+      externalBusyTimes,
+      minNoticeHours
     );
 
     return NextResponse.json({
@@ -169,11 +172,14 @@ function calculateAvailableSlots(
   existingEvents: UnifiedEvent[],
   duration: number,
   buffer: number,
-  externalBusyTimes: Array<{ start: string; end: string }> = []
+  externalBusyTimes: Array<{ start: string; end: string }> = [],
+  minNoticeHoursOverride?: number
 ): AvailableSlot[] {
   const slots: AvailableSlot[] = [];
   const now = new Date();
-  const minNoticeMs = availability.minNoticeHours * 60 * 60 * 1000;
+  // Use override if provided (e.g., 0 for coach-initiated scheduling), otherwise use availability setting
+  const minNoticeHours = minNoticeHoursOverride ?? availability.minNoticeHours;
+  const minNoticeMs = minNoticeHours * 60 * 60 * 1000;
 
   // Iterate through each day in the range
   const currentDate = new Date(rangeStart);

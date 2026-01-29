@@ -144,9 +144,9 @@ export async function GET(request: NextRequest) {
     const userSquadIds = [...new Set([...userSquadIdsFromDoc, ...squadIdsFromMembership])];
 
     // Fetch user's cohort enrollments (for cohort_call events)
-    const cohortEnrollmentsQuery = await adminDb.collection('enrollments')
+    const cohortEnrollmentsQuery = await adminDb.collection('program_enrollments')
       .where('userId', '==', userId)
-      .where('status', 'in', ['active', 'in_progress'])
+      .where('status', 'in', ['active', 'in_progress', 'upcoming'])
       .get();
     const userCohortIds = cohortEnrollmentsQuery.docs
       .map(doc => doc.data().cohortId)
@@ -410,9 +410,21 @@ export async function GET(request: NextRequest) {
     // Filter out cancelled events
     events = events.filter(e => e.status !== 'canceled' && e.schedulingStatus !== 'cancelled');
 
-    // Filter out recurring parent events - only show their instances
-    // Parent events have isRecurring=true, instances have parentEventId set
-    events = events.filter(e => !e.isRecurring);
+    // Filter out recurring parent events that have generated instances - only show the instances
+    // A true parent template has isRecurring=true AND has generated child events (with parentEventId pointing to it)
+    // We keep events that have isRecurring=true but no children - those are single confirmed events
+    // that may have had recurrence configured but didn't generate multiple instances
+    const parentEventIds = new Set(events.filter(e => e.parentEventId).map(e => e.parentEventId));
+    events = events.filter(e => {
+      // If this event is a recurring parent, only show it if it has no instances
+      if (e.isRecurring && !e.parentEventId) {
+        // Check if this event has child instances in our current result set
+        // If it does, hide it (show only the instances)
+        // If it doesn't, show it (it's a single event or instances weren't generated yet)
+        return !parentEventIds.has(e.id);
+      }
+      return true;
+    });
 
     // Sort by start time
     events.sort((a, b) => {

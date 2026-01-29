@@ -63,12 +63,12 @@ export function WeeklyResources({
   const getCourseHref = (courseId: string) => {
     return `/discover/courses/${courseId}${enrollmentId ? `?enrollmentId=${enrollmentId}` : ''}`;
   };
+  // Events are handled by Upcoming events section and Schedule Sessions section
   const hasContent =
     courses.length > 0 ||
     articles.length > 0 ||
     downloads.length > 0 ||
     links.length > 0 ||
-    events.length > 0 ||
     questionnaires.length > 0 ||
     videos.length > 0;
 
@@ -92,13 +92,7 @@ export function WeeklyResources({
       imageUrl: article.coverImageUrl,
       subtitle: article.authorName + (article.readingTimeMinutes ? ` · ${article.readingTimeMinutes} min` : ''),
     })),
-    ...events.map(event => ({
-      id: event.id,
-      type: 'event' as ResourceType,
-      title: event.title,
-      href: `/discover/events/${event.id}`,
-      subtitle: event.date ? new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (event.startTime ? ` · ${event.startTime}` : '') : undefined,
-    })),
+    // Events are handled by Upcoming events section and Schedule Sessions section
     ...videos.map(video => ({
       id: video.id,
       type: 'video' as ResourceType,
@@ -199,7 +193,7 @@ export function WeeklyResources({
         Resources
       </h2>
 
-      {/* Card-based resources (courses, articles, events) - horizontal scroll */}
+      {/* Card-based resources (courses, articles, videos, questionnaires) - horizontal scroll */}
       {cardResources.length > 0 && (
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
           {cardResources.map((resource) => {

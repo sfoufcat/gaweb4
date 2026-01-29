@@ -250,7 +250,8 @@ export async function PATCH(
       // Calculate from instance start date and day index
       const includeWeekends = data?.includeWeekends !== false;
       const calculatedDate = dayIndexToDate(data.startDate, globalDayIndex, includeWeekends);
-      effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
+      // Format using local date components (not toISOString which uses UTC and can shift dates)
+      effectiveCalendarDate = `${calculatedDate.getFullYear()}-${String(calculatedDate.getMonth() + 1).padStart(2, '0')}-${String(calculatedDate.getDate()).padStart(2, '0')}`;
       console.log(`[INSTANCE_DAY_PATCH] Calculated calendarDate from dayIndex ${globalDayIndex}: ${effectiveCalendarDate} (includeWeekends: ${includeWeekends})`);
 
       // Update the day with the calculated calendar date for future reference

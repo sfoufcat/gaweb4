@@ -263,7 +263,8 @@ async function syncWeekTasksToMembers(
     let effectiveCalendarDate = day.calendarDate;
     if (!effectiveCalendarDate && cohortStartDate && day.globalDayIndex) {
       const calculatedDate = dayIndexToDate(cohortStartDate, day.globalDayIndex, includeWeekends !== false);
-      effectiveCalendarDate = calculatedDate.toISOString().split('T')[0];
+      // Format using local date components (not toISOString which uses UTC and can shift dates)
+      effectiveCalendarDate = `${calculatedDate.getFullYear()}-${String(calculatedDate.getMonth() + 1).padStart(2, '0')}-${String(calculatedDate.getDate()).padStart(2, '0')}`;
       console.log(`[SYNC_WEEK_TO_MEMBERS] Calculated calendarDate for day ${day.globalDayIndex}: ${effectiveCalendarDate}`);
     }
 
@@ -383,9 +384,13 @@ function ensureDaysHaveCalendarDates(
       return day; // Already has date
     }
 
-    const startDate = new Date(calendarWeek.startDate);
+    // Parse as local date (noon to avoid DST issues) to prevent timezone shift
+    // e.g., "2024-01-27" should stay "2024-01-27", not shift to "2024-01-26" in EST
+    const [year, month, dayNum] = calendarWeek.startDate.split('-').map(Number);
+    const startDate = new Date(year, month - 1, dayNum, 12, 0, 0);
     startDate.setDate(startDate.getDate() + index);
-    const calendarDate = startDate.toISOString().split('T')[0];
+    // Format using local date components (not toISOString which uses UTC)
+    const calendarDate = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
 
     // Also ensure globalDayIndex is correct
     const globalDayIndex = calendarWeek.startDayIndex + index;

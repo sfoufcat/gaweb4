@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { addMonths, subMonths } from 'date-fns';
 import {
   Calendar,
   ChevronLeft,
@@ -69,8 +70,10 @@ function DateSeparator({ date }: { date: Date }) {
 const EVENT_TYPE_INFO: Record<string, { label: string; icon: typeof Video; color: string }> = {
   coaching_1on1: { label: '1-on-1 Call', icon: User, color: 'text-brand-accent' },
   squad_call: { label: 'Squad Call', icon: Users, color: 'text-blue-500' },
-  community_event: { label: 'Event', icon: Calendar, color: 'text-green-500' },
+  community_event: { label: 'Community Event', icon: Calendar, color: 'text-green-500' },
   intake_call: { label: 'Intake Call', icon: PhoneIncoming, color: 'text-teal-500' },
+  cohort_call: { label: 'Group Call', icon: Users, color: 'text-purple-500' },
+  community_call: { label: 'Community Call', icon: Users, color: 'text-emerald-500' },
 };
 
 interface EventItemProps {
@@ -250,14 +253,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                 {typeInfo.label}
               </p>
             </div>
-            {/* Credit warning for coaches when org has no credits */}
-            {isCoach && isConfirmed && !hasOrgCredits && !event.meetingLink && (
-              <span className="flex items-center gap-1 px-2.5 py-1 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-full text-xs font-medium" title="Add external meeting link or purchase credits">
-                <AlertCircle className="w-3.5 h-3.5" />
-                No Credits
-              </span>
-            )}
-            {isConfirmed && (hasOrgCredits || event.meetingLink) && (
+            {isConfirmed && (
               <span className="flex items-center gap-1 px-2.5 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
                 <CheckCircle className="w-3.5 h-3.5" />
                 Confirmed
@@ -495,9 +491,9 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
               Join Call
             </a>
           )}
-          {/* Group events: only show Remove RSVP. Individual events: show Reschedule + Cancel */}
-          {['squad_call', 'community_event', 'cohort_call'].includes(event.eventType) ? (
-            // Group event - only Remove RSVP option
+          {/* Community events: Remove RSVP. Group calls: no actions. Individual: Reschedule + Cancel */}
+          {event.eventType === 'community_event' ? (
+            // Community event - Remove RSVP option
             onCancel && (
               <button
                 onClick={() => setShowCancelConfirm(true)}
@@ -507,8 +503,11 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                 Remove RSVP
               </button>
             )
+          ) : ['squad_call', 'cohort_call'].includes(event.eventType) ? (
+            // Group calls (squad/cohort) - no action buttons, just Join
+            null
           ) : (
-            // Individual event - Reschedule + Cancel options
+            // Individual events (coaching_1on1, intake_call) - Reschedule + Cancel options
             <div className="grid grid-cols-2 gap-2">
               {onReschedule && (
                 <button
@@ -535,16 +534,16 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
 
       {/* Cancel/Remove RSVP confirmation dialog - OUTSIDE flex container for full width */}
       {showCancelConfirm && (() => {
-        const isGroupEvent = ['squad_call', 'community_event', 'cohort_call'].includes(event.eventType);
+        const isCommunityEvent = event.eventType === 'community_event';
         return (
           <div className="mt-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl">
             <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-3">
-              {isGroupEvent ? 'Remove your RSVP from this event?' : 'Are you sure you want to cancel this call?'}
+              {isCommunityEvent ? 'Remove your RSVP from this event?' : 'Are you sure you want to cancel this call?'}
             </p>
             <textarea
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
-              placeholder={isGroupEvent ? 'Reason (optional)' : 'Reason for cancellation (optional)'}
+              placeholder={isCommunityEvent ? 'Reason (optional)' : 'Reason for cancellation (optional)'}
               rows={2}
               className="w-full px-3 py-2 text-sm bg-white dark:bg-[#1e222a] border border-red-200 dark:border-red-800/30 rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-3"
             />
@@ -556,7 +555,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                 }}
                 className="flex-1 px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
               >
-                {isGroupEvent ? 'Keep RSVP' : 'Keep Call'}
+                {isCommunityEvent ? 'Keep RSVP' : 'Keep Call'}
               </button>
               <button
                 onClick={() => {
@@ -566,7 +565,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                 }}
                 className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
               >
-                {isGroupEvent ? 'Remove RSVP' : 'Cancel Call'}
+                {isCommunityEvent ? 'Remove RSVP' : 'Cancel Call'}
               </button>
             </div>
           </div>
@@ -632,9 +631,7 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
       return;
     }
 
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() + (direction === 'prev' ? -1 : 1));
-    setCurrentMonth(newDate);
+    setCurrentMonth(direction === 'prev' ? subMonths(currentMonth, 1) : addMonths(currentMonth, 1));
   };
 
   // Handle respond to proposal - returns true on success, false on failure

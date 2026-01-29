@@ -64,9 +64,13 @@ function ensureDaysHaveCalendarDates(
       return day;
     }
 
-    const startDateObj = new Date(calendarWeek.startDate);
+    // Parse as local date (noon to avoid DST issues) to prevent timezone shift
+    // e.g., "2024-01-27" should stay "2024-01-27", not shift to "2024-01-26" in EST
+    const [year, month, dayNum] = calendarWeek.startDate.split('-').map(Number);
+    const startDateObj = new Date(year, month - 1, dayNum, 12, 0, 0);
     startDateObj.setDate(startDateObj.getDate() + index);
-    const calendarDate = startDateObj.toISOString().split('T')[0];
+    // Format using local date components (not toISOString which uses UTC)
+    const calendarDate = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
     const globalDayIndex = calendarWeek.startDayIndex + index;
 
     return {

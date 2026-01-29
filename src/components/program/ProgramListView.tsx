@@ -29,7 +29,7 @@ export function ProgramListView({ enrollments, onSelectProgram }: ProgramListVie
         Your Programs
       </h1>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         {enrollments.map((enrolled) => (
           <ProgramListCard
             key={enrolled.program.id}
@@ -59,7 +59,7 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
   const memberCount = squad?.memberIds?.length || 0;
 
   return (
-    <div className="bg-[#f3f1ef] dark:bg-[#171b22] rounded-[20px] overflow-hidden p-2">
+    <div className="bg-white/80 backdrop-blur-sm border border-white/50 shadow-sm dark:bg-[#11141b]/80 dark:border-white/10 rounded-[20px] overflow-hidden p-2">
       {/* Cover Image */}
       <div className="relative h-[220px] w-full rounded-[20px] overflow-hidden bg-gray-200 dark:bg-gray-800">
         {program.coverImageUrl ? (
@@ -80,14 +80,14 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
 
         {/* Year badge overlay */}
         <div className="absolute bottom-3 right-3 bg-black/35 rounded-[20px] px-2 py-1">
-          <span className="font-sans text-[12px] text-text-muted leading-[1.2]">
+          <span className="font-sans text-[12px] text-white/90 leading-[1.2]">
             {new Date().getFullYear()}
           </span>
         </div>
       </div>
 
       {/* Content */}
-      <div className="px-4 py-2 space-y-3">
+      <div className="px-4 pt-4 pb-4 space-y-4">
         {/* Title */}
         <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
           {program.name}
@@ -238,7 +238,7 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
         {/* Go to Program Button */}
         <button
           onClick={onClick}
-          className="w-full bg-white dark:bg-[#11141b] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-[#2c2520] dark:text-[#f5f5f8] leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.1)] hover:shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+          className="w-full bg-accent dark:bg-accent border-none rounded-[32px] px-4 py-4 font-bold text-[16px] text-white leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(160,120,85,0.3)] hover:shadow-[0px_5px_15px_0px_rgba(160,120,85,0.5)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
         >
           <span>Go to program</span>
           <ArrowRight className="w-5 h-5" />

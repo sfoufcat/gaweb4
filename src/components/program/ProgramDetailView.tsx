@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2, Calendar, Clock, MapPin, Target, StickyNote, BookOpen, Download, Link2, FileQuestion } from 'lucide-react';
+import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2, Calendar, Clock, MapPin, Target, StickyNote, BookOpen, Download, Link2, FileQuestion, Video } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import { useProgramContent } from '@/hooks/useProgramContent';
@@ -466,7 +466,14 @@ export function ProgramDetailView({
       {!isGroup && (
         <div>
           <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4 space-y-4">
-            {nextCall?.datetime ? (
+            {coachingLoading ? (
+              // Loading skeleton - don't show "Request a Call" while loading
+              <div className="animate-pulse space-y-3">
+                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+                <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded-[32px]"></div>
+              </div>
+            ) : nextCall?.datetime ? (
               <>
                 {/* Has scheduled call */}
                 <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
@@ -690,32 +697,6 @@ export function ProgramDetailView({
         </div>
       )}
 
-      {/* Upcoming Events (for group programs) */}
-      {isGroup && upcomingEvents.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-            Upcoming events
-          </h2>
-          
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {upcomingEvents.slice(0, 5).map((event) => (
-              <Link
-                key={event.id}
-                href={`/discover/events/${event.id}`}
-                className="flex-shrink-0 w-[180px] bg-white dark:bg-[#171b22] rounded-[20px] p-4 hover:shadow-lg transition-shadow"
-              >
-                <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.2]">
-                  {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, {event.startTime}
-                </span>
-                <p className="font-albert text-[18px] font-semibold text-text-secondary dark:text-[#b2b6c2] tracking-[-1px] leading-[1.3] mt-2 line-clamp-2 h-[45px] overflow-hidden">
-                  {event.title}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Weekly Section - Theme, Description, Prompt */}
       {weeklyWeek && (
         <WeeklySection week={weeklyWeek} totalWeeks={calendarWeeks.length} />
@@ -736,6 +717,51 @@ export function ProgramDetailView({
             enrollmentId={enrollment?.id}
             onTaskToggle={handleTaskToggle}
           />
+        </div>
+      )}
+
+      {/* Upcoming Events (for group programs) */}
+      {isGroup && upcomingEvents.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+            Upcoming events
+          </h2>
+
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {upcomingEvents.slice(0, 5).map((event) => (
+              <Link
+                key={event.id}
+                href={`/discover/events/${event.id}`}
+                className="flex-shrink-0 w-[200px] bg-white dark:bg-[#171b22] rounded-[16px] overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              >
+                {/* Cover Image or Placeholder */}
+                {event.coverImageUrl ? (
+                  <div className="relative h-[80px] w-full">
+                    <Image
+                      src={event.coverImageUrl}
+                      alt={event.title}
+                      fill
+                      className="object-cover"
+                      sizes="200px"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-[80px] w-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
+                    <Video className="w-6 h-6 text-purple-400 opacity-50" />
+                  </div>
+                )}
+                {/* Content */}
+                <div className="p-3">
+                  <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.2]">
+                    {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, {event.startTime}
+                  </span>
+                  <p className="font-albert text-[15px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.3px] leading-[1.3] mt-1 line-clamp-2">
+                    {event.title}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

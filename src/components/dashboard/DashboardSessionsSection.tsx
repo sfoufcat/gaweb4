@@ -96,19 +96,19 @@ function SessionCard({ event, isLast }: { event: UnifiedEvent; isLast: boolean }
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.color}`}>
+          <p className="font-albert text-[16px] font-medium text-text-primary tracking-[-0.3px] truncate">
+            {event.title}
+          </p>
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${badge.color}`}>
             {badge.label}
           </span>
-          <div className="flex items-center gap-1 text-text-muted">
-            <Clock className="w-3 h-3" />
-            <span className="font-sans text-[11px] leading-[1.2]">
-              {date}, {time}
-            </span>
-          </div>
         </div>
-        <p className="font-albert text-[16px] font-medium text-text-primary tracking-[-0.3px] truncate">
-          {event.title}
-        </p>
+        <div className="flex items-center gap-1 text-text-muted">
+          <Clock className="w-3 h-3" />
+          <span className="font-sans text-[11px] leading-[1.2]">
+            {date}, {time}
+          </span>
+        </div>
       </div>
     </Link>
   );
@@ -157,12 +157,12 @@ export function DashboardSessionsSection({
           Upcoming sessions
         </h2>
         {upcomingEvents.length > 0 && (
-          <Link
-            href="/calendar"
+          <button
+            onClick={() => setIsCalendarOpen(true)}
             className="font-sans text-[12px] text-brand-accent hover:opacity-80 transition-opacity leading-[1.2]"
           >
             All
-          </Link>
+          </button>
         )}
       </div>
 

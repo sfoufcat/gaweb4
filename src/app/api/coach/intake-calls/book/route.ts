@@ -117,7 +117,8 @@ export async function POST(req: Request) {
       .where('status', 'in', ['confirmed', 'pending_response', 'proposed'])
       .get();
 
-    const buffer = availability?.bufferBetweenCalls || 15;
+    // Coach-initiated scheduling: no buffer required - coach can book any available time
+    const buffer = 0;
     const hasConflict = conflictingSnapshot.docs.some(doc => {
       const event = doc.data() as UnifiedEvent;
       const eventStart = new Date(event.startDateTime);

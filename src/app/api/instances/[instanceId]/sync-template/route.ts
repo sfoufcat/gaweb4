@@ -732,11 +732,14 @@ export async function POST(
           // Calculate calendar date for this day
           let calendarDate: string | undefined;
           if (weekCalendarStartDate) {
-            const baseDate = new Date(weekCalendarStartDate);
+            // Parse as local date (noon to avoid DST issues) to prevent timezone shift
+            const [year, month, dayNum] = weekCalendarStartDate.split('-').map(Number);
+            const baseDate = new Date(year, month - 1, dayNum, 12, 0, 0);
             // Offset from Monday by actualStartOffset + i
             // e.g., Tue start (offset=1), i=0 → Mon+1=Tue, i=1 → Mon+2=Wed
             baseDate.setDate(baseDate.getDate() + actualStartOffset + i);
-            calendarDate = baseDate.toISOString().split('T')[0];
+            // Format using local date components (not toISOString which uses UTC)
+            calendarDate = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-${String(baseDate.getDate()).padStart(2, '0')}`;
           }
 
           days.push({
