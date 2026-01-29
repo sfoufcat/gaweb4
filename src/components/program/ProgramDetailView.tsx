@@ -58,13 +58,11 @@ export function ProgramDetailView({
     squad,
     squadMembers,
     enrollment,
-    nextCall: prefetchedNextCall,
     coachingData: prefetchedCoachingData,
   } = enrolled;
   const isGroup = program.type === 'group';
 
-  // Fetch additional coaching data for individual programs (credits, settings, etc.)
-  // Note: nextCall and coachingData are pre-fetched via useMyPrograms to avoid UI flash
+  // Fetch additional coaching data for individual programs (credits, settings, nextCall, etc.)
   const {
     coachingData: hookCoachingData,
     nextCall: hookNextCall,
@@ -76,8 +74,8 @@ export function ProgramDetailView({
     isLoading: coachingLoading,
   } = useProgramCoachingData();
 
-  // Use pre-fetched data (immediate, no flash) or fall back to hook data
-  const nextCall = prefetchedNextCall || hookNextCall;
+  // Use hook data (always fresh from events collection)
+  const nextCall = hookNextCall;
   const storedChatChannelId = prefetchedCoachingData?.chatChannelId || hookChatChannelId;
   
   // For 1:1 programs: the coaching channel ID should be stored server-side.
@@ -467,11 +465,11 @@ export function ProgramDetailView({
         <div>
           <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4 space-y-4">
             {coachingLoading ? (
-              // Loading skeleton - don't show "Request a Call" while loading
-              <div className="animate-pulse space-y-3">
-                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-                <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded-[32px]"></div>
+              // Loading skeleton
+              <div className="animate-pulse space-y-4">
+                <div className="h-5 bg-[#e8e4df] dark:bg-[#2a2f38] rounded w-2/5"></div>
+                <div className="h-4 bg-[#e8e4df] dark:bg-[#2a2f38] rounded w-3/4"></div>
+                <div className="h-12 bg-[#e8e4df] dark:bg-[#2a2f38] rounded-[32px]"></div>
               </div>
             ) : nextCall?.datetime ? (
               <>

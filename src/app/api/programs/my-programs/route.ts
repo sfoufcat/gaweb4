@@ -77,54 +77,83 @@ interface EnrolledProgramWithDetails {
 /**
  * Fetch coaching data from clientCoachingData for individual programs
  * Returns nextCall and coachingData (focusAreas, actionItems, resources)
+ *
+ * nextCall is fetched from events collection (primary) with clientCoachingData as fallback
  */
 async function fetchCoachingDataForUser(
   userId: string,
   organizationId: string
 ): Promise<{ nextCall: NextCallInfo | null; coachingData: CoachingDataPreview | null }> {
   try {
-    // ClientCoachingData doc ID format: ${organizationId}_${userId}
+    // Fetch clientCoachingData and events in parallel
     const coachingDocId = `${organizationId}_${userId}`;
-    const coachingDoc = await adminDb.collection('clientCoachingData').doc(coachingDocId).get();
+    const now = new Date();
+    const futureDate = new Date();
+    futureDate.setMonth(futureDate.getMonth() + 3);
 
-    if (!coachingDoc.exists) {
-      return { nextCall: null, coachingData: null };
-    }
+    const [coachingDoc, eventsSnapshot] = await Promise.all([
+      adminDb.collection('clientCoachingData').doc(coachingDocId).get(),
+      // Query events where user is attendee, confirmed 1:1 calls in the future
+      adminDb.collection('events')
+        .where('attendeeIds', 'array-contains', userId)
+        .where('organizationId', '==', organizationId)
+        .where('eventType', '==', 'coaching_1on1')
+        .where('schedulingStatus', '==', 'confirmed')
+        .where('startDateTime', '>=', now.toISOString())
+        .where('startDateTime', '<=', futureDate.toISOString())
+        .orderBy('startDateTime', 'asc')
+        .limit(1)
+        .get(),
+    ]);
 
-    const data = coachingDoc.data() as ClientCoachingData;
-
-    // Extract nextCall - only include if the call hasn't started yet
+    // Primary: get nextCall from events collection
     let nextCall: NextCallInfo | null = null;
-    if (data.nextCall?.datetime) {
-      const callTime = new Date(data.nextCall.datetime);
-      const now = new Date();
-      // Only show call if it's in the future
-      if (callTime > now) {
-        nextCall = {
-          datetime: data.nextCall.datetime,
-          timezone: data.nextCall.timezone || 'America/New_York',
-          location: data.nextCall.location || 'Chat',
-          title: data.nextCall.title,
-        };
-      }
+    if (!eventsSnapshot.empty) {
+      const eventDoc = eventsSnapshot.docs[0];
+      const event = eventDoc.data();
+      nextCall = {
+        datetime: event.startDateTime,
+        timezone: event.timezone || 'America/New_York',
+        location: event.locationType === 'chat' ? 'Chat' : (event.meetingLink || 'Online'),
+        title: event.title,
+      };
     }
 
-    // Extract coaching data preview (excluding private notes)
-    const coachingData: CoachingDataPreview = {
-      focusAreas: data.focusAreas || [],
-      actionItems: (data.actionItems || []).map(item => ({
-        id: item.id,
-        text: item.text,
-        completed: item.completed,
-      })),
-      resources: (data.resources || []).map(res => ({
-        id: res.id,
-        title: res.title,
-        url: res.url,
-        description: res.description,
-      })),
-      chatChannelId: data.chatChannelId,
-    };
+    // Fallback: check clientCoachingData if no event found
+    let coachingData: CoachingDataPreview | null = null;
+    if (coachingDoc.exists) {
+      const data = coachingDoc.data() as ClientCoachingData;
+
+      // Only use coachingData.nextCall as fallback if no event found
+      if (!nextCall && data.nextCall?.datetime) {
+        const callTime = new Date(data.nextCall.datetime);
+        if (callTime > now) {
+          nextCall = {
+            datetime: data.nextCall.datetime,
+            timezone: data.nextCall.timezone || 'America/New_York',
+            location: data.nextCall.location || 'Chat',
+            title: data.nextCall.title,
+          };
+        }
+      }
+
+      // Extract coaching data preview (excluding private notes)
+      coachingData = {
+        focusAreas: data.focusAreas || [],
+        actionItems: (data.actionItems || []).map(item => ({
+          id: item.id,
+          text: item.text,
+          completed: item.completed,
+        })),
+        resources: (data.resources || []).map(res => ({
+          id: res.id,
+          title: res.title,
+          url: res.url,
+          description: res.description,
+        })),
+        chatChannelId: data.chatChannelId,
+      };
+    }
 
     return { nextCall, coachingData };
   } catch (err) {
