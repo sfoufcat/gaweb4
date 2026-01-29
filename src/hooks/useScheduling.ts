@@ -46,13 +46,13 @@ function buildSchedulingEventsKey(options: UseSchedulingEventsOptions): string |
  * Globally refresh all scheduling events caches
  * Call this after creating/updating/deleting events to refresh all views
  */
-export function refreshSchedulingEvents(): Promise<void> {
+export async function refreshSchedulingEvents(): Promise<void> {
   // Revalidate all keys that match the scheduling events pattern
-  return mutate(
+  await mutate(
     (key) => typeof key === 'string' && key.startsWith('/api/scheduling/events'),
     undefined,
     { revalidate: true }
-  ) as Promise<void>;
+  );
 }
 
 /**
