@@ -1,9 +1,12 @@
 'use client';
 
-import React from 'react';
-import { CalendarDays, Phone, FileQuestion, Unlock, Clock, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { CalendarDays, Phone, FileQuestion, Unlock, Clock, ChevronRight, Video, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export interface UpcomingItem {
   type: 'call' | 'form' | 'week_unlock';
@@ -12,8 +15,18 @@ export interface UpcomingItem {
   actionType?: 'reschedule' | 'send_reminder';
 }
 
+export interface PastSessionItem {
+  id: string;
+  title: string;
+  date: string;
+  coverImageUrl?: string;
+  hasRecording: boolean;
+  eventId: string;
+}
+
 interface UpcomingSectionProps {
   items: UpcomingItem[];
+  pastItems?: PastSessionItem[];
   onAction?: (item: UpcomingItem, action: string) => void;
   className?: string;
 }
@@ -39,17 +52,44 @@ const TYPE_CONFIG = {
   },
 };
 
-export function UpcomingSection({ items, onAction, className }: UpcomingSectionProps) {
-  if (items.length === 0) {
+const ITEMS_PER_PAGE = 5;
+
+export function UpcomingSection({ items, pastItems = [], onAction, className }: UpcomingSectionProps) {
+  const [showPast, setShowPast] = useState(false);
+  const [pastPage, setPastPage] = useState(1);
+
+  const displayedPastItems = pastItems.slice(0, pastPage * ITEMS_PER_PAGE);
+  const hasMorePast = displayedPastItems.length < pastItems.length;
+  const remainingCount = pastItems.length - displayedPastItems.length;
+
+  const handleLoadMore = () => {
+    setPastPage(prev => prev + 1);
+  };
+
+  // Empty state when no items and showing upcoming
+  if (!showPast && items.length === 0) {
     return (
       <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6', className)}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-900/30">
-            <CalendarDays className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-900/30">
+              <CalendarDays className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Upcoming
+              </h3>
+              <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                0 events scheduled
+              </p>
+            </div>
           </div>
-          <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            Upcoming
-          </h3>
+          <button
+            onClick={() => setShowPast(true)}
+            className="text-sm text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
+          >
+            view past
+          </button>
         </div>
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center mb-3">
@@ -71,77 +111,197 @@ export function UpcomingSection({ items, onAction, className }: UpcomingSectionP
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-900/30">
-            <CalendarDays className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            {showPast ? (
+              <History className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            ) : (
+              <CalendarDays className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            )}
           </div>
           <div>
             <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              Upcoming
+              {showPast ? 'Past Sessions' : 'Upcoming'}
             </h3>
             <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-              {items.length} event{items.length !== 1 ? 's' : ''} scheduled
+              {showPast
+                ? `${pastItems.length} past session${pastItems.length !== 1 ? 's' : ''}`
+                : `${items.length} event${items.length !== 1 ? 's' : ''} scheduled`
+              }
             </p>
           </div>
         </div>
+        {showPast ? (
+          <button
+            onClick={() => {
+              setShowPast(false);
+              setPastPage(1);
+            }}
+            className="text-sm text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
+          >
+            view upcoming
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowPast(true)}
+            className="text-sm text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium transition-colors"
+          >
+            view past
+          </button>
+        )}
       </div>
 
-      <div className="space-y-3">
-        {items.map((item, index) => {
-          const config = TYPE_CONFIG[item.type];
-          const TypeIcon = config.icon;
-          const dateObj = item.date ? new Date(item.date) : null;
-          const relativeTime = dateObj ? formatDistanceToNow(dateObj, { addSuffix: true }) : null;
-          const formattedDate = dateObj
-            ? format(dateObj, 'EEE, MMM d')
-            : null;
-          const formattedTime = dateObj
-            ? format(dateObj, 'h:mm a')
-            : null;
+      <AnimatePresence mode="wait">
+        {showPast ? (
+          <motion.div
+            key="past"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-3"
+          >
+            {displayedPastItems.map((item) => {
+              const dateObj = new Date(item.date);
+              const formattedDate = format(dateObj, 'MMM d, yyyy');
 
-          return (
-            <div
-              key={`${item.type}-${index}`}
-              className="flex items-center gap-3 p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a] hover:border-violet-200 dark:hover:border-violet-800/50 transition-colors group"
-            >
-              {/* Icon */}
-              <div className={cn('p-2 rounded-lg flex-shrink-0', config.bg)}>
-                <TypeIcon className={cn('w-4 h-4', config.color)} />
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                  {item.title}
-                </p>
-                {dateObj && (
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Clock className="w-3 h-3 text-[#8c8c8c] dark:text-[#7d8190]" />
-                    <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                      {formattedDate} at {formattedTime}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Relative time badge */}
-              {relativeTime && (
-                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] bg-[#e1ddd8] dark:bg-[#262b35] px-2 py-1 rounded-full flex-shrink-0">
-                  {relativeTime}
-                </span>
-              )}
-
-              {/* Action button */}
-              {onAction && item.actionType && (
-                <button
-                  onClick={() => onAction(item, item.actionType!)}
-                  className="p-1.5 rounded-lg hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] transition-colors opacity-0 group-hover:opacity-100"
+              return (
+                <Link
+                  key={item.id}
+                  href={`/discover/events/${item.eventId}`}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a] hover:border-violet-200 dark:hover:border-violet-800/50 transition-colors group"
                 >
-                  <ChevronRight className="w-4 h-4 text-[#8c8c8c] dark:text-[#7d8190]" />
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                  {/* Thumbnail */}
+                  <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#e1ddd8] dark:bg-[#262b35]">
+                    {item.coverImageUrl ? (
+                      <Image
+                        src={item.coverImageUrl}
+                        alt={item.title}
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Phone className="w-5 h-5 text-[#a7a39e] dark:text-[#5f6470]" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] mt-0.5">
+                      {formattedDate}
+                    </p>
+                  </div>
+
+                  {/* Recording icon */}
+                  {item.hasRecording && (
+                    <div className="flex-shrink-0 p-1.5 rounded-lg bg-green-100 dark:bg-green-900/30">
+                      <Video className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    </div>
+                  )}
+
+                  {/* Arrow */}
+                  <ChevronRight className="w-4 h-4 text-[#8c8c8c] dark:text-[#7d8190] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </Link>
+              );
+            })}
+
+            {/* Load more button */}
+            {hasMorePast && (
+              <button
+                onClick={handleLoadMore}
+                className="w-full py-3 text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a] rounded-xl hover:border-violet-200 dark:hover:border-violet-800/50 transition-colors"
+              >
+                Load more ({remainingCount} remaining)
+              </button>
+            )}
+
+            {/* Empty state for past */}
+            {pastItems.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center mb-3">
+                  <History className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6470]" />
+                </div>
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  No past sessions
+                </p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#5f6470] mt-1">
+                  Completed sessions will appear here
+                </p>
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="upcoming"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-3"
+          >
+            {items.map((item, index) => {
+              const config = TYPE_CONFIG[item.type];
+              const TypeIcon = config.icon;
+              const dateObj = item.date ? new Date(item.date) : null;
+              const relativeTime = dateObj ? formatDistanceToNow(dateObj, { addSuffix: true }) : null;
+              const formattedDate = dateObj
+                ? format(dateObj, 'EEE, MMM d')
+                : null;
+              const formattedTime = dateObj
+                ? format(dateObj, 'h:mm a')
+                : null;
+
+              return (
+                <div
+                  key={`${item.type}-${index}`}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a] hover:border-violet-200 dark:hover:border-violet-800/50 transition-colors group"
+                >
+                  {/* Icon */}
+                  <div className={cn('p-2 rounded-lg flex-shrink-0', config.bg)}>
+                    <TypeIcon className={cn('w-4 h-4', config.color)} />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {item.title}
+                    </p>
+                    {dateObj && (
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Clock className="w-3 h-3 text-[#8c8c8c] dark:text-[#7d8190]" />
+                        <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                          {formattedDate} at {formattedTime}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Relative time badge */}
+                  {relativeTime && (
+                    <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] bg-[#e1ddd8] dark:bg-[#262b35] px-2 py-1 rounded-full flex-shrink-0">
+                      {relativeTime}
+                    </span>
+                  )}
+
+                  {/* Action button */}
+                  {onAction && item.actionType && (
+                    <button
+                      onClick={() => onAction(item, item.actionType!)}
+                      className="p-1.5 rounded-lg hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <ChevronRight className="w-4 h-4 text-[#8c8c8c] dark:text-[#7d8190]" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

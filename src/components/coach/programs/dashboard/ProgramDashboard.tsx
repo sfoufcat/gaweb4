@@ -11,7 +11,7 @@ import { ContentCompletionList, type ContentCompletionItem } from './ContentComp
 import { WeekProgressList, type WeekProgressItem } from './WeekProgressList';
 import { CurrentWeekContent } from './CurrentWeekContent';
 import { EngagementInsights } from './EngagementInsights';
-import { UpcomingSection, type UpcomingItem } from './UpcomingSection';
+import { UpcomingSection, type UpcomingItem, type PastSessionItem } from './UpcomingSection';
 import { type DashboardViewContext } from './ClientCohortSelector';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import type { Program, ProgramEnrollment, ProgramCohort, ProgramHabitTemplate, TaskDistribution } from '@/types';
@@ -37,6 +37,7 @@ interface ProgramDashboardData {
   topPerformers: TopPerformer[];
   contentCompletion: ContentCompletionItem[];
   upcoming: UpcomingItem[];
+  pastSessions?: PastSessionItem[];
 }
 
 interface ClientDashboardData {
@@ -84,6 +85,7 @@ interface ClientDashboardData {
     pattern?: string;
   };
   upcoming: UpcomingItem[];
+  pastSessions?: PastSessionItem[];
 }
 
 interface EnrollmentWithUser extends ProgramEnrollment {
@@ -288,7 +290,7 @@ export function ProgramDashboard({
 
           {/* Row 1: Upcoming + Top Performers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <UpcomingSection items={programData.upcoming} />
+            <UpcomingSection items={programData.upcoming} pastItems={programData.pastSessions} />
             <TopPerformerCard
               performers={programData.topPerformers}
               onViewClient={handleViewClient}
@@ -315,11 +317,14 @@ export function ProgramDashboard({
           {/* Stats row */}
           <DashboardStatsRow mode="client" stats={clientData.stats} />
 
-          {/* Week progress */}
-          <WeekProgressList
-            weeks={clientData.weekProgress}
-            currentWeek={clientData.stats.currentWeek}
-          />
+          {/* Row 1: Upcoming + Week Progress side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <UpcomingSection items={clientData.upcoming} pastItems={clientData.pastSessions} />
+            <WeekProgressList
+              weeks={clientData.weekProgress}
+              currentWeek={clientData.stats.currentWeek}
+            />
+          </div>
 
           {/* Two-column layout */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -336,9 +341,6 @@ export function ProgramDashboard({
               pattern={clientData.engagement.pattern}
             />
           </div>
-
-          {/* Upcoming */}
-          <UpcomingSection items={clientData.upcoming} />
         </div>
       )}
 
@@ -349,7 +351,7 @@ export function ProgramDashboard({
 
           {/* Row 1: Upcoming + Top Performers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <UpcomingSection items={programData.upcoming} />
+            <UpcomingSection items={programData.upcoming} pastItems={programData.pastSessions} />
             <TopPerformerCard
               performers={programData.topPerformers}
               onViewClient={handleViewClient}

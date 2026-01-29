@@ -283,13 +283,11 @@ export async function getTranscriptionByCallId(
 }
 
 /**
- * Calculate credits usage from duration
- * 1 credit = 60 minutes
+ * Calculate credits usage for a summary
+ * Flat rate: 1 credit per summary regardless of duration
  */
 export function calculateCreditsUsed(durationSeconds: number): number {
-  // Round up to nearest minute
-  const minutes = Math.ceil(durationSeconds / 60);
-  return minutes;
+  return 1;
 }
 
 /**

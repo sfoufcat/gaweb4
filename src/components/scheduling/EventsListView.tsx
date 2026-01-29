@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Calendar,
@@ -27,7 +28,7 @@ import { RescheduleCallModal } from './RescheduleCallModal';
 import { CallSummaryViewModal } from '@/components/coach/programs/CallSummaryViewModal';
 import { useUser } from '@clerk/nextjs';
 import { useOrgCredits } from '@/hooks/useOrgCredits';
-import { cn } from '@/lib/utils';
+import { cn, isWithinOneHourBefore, isPastEvent } from '@/lib/utils';
 import type { CallSummary } from '@/types';
 import {
   AlertDialog,
@@ -216,6 +217,16 @@ export function EventsListView({ mode = 'coach', startDate, endDate, typeFilter 
 
   // Pending proposals
   const { proposals, refetch: refetchProposals } = usePendingProposals();
+
+  // Sync selectedEvent when events data updates (e.g., after recording fetch)
+  useEffect(() => {
+    if (selectedEvent && events.length > 0) {
+      const updated = events.find(e => e.id === selectedEvent.id);
+      if (updated && updated !== selectedEvent) {
+        setSelectedEvent(updated);
+      }
+    }
+  }, [events, selectedEvent]);
 
   // Merge events with proposals
   const allEvents = useMemo(() => {
@@ -552,13 +563,14 @@ export function EventsListView({ mode = 'coach', startDate, endDate, typeFilter 
                   const statusBadge = event.schedulingStatus ? STATUS_BADGE[event.schedulingStatus] : null;
                   const StatusIcon = statusBadge?.icon || CheckCircle;
                   const isPending = event.schedulingStatus === 'proposed' || event.schedulingStatus === 'counter_proposed';
+                  const isPast = isPastEvent(event);
                   const displayTitle = event.title?.replace(/^Call request with\s*/i, '') || event.title;
 
                   return (
                     <motion.div
                       key={event.id}
                       initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      animate={{ opacity: isPast ? 0.5 : 1, y: 0 }}
                       className={cn(
                         "bg-white dark:bg-[#171b22] border rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow",
                         isPending
@@ -629,18 +641,44 @@ export function EventsListView({ mode = 'coach', startDate, endDate, typeFilter 
                             </span>
                           )}
 
-                          {event.meetingLink && !isPending && (
-                            <a
-                              href={event.meetingLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-500/20 transition-colors"
-                            >
-                              <Video className="w-4 h-4" />
-                              Join
-                            </a>
-                          )}
+                          {/* Join button - coaches always see it, users only within 1 hour */}
+                          {!isPending && (() => {
+                            const isInAppCall = event.locationType === 'chat' || event.meetingProvider === 'stream';
+                            const hasExternalLink = !!event.meetingLink;
+                            // Coaches always see join button, users only within 1 hour
+                            const withinTimeWindow = isCoach || isWithinOneHourBefore(event.startTime);
+                            const canJoinInApp = isInAppCall && !hasExternalLink && withinTimeWindow;
+
+                            if (hasExternalLink && withinTimeWindow) {
+                              return (
+                                <a
+                                  href={event.meetingLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-500/20 transition-colors"
+                                >
+                                  <Video className="w-4 h-4" />
+                                  Join
+                                </a>
+                              );
+                            }
+
+                            if (canJoinInApp) {
+                              return (
+                                <Link
+                                  href={`/call/event-${event.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-500/20 transition-colors"
+                                >
+                                  <Video className="w-4 h-4" />
+                                  Join
+                                </Link>
+                              );
+                            }
+
+                            return null;
+                          })()}
 
                           {/* Coach actions dropdown */}
                           {isCoach && !isPending && event.schedulingStatus !== 'cancelled' && (

@@ -49,6 +49,15 @@ interface UpcomingItem {
   actionType?: 'reschedule' | 'send_reminder';
 }
 
+interface PastSessionItem {
+  id: string;
+  title: string;
+  date: string;
+  coverImageUrl?: string;
+  hasRecording: boolean;
+  eventId: string;
+}
+
 interface ClientDashboardData {
   userId: string;
   name: string;
@@ -80,6 +89,7 @@ interface ClientDashboardData {
     pattern?: string;
   };
   upcoming: UpcomingItem[];
+  pastSessions: PastSessionItem[];
 }
 
 /**
@@ -482,6 +492,57 @@ export async function GET(
       });
     }
 
+    // Get past sessions for this client
+    const pastSessions: PastSessionItem[] = [];
+    try {
+      const now = new Date().toISOString();
+
+      // Query 1: Events where client is in attendeeIds
+      const attendeeEventsSnapshot = await adminDb
+        .collection('events')
+        .where('attendeeIds', 'array-contains', clientId)
+        .where('startDateTime', '<', now)
+        .orderBy('startDateTime', 'desc')
+        .limit(50)
+        .get();
+
+      // Query 2: Coaching 1:1 events where client is the clientUserId
+      const clientEventsSnapshot = await adminDb
+        .collection('events')
+        .where('clientUserId', '==', clientId)
+        .where('startDateTime', '<', now)
+        .orderBy('startDateTime', 'desc')
+        .limit(50)
+        .get();
+
+      // Merge and dedupe results
+      const seenIds = new Set<string>();
+      const allDocs = [...attendeeEventsSnapshot.docs, ...clientEventsSnapshot.docs];
+
+      for (const doc of allDocs) {
+        if (seenIds.has(doc.id)) continue;
+        seenIds.add(doc.id);
+
+        const data = doc.data();
+        // Filter to only include events related to this program (coaching calls)
+        if (data.eventType === 'coaching_1on1' || data.programId === programId || (data.programIds && data.programIds.includes(programId))) {
+          pastSessions.push({
+            id: doc.id,
+            title: data.title || 'Coaching Call',
+            date: data.startDateTime,
+            coverImageUrl: data.coverImageUrl,
+            hasRecording: !!data.recordingUrl,
+            eventId: doc.id,
+          });
+        }
+      }
+
+      // Sort by date descending
+      pastSessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    } catch (err) {
+      console.warn('[CLIENT_DASHBOARD] Failed to fetch past sessions:', err);
+    }
+
     // Build response
     const dashboardData: ClientDashboardData = {
       userId: clientId,
@@ -511,6 +572,7 @@ export async function GET(
         pattern,
       },
       upcoming,
+      pastSessions,
     };
 
     return NextResponse.json(dashboardData);

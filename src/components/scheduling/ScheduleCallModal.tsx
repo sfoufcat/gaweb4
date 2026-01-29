@@ -430,7 +430,7 @@ export function ScheduleCallModal({
           ? 'Zoom'
           : meetingProvider === 'google_meet'
             ? 'Google Meet'
-            : 'Video Call';
+            : 'Custom Link';
 
       await proposeCall({
         clientId,

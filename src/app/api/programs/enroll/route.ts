@@ -1027,6 +1027,34 @@ async function createEnrollment(
     await addUserToSquad(userId, squadId, clerkUser);
   }
 
+  // Auto-RSVP user to existing cohort events
+  if (cohort?.id) {
+    try {
+      const eventsSnapshot = await adminDb
+        .collection('events')
+        .where('cohortId', '==', cohort.id)
+        .where('eventType', '==', 'cohort_call')
+        .get();
+
+      const nowDate = new Date();
+      for (const eventDoc of eventsSnapshot.docs) {
+        const event = eventDoc.data();
+        // Skip past/canceled events
+        const eventEnd = event.endDateTime ? new Date(event.endDateTime) : null;
+        if (event.status === 'canceled' || (eventEnd && eventEnd < nowDate)) continue;
+
+        // Add user to attendees
+        await eventDoc.ref.update({
+          attendeeIds: FieldValue.arrayUnion(userId),
+        });
+      }
+      console.log(`[PROGRAM_ENROLL] Auto-RSVPed user ${userId} to ${eventsSnapshot.size} cohort events`);
+    } catch (rsvpError) {
+      console.error('[PROGRAM_ENROLL] Auto-RSVP error:', rsvpError);
+      // Continue - don't fail enrollment
+    }
+  }
+
   // Create enrollment
   const enrollmentData: Omit<ProgramEnrollment, 'id'> = {
     userId,

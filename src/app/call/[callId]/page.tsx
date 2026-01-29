@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useStreamVideoClient, recordCallStart, getCallStartTime } from '@/contexts/StreamVideoContext';
 import { useStreamChatClient } from '@/contexts/StreamChatContext';
@@ -21,6 +21,47 @@ import { ArrowLeft, Loader2, Users, Phone, Mic } from 'lucide-react';
 
 // Module-level storage for active media streams
 let activeMediaStreams: MediaStream[] = [];
+
+/**
+ * Nuclear option: Stop ALL active microphone tracks at browser level.
+ * This bypasses the SDK entirely and ensures the mic is released.
+ */
+async function stopAllActiveMicrophoneTracks() {
+  console.log('[stopAllActiveMicrophoneTracks] Stopping all active mic tracks...');
+  try {
+    // Request a fresh stream - this gives us access to stop it
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(track => {
+      console.log('[stopAllActiveMicrophoneTracks] Stopping track:', track.kind, track.label);
+      track.enabled = false;
+      track.stop();
+    });
+    console.log('[stopAllActiveMicrophoneTracks] All mic tracks stopped');
+  } catch (e) {
+    // No permission or no active mic - that's fine
+    console.log('[stopAllActiveMicrophoneTracks] Could not get mic stream (expected if no permission):', e);
+  }
+}
+
+/**
+ * Sync version - stops tracks without acquiring new ones.
+ * Used in beforeunload/pagehide where we can't await.
+ */
+function stopAllActiveMicrophoneTracksSync() {
+  console.log('[stopAllActiveMicrophoneTracksSync] Attempting sync cleanup...');
+  // We can't acquire new streams synchronously, but we can stop any we've tracked
+  activeMediaStreams.forEach(stream => {
+    if (stream) {
+      stream.getTracks().forEach(track => {
+        if (track.kind === 'audio' && track.readyState === 'live') {
+          console.log('[stopAllActiveMicrophoneTracksSync] Stopping audio track:', track.label);
+          track.enabled = false;
+          track.stop();
+        }
+      });
+    }
+  });
+}
 
 /**
  * Stop all tracked media streams properly.
@@ -99,37 +140,43 @@ function stopAllLocalTracks(call: Call | null) {
 
 /**
  * Comprehensive cleanup of a call's media resources.
- * Uses SDK methods properly and stops all tracked streams.
+ * IMPORTANT: Stop media tracks FIRST, then leave call.
+ * This ensures WebRTC detects disconnect properly.
  */
 async function cleanupCallMedia(call: Call | null): Promise<void> {
   console.log('[cleanupCallMedia] Starting cleanup...');
-  
+
+  // 1. FIRST: Stop all media tracks at browser level (nuclear option)
+  // This must happen BEFORE call.leave() so WebRTC detects media stop
+  stopTrackedMediaStreams();
   if (call) {
-    // 1. First, stop publishing to immediately release media (this is the key step!)
+    stopAllLocalTracks(call);
+  }
+  await stopAllActiveMicrophoneTracks();
+
+  if (call) {
+    // 2. Stop publishing (tells server we're done sending media)
     try {
       console.log('[cleanupCallMedia] Stopping publish...');
       await call.stopPublish();
     } catch (e) {
       console.log('[cleanupCallMedia] stopPublish error (may not be publishing):', e);
     }
-    
-    // 2. Disable camera and microphone through SDK
+
+    // 3. Disable camera and microphone through SDK
     try {
       console.log('[cleanupCallMedia] Disabling camera...');
       await call.camera.disable();
     } catch (e) {
       console.log('[cleanupCallMedia] Camera disable error (may already be disabled):', e);
     }
-    
+
     try {
       console.log('[cleanupCallMedia] Disabling microphone...');
       await call.microphone.disable();
     } catch (e) {
       console.log('[cleanupCallMedia] Microphone disable error (may already be disabled):', e);
     }
-    
-    // 3. Stop all local participant tracks (catches SDK internal streams)
-    stopAllLocalTracks(call);
     
     // 4. Stop any streams from the SDK's camera/microphone state
     try {
@@ -156,7 +203,7 @@ async function cleanupCallMedia(call: Call | null): Promise<void> {
       }
     } catch (_e) { /* ignore */ }
     
-    // 5. Leave the call
+    // 5. Leave the call (now that media is stopped, WebRTC will disconnect cleanly)
     try {
       console.log('[cleanupCallMedia] Leaving call...');
       await call.leave();
@@ -164,10 +211,7 @@ async function cleanupCallMedia(call: Call | null): Promise<void> {
       console.log('[cleanupCallMedia] Leave error (may have already left):', e);
     }
   }
-  
-  // 6. Stop any additional tracked streams (belt and suspenders)
-  stopTrackedMediaStreams();
-  
+
   console.log('[cleanupCallMedia] Cleanup complete');
 }
 
@@ -200,10 +244,23 @@ function formatDuration(seconds: number): string {
  */
 function AudioCallLayout({ onLeave }: { onLeave: () => void }) {
   const { useParticipants, useLocalParticipant, useDominantSpeaker } = useCallStateHooks();
-  const participants = useParticipants();
+  const rawParticipants = useParticipants();
   const localParticipant = useLocalParticipant();
   const dominantSpeaker = useDominantSpeaker();
   const [duration, setDuration] = useState(0);
+
+  // Dedupe participants by userId (stale sessions can cause duplicates)
+  // Prefer the local participant session over stale remote ones
+  const participants = useMemo(() => {
+    const seen = new Map<string, typeof rawParticipants[0]>();
+    for (const p of rawParticipants) {
+      const existing = seen.get(p.userId);
+      if (!existing || p.isLocalParticipant) {
+        seen.set(p.userId, p);
+      }
+    }
+    return Array.from(seen.values());
+  }, [rawParticipants]);
 
   // Call duration timer
   useEffect(() => {
@@ -322,14 +379,22 @@ function AudioCallLayout({ onLeave }: { onLeave: () => void }) {
 /**
  * Call UI Component - Rendered inside StreamCall
  */
-function CallUI({ onLeave }: { onLeave: () => void }) {
-  const { useCallCallingState, useParticipantCount, useParticipants } = useCallStateHooks();
+function CallUI({ onLeave, isLeaving }: { onLeave: () => void; isLeaving?: boolean }) {
+  const { useCallCallingState, useParticipants } = useCallStateHooks();
   const callingState = useCallCallingState();
-  const participantCount = useParticipantCount();
-  const participants = useParticipants();
+  const rawParticipants = useParticipants();
+
+  // Dedupe participants by userId (stale sessions can cause duplicates)
+  const uniqueUserIds = useMemo(() => {
+    const seen = new Set<string>();
+    for (const p of rawParticipants) {
+      seen.add(p.userId);
+    }
+    return seen.size;
+  }, [rawParticipants]);
 
   // Check if anyone has video enabled - if so, show video layout
-  const anyoneHasVideo = participants.some(p => hasVideo(p));
+  const anyoneHasVideo = rawParticipants.some(p => hasVideo(p));
 
   // Handle different calling states
   if (callingState === CallingState.LEFT) {
@@ -348,7 +413,7 @@ function CallUI({ onLeave }: { onLeave: () => void }) {
     );
   }
 
-  if (callingState === CallingState.JOINING || callingState === CallingState.RECONNECTING) {
+  if (!isLeaving && (callingState === CallingState.JOINING || callingState === CallingState.RECONNECTING)) {
     return (
       <div className="h-full flex items-center justify-center bg-[#1a1a1a]">
         <div className="text-center">
@@ -374,7 +439,7 @@ function CallUI({ onLeave }: { onLeave: () => void }) {
         <div className="px-3 py-1 bg-black/50 rounded-full">
           <span className="font-albert text-white text-sm flex items-center gap-1.5">
             <Users className="w-4 h-4" />
-            {participantCount}
+            {uniqueUserIds}
           </span>
         </div>
       </div>
@@ -489,6 +554,9 @@ export default function CallPage() {
         stopAllLocalTracks(call);
       }
 
+      // Nuclear cleanup - ensure mic is released at browser level
+      await stopAllActiveMicrophoneTracks();
+
       // Now navigate
       router.push('/chat');
     } catch (err) {
@@ -499,6 +567,8 @@ export default function CallPage() {
       if (call) {
         stopAllLocalTracks(call);
       }
+      // Nuclear cleanup even on error
+      await stopAllActiveMicrophoneTracks();
       setCall(null);
       setActiveCall(null);
       router.push('/chat');
@@ -517,14 +587,42 @@ export default function CallPage() {
         setError(null);
 
         const newCall = videoClient.call('default', callId);
-        
+
         if (activeCall?.id === callId) {
           setCall(activeCall);
           setIsJoining(false);
           return;
         }
 
-        await newCall.join({ create: true });
+        // Check if we already have a stale session in this call (e.g., from a page refresh)
+        // If so, kick ourselves first to clean up the stale session before rejoining
+        await newCall.get();
+        const existingSession = newCall.state.participants.find(
+          (p) => p.userId === user.id
+        );
+
+        if (existingSession) {
+          console.log('[CallPage] Found stale session, kicking self before rejoining');
+          try {
+            await newCall.kickUser({ user_id: user.id });
+          } catch (kickError) {
+            // Ignore kick errors - session may have already timed out
+            console.log('[CallPage] Could not kick stale session:', kickError);
+          }
+        }
+
+        // Join the call (fresh session)
+        await newCall.join({
+          create: true,
+          data: {
+            settings_override: {
+              recording: {
+                mode: 'auto-on',
+                audio_only: true,
+              },
+            },
+          },
+        });
         recordCallStart(callId);
 
         // Check if this is a video call from custom data
@@ -588,17 +686,20 @@ export default function CallPage() {
   useEffect(() => {
     // Capture call reference for cleanup
     const callRef = call;
-    
+
     return () => {
       if (!hasCleanedUp.current) {
         console.log('[CallPage] Unmount cleanup...');
         hasCleanedUp.current = true;
-        
+
         // Stop all local participant tracks first (most thorough)
         stopAllLocalTracks(callRef);
-        
+
         // Stop tracked streams synchronously
         stopTrackedMediaStreams();
+
+        // Nuclear sync cleanup - ensure mic is released
+        stopAllActiveMicrophoneTracksSync();
 
         // SDK cleanup (async but we don't wait)
         if (callRef) {
@@ -608,6 +709,9 @@ export default function CallPage() {
           callRef.microphone.disable().catch(() => {});
           callRef.leave().catch(() => {});
         }
+
+        // Also fire async nuclear cleanup (non-blocking)
+        stopAllActiveMicrophoneTracks().catch(() => {});
       }
     };
   }, [call]);
@@ -627,16 +731,34 @@ export default function CallPage() {
 
   // Cleanup on browser close/navigation
   useEffect(() => {
+    // Use sendBeacon to notify server of leave - this is reliable even when tab closes
+    const sendLeaveBeacon = (callId: string) => {
+      try {
+        // Send a beacon to our API to end the session server-side
+        const url = `/api/calls/${callId}/leave`;
+        navigator.sendBeacon(url, JSON.stringify({ timestamp: Date.now() }));
+        console.log('[CallPage] Sent leave beacon for call:', callId);
+      } catch (e) {
+        console.log('[CallPage] Failed to send leave beacon:', e);
+      }
+    };
+
     const handleBeforeUnload = () => {
       console.log('[CallPage] beforeunload cleanup...');
-      // Stop all local participant tracks first (most thorough)
+
+      // 1. FIRST: Stop all media tracks (kills the audio/video stream)
+      // This must happen BEFORE call.leave() so WebRTC detects media stop
       stopAllLocalTracks(call);
-      
-      // Synchronous cleanup for beforeunload
       stopTrackedMediaStreams();
-      
+      stopAllActiveMicrophoneTracksSync();
+
+      // 2. Send beacon to server (reliable even on tab close)
+      if (call?.id) {
+        sendLeaveBeacon(call.id);
+      }
+
+      // 3. Fire SDK cleanup (may not complete but try anyway)
       if (call) {
-        // Stop publishing first to release media immediately
         call.stopPublish().catch(() => {});
         call.camera.disable().catch(() => {});
         call.microphone.disable().catch(() => {});
@@ -644,8 +766,47 @@ export default function CallPage() {
       }
     };
 
+    // pagehide is more reliable on mobile and some browsers
+    const handlePageHide = () => {
+      console.log('[CallPage] pagehide cleanup...');
+
+      // 1. FIRST: Stop all media tracks
+      stopAllLocalTracks(call);
+      stopTrackedMediaStreams();
+      stopAllActiveMicrophoneTracksSync();
+
+      // 2. Send beacon to server
+      if (call?.id) {
+        sendLeaveBeacon(call.id);
+      }
+
+      // 3. SDK cleanup
+      if (call) {
+        call.stopPublish().catch(() => {});
+        call.camera.disable().catch(() => {});
+        call.microphone.disable().catch(() => {});
+        call.leave().catch(() => {});
+      }
+    };
+
+    // visibilitychange can catch tab switches
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        console.log('[CallPage] visibility hidden, performing cleanup...');
+        // Only do sync cleanup here - user might come back
+        stopAllActiveMicrophoneTracksSync();
+      }
+    };
+
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [call]);
 
   const fullScreenStyle = {
@@ -720,7 +881,7 @@ export default function CallPage() {
         <StreamTheme className="h-full w-full">
           <StreamCall call={call}>
             <div className="h-full w-full">
-              <CallUI onLeave={handleLeave} />
+              <CallUI onLeave={handleLeave} isLeaving={isLeaving} />
             </div>
           </StreamCall>
         </StreamTheme>

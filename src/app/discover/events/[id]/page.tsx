@@ -4,23 +4,36 @@ import { use, useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
-import { MapPin, AlertCircle, CheckCircle } from 'lucide-react';
+import Link from 'next/link';
+import { MapPin, AlertCircle, CheckCircle, CalendarClock, XCircle, Video, PlayCircle, CalendarCheck, ExternalLink } from 'lucide-react';
 import { BackButton, ShareButton, AttendeeAvatars, RichContent, AddToCalendarButton, ContentPurchaseSheet } from '@/components/discover';
 import { Button } from '@/components/ui/button';
+import { MediaPlayer } from '@/components/video/MediaPlayer';
+import { RescheduleCallModal } from '@/components/scheduling/RescheduleCallModal';
+import { useSchedulingActions } from '@/hooks/useScheduling';
 import type { DiscoverEvent, EventUpdate, EventAttendee } from '@/types/discover';
+import type { UnifiedEvent } from '@/types';
 
 interface EventPageProps {
   params: Promise<{ id: string }>;
 }
 
 interface EventDetailData {
-  event: DiscoverEvent & { coachName?: string; coachImageUrl?: string };
+  event: DiscoverEvent & { coachName?: string; coachImageUrl?: string; eventType?: string };
   updates: EventUpdate[];
   attendees: EventAttendee[];
   totalAttendees: number;
   isJoined: boolean;
   isOwned: boolean;
   includedInProgramName?: string;
+}
+
+// Helper function to check if within 1 hour before event
+function isWithinOneHourBefore(datetime: string | Date): boolean {
+  const eventTime = new Date(datetime);
+  const now = new Date();
+  const oneHourBefore = new Date(eventTime.getTime() - 60 * 60 * 1000);
+  return now >= oneHourBefore && now < eventTime;
 }
 
 export default function EventDetailPage({ params }: EventPageProps) {
@@ -35,7 +48,10 @@ export default function EventDetailPage({ params }: EventPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [showPurchaseSheet, setShowPurchaseSheet] = useState(false);
-  
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const { cancelEvent } = useSchedulingActions();
   const justPurchased = searchParams.get('purchased') === 'true';
 
   // Fetch event data
@@ -140,6 +156,58 @@ export default function EventDetailPage({ params }: EventPageProps) {
     }
   }, [id, data, user, fetchEvent]);
 
+  // Cancel event handler (for 1:1 events)
+  const handleCancel = useCallback(async () => {
+    if (!data?.event || isCancelling) return;
+
+    if (!confirm('Are you sure you want to cancel this call?')) return;
+
+    setIsCancelling(true);
+    try {
+      await cancelEvent(id);
+      router.push('/calendar');
+    } catch (err) {
+      console.error('Failed to cancel event:', err);
+      alert('Failed to cancel event. Please try again.');
+    } finally {
+      setIsCancelling(false);
+    }
+  }, [id, data, isCancelling, cancelEvent, router]);
+
+  // Convert DiscoverEvent to UnifiedEvent for RescheduleCallModal
+  // Only the fields actually used by the modal are populated
+  const unifiedEvent = useMemo(() => {
+    if (!data?.event) return null;
+    const e = data.event;
+    return {
+      id: e.id,
+      title: e.title,
+      startDateTime: e.startDateTime || `${e.date}T${e.startTime}`,
+      endDateTime: e.endDateTime || `${e.date}T${e.endTime}`,
+      durationMinutes: e.durationMinutes || 30,
+      locationType: e.locationType === 'online' ? 'online' : e.locationType === 'in_person' ? 'in_person' : 'chat',
+      locationLabel: e.locationLabel || '',
+      meetingLink: e.meetingLink,
+      timezone: e.timezone || 'America/New_York',
+      attendeeIds: e.attendeeIds || [],
+      hostUserId: '',
+      organizationId: e.organizationId || '',
+      eventType: ((e as { eventType?: string }).eventType || 'community_event') as UnifiedEvent['eventType'],
+      // Required fields with sensible defaults
+      scope: 'private' as const,
+      participantModel: 'invite_only' as const,
+      approvalType: 'none' as const,
+      status: 'confirmed' as const,
+      isRecurring: false,
+      createdByUserId: '',
+      hostName: e.hostName || e.coachName || '',
+      isCoachLed: true,
+      sendChatReminders: false,
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    } as UnifiedEvent;
+  }, [data]);
+
   // Normalize event data to handle both old and new schema
   const normalizedEvent = useMemo(() => {
     if (!data?.event) return null;
@@ -216,15 +284,26 @@ export default function EventDetailPage({ params }: EventPageProps) {
     }
   }
 
-  // Check if event is in the past
-  const isPastEvent = useMemo(() => {
-    if (!normalizedEvent) return false;
+  // Event status: past, in progress, or upcoming
+  const eventStatus = useMemo(() => {
+    if (!normalizedEvent) return 'upcoming';
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const eventDate = new Date(normalizedEvent.date);
-    eventDate.setHours(0, 0, 0, 0);
-    return eventDate < now;
-  }, [normalizedEvent]);
+
+    const startDateTime = data?.event?.startDateTime
+      ? new Date(data.event.startDateTime)
+      : new Date(`${normalizedEvent.date}T${normalizedEvent.startTime || '00:00'}`);
+
+    const endDateTime = data?.event?.endDateTime
+      ? new Date(data.event.endDateTime)
+      : new Date(`${normalizedEvent.date}T${normalizedEvent.endTime || '23:59'}`);
+
+    if (now > endDateTime) return 'past';
+    if (now >= startDateTime && now <= endDateTime) return 'in_progress';
+    return 'upcoming';
+  }, [normalizedEvent, data?.event?.startDateTime, data?.event?.endDateTime]);
+
+  const isPastEvent = eventStatus === 'past';
+  const isInProgress = eventStatus === 'in_progress';
 
   if (loading) {
     return (
@@ -293,20 +372,40 @@ export default function EventDetailPage({ params }: EventPageProps) {
   // If user owns this content or it's free, show full event content
   if (isOwned || justPurchased || !event.priceInCents || event.priceInCents === 0) {
     // Show the full event content
-    return <EventContent 
-      event={event}
-      normalizedEvent={normalizedEvent}
-      updates={updates}
-      attendees={attendees}
-      totalAttendees={totalAttendees}
-      isJoined={isJoined}
-      isPastEvent={isPastEvent}
-      justPurchased={justPurchased}
-      includedInProgramName={includedInProgramName}
-      onJoin={joinEvent}
-      onLeave={leaveEvent}
-      isJoining={isJoining}
-    />;
+    return (
+      <>
+        <EventContent
+          event={event}
+          normalizedEvent={normalizedEvent}
+          updates={updates}
+          attendees={attendees}
+          totalAttendees={totalAttendees}
+          isJoined={isJoined}
+          isPastEvent={isPastEvent}
+          isInProgress={isInProgress}
+          justPurchased={justPurchased}
+          includedInProgramName={includedInProgramName}
+          onJoin={joinEvent}
+          onLeave={leaveEvent}
+          isJoining={isJoining}
+          onReschedule={event.eventType === 'coaching_1on1' ? () => setShowRescheduleModal(true) : undefined}
+          onCancel={event.eventType === 'coaching_1on1' ? handleCancel : undefined}
+        />
+
+        {/* Reschedule Modal for 1:1 events */}
+        {unifiedEvent && event.eventType === 'coaching_1on1' && (
+          <RescheduleCallModal
+            isOpen={showRescheduleModal}
+            onClose={() => setShowRescheduleModal(false)}
+            event={unifiedEvent}
+            onSuccess={() => {
+              setShowRescheduleModal(false);
+              fetchEvent();
+            }}
+          />
+        )}
+      </>
+    );
   }
 
   // Show simple purchase view (popup style)
@@ -406,24 +505,30 @@ function EventContent({
   totalAttendees,
   isJoined,
   isPastEvent,
+  isInProgress,
   justPurchased,
   includedInProgramName,
   onJoin,
   onLeave,
   isJoining,
+  onReschedule,
+  onCancel,
 }: {
-  event: DiscoverEvent & { coachName?: string; coachImageUrl?: string };
+  event: DiscoverEvent & { coachName?: string; coachImageUrl?: string; eventType?: string };
   normalizedEvent: ReturnType<typeof Object.assign> | null;
   updates: EventUpdate[];
   attendees: EventAttendee[];
   totalAttendees: number;
   isJoined: boolean;
   isPastEvent: boolean;
+  isInProgress: boolean;
   justPurchased: boolean;
   includedInProgramName?: string;
   onJoin: () => void;
   onLeave: () => void;
   isJoining: boolean;
+  onReschedule?: () => void;
+  onCancel?: () => void;
 }) {
   if (!normalizedEvent) return null;
 
@@ -505,7 +610,25 @@ function EventContent({
           )}
 
           {/* Event Info */}
-          <div className="flex flex-col gap-2">
+          <div className={`flex flex-col gap-2 ${!normalizedEvent.coverImageUrl ? 'mt-4' : ''}`}>
+            {/* Status Badge */}
+            <div className="flex items-center gap-2">
+              {isPastEvent ? (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-earth-100 text-earth-600 dark:bg-earth-900/30 dark:text-earth-400">
+                  Past
+                </span>
+              ) : isInProgress ? (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 animate-pulse" />
+                  In Progress
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                  Upcoming
+                </span>
+              )}
+            </div>
+
             <h1 className="font-albert font-medium text-2xl text-text-primary tracking-[-1.5px] leading-[1.3]">
               {normalizedEvent.title}
             </h1>
@@ -525,72 +648,199 @@ function EventContent({
                 Included in {includedInProgramName}
               </p>
             )}
+
+            {/* Attendees - show right after event info for 1:1 calls */}
+            {(attendees.length > 0 || totalAttendees > 0) && (
+              <div className="mt-2">
+                <AttendeeAvatars
+                  attendees={attendees}
+                  totalCount={totalAttendees}
+                />
+              </div>
+            )}
           </div>
 
           {/* Event Actions - Different for past vs upcoming events */}
           {isPastEvent ? (
-            // Past Event Actions
-            hasRecording ? (
-              <a
-                href={normalizedEvent.recordingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-4 px-4 rounded-[32px] bg-earth-500 text-white font-sans font-bold text-base tracking-[-0.5px] leading-[1.4] text-center hover:bg-earth-600 transition-colors flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                View Recording
-              </a>
-            ) : (
-              <div className="w-full py-4 px-4 rounded-[32px] bg-earth-100 dark:bg-[#1d222b] text-earth-500 dark:text-[#7d8190] font-sans font-bold text-base tracking-[-0.5px] leading-[1.4] text-center">
-                Event has ended
-              </div>
-            )
-          ) : (
-            // Upcoming Event Actions
-            <>
-              <button
-                onClick={isJoined ? onLeave : onJoin}
-                disabled={isJoining}
-                className={`
-                  w-full py-4 px-4 rounded-[32px] font-sans font-bold text-base tracking-[-0.5px] leading-[1.4]
-                  transition-all disabled:opacity-50
-                  ${isJoined 
-                    ? 'bg-earth-100 text-earth-700 border border-earth-300' 
-                    : 'bg-white border border-[rgba(215,210,204,0.5)] text-button-primary hover:bg-earth-50'
-                  }
-                `}
-              >
-                {isJoined ? 'You\'re in ✓' : 'Join event'}
-              </button>
-
-              {/* Meeting Link (only visible if joined) */}
-              {isJoined && normalizedEvent.meetingLink && (
-                <a
-                  href={normalizedEvent.meetingLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-3 px-4 rounded-[20px] bg-earth-500 text-white font-sans font-bold text-base tracking-[-0.5px] leading-[1.4] text-center hover:bg-earth-600 transition-colors"
-                >
-                  Join Meeting →
-                </a>
-              )}
-              
-              {/* Add to Calendar (only visible if joined) */}
-              {isJoined && (
-                <div className="flex justify-center">
-                  <AddToCalendarButton
-                    title={normalizedEvent.title}
-                    description={normalizedEvent.shortDescription || normalizedEvent.description}
-                    location={normalizedEvent.locationLabel || normalizedEvent.meetingLink}
-                    startDateTime={event?.startDateTime || new Date(`${normalizedEvent.date}T${normalizedEvent.startTime}`).toISOString()}
-                    endDateTime={event?.endDateTime || new Date(`${normalizedEvent.date}T${normalizedEvent.endTime}`).toISOString()}
-                    timezone={event?.timezone}
-                  />
+            // Past Event Actions - Show recording or ended message
+            <div className="space-y-4 mt-2">
+              {hasRecording ? (
+                <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden">
+                  {/* Recording header */}
+                  <div className="px-4 py-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                    <div className="flex items-center gap-2 text-sm text-text-secondary">
+                      <PlayCircle className="w-4 h-4" />
+                      <span>Call Recording</span>
+                    </div>
+                  </div>
+                  {/* Player */}
+                  <div className="p-4">
+                    <MediaPlayer
+                      src={normalizedEvent.recordingUrl}
+                      className="w-full"
+                    />
+                  </div>
+                  {/* Open in new tab link */}
+                  <div className="px-4 pb-4 pt-0">
+                    <a
+                      href={normalizedEvent.recordingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 text-sm text-earth-500 hover:text-earth-600 dark:text-earth-400 dark:hover:text-earth-300 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open in New Tab
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-earth-50 dark:bg-[#1d222b] rounded-2xl p-6 text-center border border-[#e1ddd8] dark:border-[#262b35]">
+                  <CalendarCheck className="w-8 h-8 text-earth-400 dark:text-earth-500 mx-auto mb-2" />
+                  <p className="text-text-secondary text-sm font-medium">This call has ended</p>
+                  <p className="text-text-muted text-xs mt-1">No recording available</p>
                 </div>
               )}
-            </>
+            </div>
+          ) : (
+            // Upcoming Event Actions
+            (() => {
+              const is1on1Event = event.eventType === 'coaching_1on1';
+              const isInAppCall = normalizedEvent.locationType === 'chat';
+              const hasExternalLink = !!normalizedEvent.meetingLink;
+              const canJoinNow = event.startDateTime && isWithinOneHourBefore(event.startDateTime);
+
+              // For 1:1 events: show Reschedule, Cancel, and Join (within 1 hour)
+              if (is1on1Event) {
+                return (
+                  <div className="space-y-4 mt-6">
+                    {/* Reschedule and Cancel buttons */}
+                    <div className="flex gap-3">
+                      {onReschedule && (
+                        <button
+                          onClick={onReschedule}
+                          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-[20px] bg-white border border-[rgba(215,210,204,0.5)] text-text-primary font-sans font-bold text-sm hover:bg-earth-50 transition-colors"
+                        >
+                          <CalendarClock className="w-4 h-4" />
+                          Reschedule
+                        </button>
+                      )}
+                      {onCancel && (
+                        <button
+                          onClick={onCancel}
+                          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-[20px] bg-white border border-red-200 text-red-600 font-sans font-bold text-sm hover:bg-red-50 transition-colors"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Join Call button (shows 1 hour before) */}
+                    {canJoinNow ? (
+                      hasExternalLink ? (
+                        <a
+                          href={normalizedEvent.meetingLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-4 px-4 rounded-[32px] bg-brand-accent text-white font-sans font-bold text-base tracking-[-0.5px] leading-[1.4] text-center hover:bg-brand-accent/90 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Video className="w-5 h-5" />
+                          Join Call
+                        </a>
+                      ) : isInAppCall ? (
+                        <Link
+                          href={`/call/event-${event.id}`}
+                          className="w-full py-4 px-4 rounded-[32px] bg-brand-accent text-white font-sans font-bold text-base tracking-[-0.5px] leading-[1.4] text-center hover:bg-brand-accent/90 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Video className="w-5 h-5" />
+                          Join Call
+                        </Link>
+                      ) : null
+                    ) : (hasExternalLink || isInAppCall) ? (
+                      <p className="text-center text-sm text-[#5f5a55] dark:text-[#b2b6c2] py-2">
+                        Link will appear 1 hour before the call
+                      </p>
+                    ) : null}
+
+                    {/* Add to Calendar */}
+                    <div className="flex justify-center">
+                      <AddToCalendarButton
+                        title={normalizedEvent.title}
+                        description={normalizedEvent.shortDescription || normalizedEvent.description}
+                        location={normalizedEvent.locationLabel || normalizedEvent.meetingLink}
+                        startDateTime={event?.startDateTime || new Date(`${normalizedEvent.date}T${normalizedEvent.startTime}`).toISOString()}
+                        endDateTime={event?.endDateTime || new Date(`${normalizedEvent.date}T${normalizedEvent.endTime}`).toISOString()}
+                        timezone={event?.timezone}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+
+              // For group events: show RSVP toggle
+              return (
+                <>
+                  <button
+                    onClick={isJoined ? onLeave : onJoin}
+                    disabled={isJoining}
+                    className={`
+                      w-full py-4 px-4 rounded-[32px] font-sans font-bold text-base tracking-[-0.5px] leading-[1.4]
+                      transition-all disabled:opacity-50
+                      ${isJoined
+                        ? 'bg-earth-100 text-earth-700 border border-earth-300'
+                        : 'bg-white border border-[rgba(215,210,204,0.5)] text-button-primary hover:bg-earth-50'
+                      }
+                    `}
+                  >
+                    {isJoined ? 'You\'re in ✓' : 'Join event'}
+                  </button>
+
+                  {/* Meeting Link (only visible if joined AND within 1 hour) */}
+                  {isJoined && canJoinNow && normalizedEvent.meetingLink && (
+                    <a
+                      href={normalizedEvent.meetingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3 px-4 rounded-[20px] bg-earth-500 text-white font-sans font-bold text-base tracking-[-0.5px] leading-[1.4] text-center hover:bg-earth-600 transition-colors"
+                    >
+                      Join Meeting →
+                    </a>
+                  )}
+
+                  {/* In-app call (only visible if joined and within 1 hour) */}
+                  {isJoined && isInAppCall && !hasExternalLink && canJoinNow && (
+                    <Link
+                      href={`/call/event-${event.id}`}
+                      className="w-full py-3 px-4 rounded-[20px] bg-earth-500 text-white font-sans font-bold text-base tracking-[-0.5px] leading-[1.4] text-center hover:bg-earth-600 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Video className="w-5 h-5" />
+                      Join Call
+                    </Link>
+                  )}
+
+                  {/* Link will appear message (joined but not within 1 hour) */}
+                  {isJoined && !canJoinNow && (normalizedEvent.meetingLink || isInAppCall) && (
+                    <p className="text-center text-sm text-[#5f5a55] dark:text-[#b2b6c2] py-2">
+                      Link will appear 1 hour before the call
+                    </p>
+                  )}
+
+                  {/* Add to Calendar (only visible if joined) */}
+                  {isJoined && (
+                    <div className="flex justify-center">
+                      <AddToCalendarButton
+                        title={normalizedEvent.title}
+                        description={normalizedEvent.shortDescription || normalizedEvent.description}
+                        location={normalizedEvent.locationLabel || normalizedEvent.meetingLink}
+                        startDateTime={event?.startDateTime || new Date(`${normalizedEvent.date}T${normalizedEvent.startTime}`).toISOString()}
+                        endDateTime={event?.endDateTime || new Date(`${normalizedEvent.date}T${normalizedEvent.endTime}`).toISOString()}
+                        timezone={event?.timezone}
+                      />
+                    </div>
+                  )}
+                </>
+              );
+            })()
           )}
         </div>
       </section>
@@ -628,14 +878,6 @@ function EventContent({
                 )}
               </div>
             </div>
-          )}
-
-          {/* Attendees */}
-          {(attendees.length > 0 || totalAttendees > 0) && (
-            <AttendeeAvatars 
-              attendees={attendees} 
-              totalCount={totalAttendees} 
-            />
           )}
 
           {/* Additional Info - Only show if at least one field has content */}

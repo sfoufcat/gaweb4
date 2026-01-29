@@ -371,7 +371,7 @@ export function ScheduleCohortEventModal({
           ? 'Zoom'
           : finalMeetingProvider === 'google_meet'
             ? 'Google Meet'
-            : 'Video Call',
+            : 'Custom Link',
         meetingLink: meetingUrl,
         meetingProvider: finalMeetingProvider,
         externalMeetingId: meetingId,

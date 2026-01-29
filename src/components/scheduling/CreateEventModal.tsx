@@ -695,7 +695,7 @@ export function CreateEventModal({
         durationMinutes: duration,
 
         locationType: finalMeetingUrl ? 'online' : 'chat',
-        locationLabel: finalMeetingProvider === 'zoom' ? 'Zoom' : finalMeetingProvider === 'google_meet' ? 'Google Meet' : 'Meeting',
+        locationLabel: finalMeetingProvider === 'zoom' ? 'Zoom' : finalMeetingProvider === 'google_meet' ? 'Google Meet' : 'Custom Link',
         meetingLink: finalMeetingUrl,
         meetingProvider: finalMeetingProvider,
         externalMeetingId: finalMeetingId,

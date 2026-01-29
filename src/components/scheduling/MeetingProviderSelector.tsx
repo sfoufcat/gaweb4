@@ -318,7 +318,7 @@ export function MeetingProviderSelector({
       </label>
 
       {/* Provider Tabs */}
-      <div className="flex gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl mb-3 overflow-visible">
+      <div className="flex items-stretch gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl mb-3">
         {availableProviders.map(renderProviderTab)}
       </div>
 

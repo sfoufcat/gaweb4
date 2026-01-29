@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire, DayCourseAssignment, WeekResourceAssignment } from '@/types';
 import type { DiscoverCourse, DiscoverVideo } from '@/types/discover';
-import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, CalendarPlus, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle, Save, MoreVertical } from 'lucide-react';
+import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, CalendarPlus, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle, Save, MoreVertical, RefreshCw } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -31,10 +31,92 @@ import { ScheduleCallModal } from '@/components/scheduling';
 import { CreateEventModal } from '@/components/scheduling/CreateEventModal';
 import { GenerateSummaryButton } from '@/components/scheduling/GenerateSummaryButton';
 import { InlineRecordingUpload } from '@/components/scheduling/InlineRecordingUpload';
-import { VideoPlayer } from '@/components/video/VideoPlayer';
+import { MediaPlayer } from '@/components/video/MediaPlayer';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
 import { generateTasksFromResources, mergeResourceTasks } from '@/lib/resource-tasks';
+
+/**
+ * Small component to fetch recording from video call providers
+ */
+function FetchRecordingButton({
+  eventId,
+  onSuccess,
+  variant = 'link'
+}: {
+  eventId: string;
+  onSuccess?: () => void;
+  variant?: 'link' | 'button';
+}) {
+  const [isFetching, setIsFetching] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleFetch = async () => {
+    if (isFetching) return;
+    setIsFetching(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/events/${eventId}/fetch-recording`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      if (data.success && data.recordingUrl) {
+        setMessage('Recording found!');
+        onSuccess?.();
+      } else {
+        setMessage(data.message || 'No recording found yet');
+      }
+    } catch {
+      setMessage('Failed to fetch recording');
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  if (variant === 'button') {
+    return (
+      <div className="space-y-1">
+        <button
+          onClick={handleFetch}
+          disabled={isFetching}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
+        >
+          {isFetching ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3 h-3" />
+          )}
+          {isFetching ? 'Checking...' : 'Check Now'}
+        </button>
+        {message && (
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">{message}</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <button
+        onClick={handleFetch}
+        disabled={isFetching}
+        className="flex items-center gap-1.5 text-xs text-brand-accent hover:underline disabled:opacity-50"
+      >
+        {isFetching ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : (
+          <RefreshCw className="w-3 h-3" />
+        )}
+        {isFetching ? 'Checking...' : 'Check for recording'}
+      </button>
+      {message && (
+        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">{message}</p>
+      )}
+    </div>
+  );
+}
 
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -3482,6 +3564,15 @@ export function WeekEditor({
                     const hasRecording = event?.recordingUrl || event?.hasCallRecording;
                     const recordingStatus = event?.recordingStatus;
                     const isProcessing = recordingStatus === 'processing';
+                    // Check if this is a video call (zoom/google_meet/stream) that could have automatic recording
+                    const isVideoCall = event?.meetingProvider === 'zoom' ||
+                                        event?.meetingProvider === 'google_meet' ||
+                                        event?.meetingProvider === 'stream' ||
+                                        event?.locationType === 'chat';
+                    // Check if call ended recently (within 10 minutes) - recording may still be processing
+                    const endTime = event?.endDateTime ? new Date(event.endDateTime) : eventDate ? new Date(eventDate.getTime() + (event?.durationMinutes || 60) * 60000) : null;
+                    const minutesSinceEnd = endTime ? (Date.now() - endTime.getTime()) / 60000 : Infinity;
+                    const isRecentlyEnded = isPast && isVideoCall && minutesSinceEnd < 10;
                     // Can generate summary if: past, has recording, no summary yet, not processing
                     const canGenerateSummary = isPast && hasRecording && !hasSummary && !isProcessing;
 
@@ -3489,25 +3580,27 @@ export function WeekEditor({
                       <div
                         key={eventId}
                         className={cn(
-                          "p-3 rounded-xl group",
-                          isPast && !hasSummary
-                            ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
-                            : hasSummary
-                            ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+                          "p-3 rounded-xl group border",
+                          hasSummary
+                            ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
                             : isToday
-                            ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                            : "bg-[#faf8f6] dark:bg-[#1e222a]"
+                            ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                            : isPast && isRecentlyEnded
+                            ? "bg-slate-50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-700"
+                            : "bg-[#faf8f6] dark:bg-[#1e222a] border-[#e8e4df] dark:border-[#2a2f3a]"
                         )}
                       >
                         <div className="flex items-center gap-2">
                           {hasSummary ? (
                             <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          ) : isProcessing ? (
-                            <Loader2 className="w-4 h-4 text-brand-accent animate-spin flex-shrink-0" />
+                          ) : isProcessing || (isRecentlyEnded && !hasRecording) ? (
+                            <Loader2 className="w-4 h-4 text-slate-500 animate-spin flex-shrink-0" />
                           ) : isToday ? (
                             <Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                          ) : isPast && hasRecording ? (
+                            <Video className="w-4 h-4 text-brand-accent flex-shrink-0" />
                           ) : isPast ? (
-                            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                            <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
                           ) : (
                             <Calendar className="w-4 h-4 text-brand-accent flex-shrink-0" />
                           )}
@@ -3541,13 +3634,13 @@ export function WeekEditor({
                                 </span>
                               )}
                               {isPast && !hasSummary && !isProcessing && hasRecording && (
-                                <span className="text-xs text-blue-600 dark:text-blue-400">
+                                <span className="text-xs text-brand-accent">
                                   • Recording ready
                                 </span>
                               )}
-                              {isPast && !hasSummary && !isProcessing && !hasRecording && (
-                                <span className="text-xs text-amber-600 dark:text-amber-400">
-                                  • No recording
+                              {isPast && !hasSummary && !isProcessing && !hasRecording && isRecentlyEnded && (
+                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                  • Fetching recording...
                                 </span>
                               )}
                               {isToday && (
@@ -3566,10 +3659,10 @@ export function WeekEditor({
                           </button>
                         </div>
                         
-                        {/* Video Player for past sessions with recording */}
+                        {/* Media Player for past sessions with recording (audio or video) */}
                         {isPast && hasRecording && event?.recordingUrl && (
                           <div className="mt-3">
-                            <VideoPlayer
+                            <MediaPlayer
                               src={event.recordingUrl}
                               poster={event.coverImageUrl}
                               className="rounded-lg overflow-hidden"
@@ -3587,15 +3680,51 @@ export function WeekEditor({
                           </div>
                         )}
 
-                        {/* Upload Recording for past sessions without recording */}
+                        {/* Recording actions for past sessions without recording */}
                         {isPast && !hasRecording && !isProcessing && (
-                          <div className="mt-3 pl-6">
-                            <InlineRecordingUpload
-                              eventId={eventId}
-                              onUploadComplete={() => {
-                                onCallScheduled?.();
-                              }}
-                            />
+                          <div className="mt-3">
+                            {/* Processing state card for video calls that recently ended */}
+                            {isRecentlyEnded ? (
+                              <div className="p-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Loader2 className="w-4 h-4 text-slate-500 animate-spin" />
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                      Recording processing...
+                                    </p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                      Usually ready within a few minutes
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 mt-3">
+                                  <FetchRecordingButton
+                                    eventId={eventId}
+                                    onSuccess={() => onCallScheduled?.()}
+                                    variant="button"
+                                  />
+                                  <InlineRecordingUpload
+                                    eventId={eventId}
+                                    onUploadComplete={() => onCallScheduled?.()}
+                                    variant="link"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {/* Fetch recording button for video calls */}
+                                {isVideoCall && (
+                                  <FetchRecordingButton
+                                    eventId={eventId}
+                                    onSuccess={() => onCallScheduled?.()}
+                                  />
+                                )}
+                                <InlineRecordingUpload
+                                  eventId={eventId}
+                                  onUploadComplete={() => onCallScheduled?.()}
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -3654,22 +3783,36 @@ export function WeekEditor({
 
                   {/* Link existing call dropdown */}
                   {availableEventsToLink.length > 0 && (
-                    <select
-                      className="px-3 py-1.5 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-                      value=""
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          addEventLink(e.target.value);
-                        }
-                      }}
-                    >
-                      <option value="">Link existing call...</option>
-                      {availableEventsToLink.map((event) => (
-                        <option key={event.id} value={event.id}>
-                          {event.title || 'Call'} - {event.startDateTime ? new Date(event.startDateTime).toLocaleDateString() : 'No date'}
-                        </option>
-                      ))}
-                    </select>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="flex items-center gap-1.5">
+                          Link existing call...
+                          <ChevronDown className="w-4 h-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[220px]">
+                        {availableEventsToLink.map((event) => (
+                          <DropdownMenuItem
+                            key={event.id}
+                            onClick={() => addEventLink(event.id)}
+                            className="flex flex-col items-start gap-0.5"
+                          >
+                            <span className="font-medium">{event.title || 'Call'}</span>
+                            <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                              {event.startDateTime
+                                ? new Date(event.startDateTime).toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit'
+                                  })
+                                : 'No date'}
+                            </span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
               )}

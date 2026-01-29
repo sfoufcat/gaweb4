@@ -68,7 +68,7 @@ import {
 } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, isPastEvent } from '@/lib/utils';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 
 // Client type for picker
@@ -241,6 +241,8 @@ function EventCard({ event, compact = false, onClick, onRespond, onCounterPropos
   // Check if this is a pending proposal
   const isPending = event.schedulingStatus === 'proposed' || event.schedulingStatus === 'counter_proposed';
   const isConfirmed = event.schedulingStatus === 'confirmed';
+  // Check if event is in the past
+  const isPast = isPastEvent(event);
   // Show credit warning for coaches on confirmed in-app calls when no credits
 
   // Use pending colors for pending events, otherwise use event type colors
@@ -280,7 +282,11 @@ function EventCard({ event, compact = false, onClick, onRespond, onCounterPropos
 
     return (
       <div
-        className={`px-2 py-1 rounded text-xs font-albert truncate ${typeColors.bg} ${typeColors.border} border ${typeColors.text} ${onClick ? 'cursor-pointer hover:opacity-80' : ''}`}
+        className={cn(
+          `px-2 py-1 rounded text-xs font-albert truncate ${typeColors.bg} ${typeColors.border} border ${typeColors.text}`,
+          onClick && 'cursor-pointer hover:opacity-80',
+          isPast && 'opacity-50'
+        )}
         title={compactLabel}
         onClick={onClick}
       >
@@ -291,7 +297,10 @@ function EventCard({ event, compact = false, onClick, onRespond, onCounterPropos
 
   return (
     <div
-      className={`p-3 rounded-xl ${typeColors.bg} ${typeColors.border} border`}
+      className={cn(
+        `p-3 rounded-xl ${typeColors.bg} ${typeColors.border} border`,
+        isPast && 'opacity-60'
+      )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">

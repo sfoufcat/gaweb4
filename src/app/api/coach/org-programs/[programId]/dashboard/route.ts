@@ -44,6 +44,15 @@ interface UpcomingItem {
   submitted?: number;
 }
 
+interface PastSessionItem {
+  id: string;
+  title: string;
+  date: string;
+  coverImageUrl?: string;
+  hasRecording: boolean;
+  eventId: string;
+}
+
 interface ProgramDashboardData {
   programId: string;
   programName: string;
@@ -87,6 +96,7 @@ interface ProgramDashboardData {
   }[];
   contentCompletion: ContentCompletionItem[];
   upcoming: UpcomingItem[];
+  pastSessions: PastSessionItem[];
 }
 
 /**
@@ -879,8 +889,77 @@ export async function GET(
     const contentCompletionList = Array.from(contentCompletionByItem.values())
       .sort((a, b) => b.completionPercent - a.completionPercent);
 
-    // Upcoming items (simplified - would need to query events)
+    // Query upcoming events for this program/cohort
     const upcoming: UpcomingItem[] = [];
+    try {
+      const now = new Date().toISOString();
+      const upcomingEventsQuery = adminDb
+        .collection('events')
+        .where('programId', '==', programId)
+        .where('startDateTime', '>=', now)
+        .orderBy('startDateTime', 'asc')
+        .limit(20);
+
+      const upcomingEventsSnapshot = await upcomingEventsQuery.get();
+
+      for (const doc of upcomingEventsSnapshot.docs) {
+        const data = doc.data();
+        // Skip canceled/deleted/draft events - only show confirmed or live
+        const status = data.status || '';
+        if (status !== 'confirmed' && status !== 'live') {
+          continue;
+        }
+        // Skip recurring parent events for cohort calls (instances are shown instead)
+        // But keep recurring 1:1 calls - they are actual events, not templates
+        if (data.isRecurring === true && data.eventType === 'cohort_call') {
+          continue;
+        }
+        // Filter by cohort if specified
+        if (cohortId && data.cohortId && data.cohortId !== cohortId) {
+          continue;
+        }
+        upcoming.push({
+          type: 'call',
+          title: data.title || 'Scheduled Session',
+          date: data.startDateTime,
+        });
+      }
+    } catch (err) {
+      console.warn('[PROGRAM_DASHBOARD] Failed to fetch upcoming events:', err);
+    }
+
+    // Get past sessions for this program/cohort
+    const pastSessions: PastSessionItem[] = [];
+    try {
+      const now = new Date().toISOString();
+      // Query events for this program that are in the past
+      let pastEventsQuery = adminDb
+        .collection('events')
+        .where('programId', '==', programId)
+        .where('startDateTime', '<', now)
+        .orderBy('startDateTime', 'desc')
+        .limit(50);
+
+      const pastEventsSnapshot = await pastEventsQuery.get();
+
+      for (const doc of pastEventsSnapshot.docs) {
+        const data = doc.data();
+        // Filter to cohort if specified
+        if (cohortId && data.cohortId && data.cohortId !== cohortId) {
+          continue;
+        }
+        pastSessions.push({
+          id: doc.id,
+          title: data.title || 'Program Session',
+          date: data.startDateTime,
+          coverImageUrl: data.coverImageUrl,
+          hasRecording: !!data.recordingUrl,
+          eventId: doc.id,
+        });
+      }
+    } catch (err) {
+      console.warn('[PROGRAM_DASHBOARD] Failed to fetch past sessions:', err);
+    }
 
     // Build response
     const dashboardData: ProgramDashboardData = {
@@ -903,6 +982,7 @@ export async function GET(
       topPerformers,
       contentCompletion: contentCompletionList,
       upcoming,
+      pastSessions,
     };
 
     return NextResponse.json(dashboardData);

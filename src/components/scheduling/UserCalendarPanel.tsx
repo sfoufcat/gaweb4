@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import Link from 'next/link';
 import { addMonths, subMonths } from 'date-fns';
 import {
   X,
@@ -22,12 +23,16 @@ import {
   RefreshCw,
   PhoneIncoming,
   UserMinus,
+  PlayCircle,
+  FileText,
 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { useSchedulingEvents, useSchedulingActions, usePendingProposals } from '@/hooks/useScheduling';
 import { RescheduleCallModal } from './RescheduleCallModal';
 import { CounterProposeModal } from './CounterProposeModal';
+import { EventDetailPopup } from './EventDetailPopup';
 import type { UnifiedEvent } from '@/types';
+import { isWithinOneHourBefore } from '@/lib/utils';
 
 interface UserCalendarPanelProps {
   isOpen: boolean;
@@ -511,17 +516,72 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
       {/* Confirmed event actions - OUTSIDE flex container for full width */}
       {isConfirmed && (
         <div className="mt-4 space-y-2">
-          {event.meetingLink && (
-            <a
-              href={event.meetingLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all duration-200"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Join Call
-            </a>
-          )}
+          {/* Join button - shows within 1 hour for external links or in-app calls */}
+          {(() => {
+            // Check for in-app call: locationType 'chat', meetingProvider 'stream', or locationLabel contains 'in-app'
+            const locationLower = event.locationLabel?.toLowerCase() || '';
+            const isInAppCall = event.locationType === 'chat' ||
+                               event.meetingProvider === 'stream' ||
+                               locationLower.includes('in-app') ||
+                               locationLower.includes('in app') ||
+                               locationLower === 'chat';
+            const hasExternalLink = !!event.meetingLink;
+            // Has a joinable meeting if there's an external link OR it's an in-app call
+            const hasJoinableCall = hasExternalLink || isInAppCall;
+            const withinTimeWindow = isWithinOneHourBefore(event.startDateTime);
+
+            // Debug: Log join call detection
+            console.log('[UserCalendarPanel] Join detection:', {
+              eventId: event.id,
+              eventType: event.eventType,
+              locationType: event.locationType,
+              locationLabel: event.locationLabel,
+              meetingLink: event.meetingLink,
+              meetingProvider: event.meetingProvider,
+              isInAppCall,
+              hasExternalLink,
+              hasJoinableCall,
+              withinTimeWindow,
+              startDateTime: event.startDateTime,
+            });
+
+            if (hasExternalLink && withinTimeWindow) {
+              return (
+                <a
+                  href={event.meetingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all duration-200"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Join Call
+                </a>
+              );
+            }
+
+            if (isInAppCall && !hasExternalLink && withinTimeWindow) {
+              return (
+                <Link
+                  href={`/call/event-${event.id}`}
+                  className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all duration-200"
+                >
+                  <Video className="w-4 h-4" />
+                  Join Call
+                </Link>
+              );
+            }
+
+            // Show message when there's a joinable call but not yet within time window
+            if (hasJoinableCall && !withinTimeWindow) {
+              return (
+                <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] text-center">
+                  Link will appear 1 hour before the call
+                </p>
+              );
+            }
+
+            return null;
+          })()}
           {/* Community events: Remove RSVP only */}
           {event.eventType === 'community_event' && onCancel && (
             <button
@@ -602,9 +662,79 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
   );
 }
 
+interface PastEventItemProps {
+  event: UnifiedEvent;
+  onViewDetails: (event: UnifiedEvent) => void;
+}
+
+function PastEventItem({ event, onViewDetails }: PastEventItemProps) {
+  if (!event || !event.startDateTime) return null;
+
+  const typeInfo = EVENT_TYPE_INFO[event.eventType] || EVENT_TYPE_INFO.coaching_1on1;
+  const Icon = typeInfo.icon;
+  const startTime = new Date(event.startDateTime);
+  const hasRecording = !!event.recordingUrl;
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  // Get display title (strip "Call request with" prefix)
+  const displayTitle = event.title?.replace(/^Call request with\s*/i, '') || event.title;
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className={`w-8 h-8 rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center flex-shrink-0`}>
+          <Icon className={`w-4 h-4 ${typeInfo.color}`} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+            {displayTitle}
+          </p>
+          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+            {formatDate(startTime)} · {formatTime(startTime)}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+        {hasRecording && (
+          <a
+            href={event.recordingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+          >
+            <PlayCircle className="w-3.5 h-3.5" />
+            Recording
+          </a>
+        )}
+        <button
+          onClick={() => onViewDetails(event)}
+          className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+        >
+          <FileText className="w-3.5 h-3.5" />
+          Details
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * UserCalendarPanel
- * 
+ *
  * A slide-out panel showing the user's upcoming events including:
  * - Scheduled calls with coach
  * - Squad calls
@@ -617,6 +747,7 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [counterProposeEvent, setCounterProposeEvent] = useState<UnifiedEvent | null>(null);
   const [rescheduleEvent, setRescheduleEvent] = useState<UnifiedEvent | null>(null);
+  const [selectedPastEvent, setSelectedPastEvent] = useState<UnifiedEvent | null>(null);
   const [isCounterProposing, setIsCounterProposing] = useState(false);
   const [counterProposeError, setCounterProposeError] = useState<string | null>(null);
   const { respondToProposal, cancelEvent, isLoading: respondLoading } = useSchedulingActions();
@@ -636,6 +767,14 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
     role: 'all',
+  });
+
+  // Debug: log events as they come in
+  console.log('[UserCalendarPanel] events from hook:', {
+    isLoading,
+    eventCount: events?.length,
+    events: events?.map(e => ({ id: e.id, title: e.title, startDateTime: e.startDateTime })),
+    dateRange,
   });
 
   // Fetch pending proposals and my requests
@@ -762,11 +901,27 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
 
   const pastEvents = useMemo(() => {
     const now = new Date();
-    return events
+    const past = events
       // Filter out events with missing startDateTime
       .filter(e => e && e.startDateTime && new Date(e.startDateTime) < now)
       .sort((a, b) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime());
+    console.log('[UserCalendarPanel] pastEvents debug:', {
+      now: now.toISOString(),
+      totalEvents: events.length,
+      pastCount: past.length,
+      pastEvents: past.map(e => ({ id: e.id, title: e.title, startDateTime: e.startDateTime })),
+    });
+    return past;
   }, [events]);
+
+  // Debug log that always runs
+  console.log('[UserCalendarPanel] RENDER:', {
+    isOpen,
+    isLoading,
+    eventsCount: events?.length,
+    pastEventsCount: pastEvents?.length,
+    upcomingEventsCount: upcomingEvents?.length,
+  });
 
   if (!isOpen) return null;
 
@@ -924,16 +1079,13 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
               <h3 className="font-albert font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-3">
                 Past Events
               </h3>
-              <div className="opacity-60">
-                {Array.from(groupEventsByDate(pastEvents.slice(0, 5))).map(([dateKey, dateEvents]) => (
-                  <div key={dateKey}>
-                    <DateSeparator date={new Date(dateKey + 'T00:00:00')} />
-                    <div className="space-y-3">
-                      {dateEvents.map(event => (
-                        <EventItem key={event.id} event={event} currentUserId={currentUserId} hideDate />
-                      ))}
-                    </div>
-                  </div>
+              <div className="space-y-2">
+                {pastEvents.slice(0, 10).map(event => (
+                  <PastEventItem
+                    key={event.id}
+                    event={event}
+                    onViewDetails={setSelectedPastEvent}
+                  />
                 ))}
               </div>
             </div>
@@ -960,6 +1112,16 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
           onSubmit={handleCounterProposeSubmit}
           isLoading={isCounterProposing}
           error={counterProposeError}
+        />
+      )}
+
+      {/* Past Event Detail Popup */}
+      {selectedPastEvent && (
+        <EventDetailPopup
+          event={selectedPastEvent}
+          isOpen={!!selectedPastEvent}
+          onClose={() => setSelectedPastEvent(null)}
+          onEventUpdated={refetch}
         />
       )}
     </>

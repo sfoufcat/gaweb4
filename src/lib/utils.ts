@@ -22,3 +22,27 @@ export function getProfileUrl(userId: string | undefined, currentUserId: string)
   return `/profile/${userId}`;
 }
 
+/**
+ * Check if the current time is within one hour before an event starts.
+ * Used to show "Join Call" button at the appropriate time.
+ */
+export function isWithinOneHourBefore(datetime: string | Date | undefined | null): boolean {
+  if (!datetime) return false;
+  const eventTime = new Date(datetime);
+  if (isNaN(eventTime.getTime())) return false;
+  const now = new Date();
+  const oneHourBefore = new Date(eventTime.getTime() - 60 * 60 * 1000);
+  return now >= oneHourBefore && now < eventTime;
+}
+
+/**
+ * Check if an event has already ended (is in the past).
+ * Uses endDateTime if available, otherwise calculates from startDateTime + durationMinutes.
+ */
+export function isPastEvent(event: { startDateTime: string; endDateTime?: string; durationMinutes?: number }): boolean {
+  const endTime = event.endDateTime
+    ? new Date(event.endDateTime)
+    : new Date(new Date(event.startDateTime).getTime() + (event.durationMinutes || 60) * 60000);
+  return endTime < new Date();
+}
+

@@ -14,6 +14,8 @@ interface NextCallInfo {
   timezone: string;
   location: string;
   title?: string;
+  eventId?: string;
+  locationType?: string;
 }
 
 interface CallCreditsInfo {
@@ -170,6 +172,8 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
               timezone: nextEvent.timezone || 'America/New_York',
               location: nextEvent.locationType === 'chat' ? 'Chat' : (nextEvent.meetingLink || 'Online'),
               title: nextEvent.title,
+              eventId: nextEvent.id,
+              locationType: nextEvent.locationType,
             });
           }
         }

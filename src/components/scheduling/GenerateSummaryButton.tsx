@@ -26,8 +26,8 @@ export function GenerateSummaryButton({
   const [error, setError] = useState<string>();
   const [creditsRequired, setCreditsRequired] = useState<number>();
 
-  // Calculate credits needed (1 credit per minute, rounded up)
-  const credits = Math.ceil(durationMinutes);
+  // Flat rate: 1 credit per summary regardless of duration
+  const credits = 1;
 
   const handleGenerate = async () => {
     setState('loading');

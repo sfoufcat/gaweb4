@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
     const eventType = searchParams.get('eventType') as EventType | null;
     const squadId = searchParams.get('squadId');
     const programId = searchParams.get('programId');
+    const cohortId = searchParams.get('cohortId');
     const status = searchParams.get('status') as EventStatus | null;
     const upcoming = searchParams.get('upcoming') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50', 10);
@@ -116,6 +117,11 @@ export async function GET(request: NextRequest) {
     // Filter by eventType
     if (eventType) {
       events = events.filter(e => e.eventType === eventType);
+    }
+
+    // Filter by cohortId
+    if (cohortId) {
+      events = events.filter(e => e.cohortId === cohortId);
     }
 
     // Filter by status

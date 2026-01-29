@@ -120,7 +120,7 @@ export async function generateSummaryForEvent(
       durationSeconds = event.durationMinutes * 60;
     }
 
-    // Calculate credits needed (1 credit per minute, rounded up)
+    // Flat rate: 1 credit per summary
     const creditsNeeded = calculateCreditsUsed(durationSeconds);
 
     // Check credits available

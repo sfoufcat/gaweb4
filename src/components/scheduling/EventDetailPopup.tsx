@@ -21,6 +21,7 @@ import {
   FileText,
   PlayCircle,
   PhoneIncoming,
+  RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { UnifiedEvent, CallSummary } from '@/types';
@@ -29,7 +30,9 @@ import { InlineSummaryPreview } from './InlineSummaryPreview';
 import { GenerateSummaryButton } from './GenerateSummaryButton';
 import { FillWeekFromSummaryButton } from './FillWeekFromSummaryButton';
 import { MeetingProviderSelector, type MeetingProviderType } from './MeetingProviderSelector';
+import { MediaPlayer } from '@/components/video/MediaPlayer';
 import { normalizeUrl } from '@/lib/url-utils';
+import { isWithinOneHourBefore } from '@/lib/utils';
 
 interface EventDetailPopupProps {
   event: UnifiedEvent;
@@ -96,6 +99,10 @@ export function EventDetailPopup({
   const [meetingLinkInput, setMeetingLinkInput] = useState(event.meetingLink || '');
   const [isSavingLink, setIsSavingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+
+  // Recording refresh state
+  const [isFetchingRecording, setIsFetchingRecording] = useState(false);
+  const [fetchRecordingMessage, setFetchRecordingMessage] = useState<string | null>(null);
 
   // Provider selector state for editing
   const getInitialProvider = (): MeetingProviderType => {
@@ -188,6 +195,33 @@ export function EventDetailPopup({
       setIsSavingLink(false);
     }
   }, [event.id, meetingLinkInput, selectedProvider, isSavingLink, onEventUpdated]);
+
+  // Fetch recording from Stream (fallback when webhook didn't fire)
+  const handleFetchRecording = useCallback(async () => {
+    if (isFetchingRecording) return;
+
+    setIsFetchingRecording(true);
+    setFetchRecordingMessage(null);
+
+    try {
+      const response = await fetch(`/api/events/${event.id}/fetch-recording`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.recordingUrl) {
+        setFetchRecordingMessage('Recording found!');
+        onEventUpdated?.();
+      } else {
+        setFetchRecordingMessage(data.message || 'No recording found');
+      }
+    } catch (error) {
+      setFetchRecordingMessage(error instanceof Error ? error.message : 'Failed to fetch');
+    } finally {
+      setIsFetchingRecording(false);
+    }
+  }, [event.id, isFetchingRecording, onEventUpdated]);
 
   // Calculate optimal position after popup renders (so we know its size)
   useLayoutEffect(() => {
@@ -486,13 +520,13 @@ export function EventDetailPopup({
                     <LinkIcon className="w-4 h-4" />
                     <span className="text-sm">
                       {event.locationType === 'chat' ? (
-                        'In-App Video Call'
+                        'In-App Call'
                       ) : event.meetingProvider === 'zoom' ? (
                         'Zoom'
                       ) : event.meetingProvider === 'google_meet' ? (
                         'Google Meet'
                       ) : event.meetingProvider === 'stream' ? (
-                        'In-App Video Call'
+                        'In-App Call'
                       ) : event.locationLabel ? (
                         event.locationLabel
                       ) : event.meetingLink ? (
@@ -531,13 +565,6 @@ export function EventDetailPopup({
                 </div>
               )}
 
-              {/* In-app call notice */}
-              {!isEditingLink && (event.locationType === 'chat' || event.meetingProvider === 'stream') && !event.meetingLink && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-brand-accent/10 text-brand-accent rounded-lg font-albert font-medium text-sm">
-                  <Video className="w-4 h-4" />
-                  Video call will be in-app
-                </div>
-              )}
 
 
               {/* No link placeholder for non-hosts */}
@@ -672,18 +699,23 @@ export function EventDetailPopup({
                 </button>
               )}
 
-              {/* View Recording Link */}
-              {hasRecording && (
-                <a
-                  href={event.recordingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
-                >
-                  <PlayCircle className="w-4 h-4" />
-                  View Recording
-                  <ExternalLink className="w-3 h-3 ml-1" />
-                </a>
+              {/* Recording Player (audio or video) */}
+              {hasRecording && event.recordingUrl && (
+                <div className="space-y-2">
+                  <MediaPlayer
+                    src={event.recordingUrl}
+                    className="w-full"
+                  />
+                  <a
+                    href={event.recordingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    View Full Recording
+                  </a>
+                </div>
               )}
 
               {/* Generate Summary Button (recording exists but no summary, host only) */}
@@ -709,13 +741,33 @@ export function EventDetailPopup({
 
               {/* Upload Recording Option (host only, no recording and no summary) */}
               {!hasRecording && !hasSummary && isHost && (
-                <InlineRecordingUpload
-                  eventId={event.id}
-                  onUploadComplete={() => {
-                    // Trigger event refresh - recording is now linked
-                    onEventUpdated?.();
-                  }}
-                />
+                <div className="space-y-2">
+                  <InlineRecordingUpload
+                    eventId={event.id}
+                    onUploadComplete={() => {
+                      // Trigger event refresh - recording is now linked
+                      onEventUpdated?.();
+                    }}
+                  />
+                  {/* Refresh Recording from Stream */}
+                  <button
+                    onClick={handleFetchRecording}
+                    disabled={isFetchingRecording}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-[#5f5a55] dark:text-[#b2b6c2] text-sm hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isFetchingRecording ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    {isFetchingRecording ? 'Checking...' : 'Fetch Recording from Call'}
+                  </button>
+                  {fetchRecordingMessage && (
+                    <p className="text-xs text-center text-[#5f5a55] dark:text-[#b2b6c2]">
+                      {fetchRecordingMessage}
+                    </p>
+                  )}
+                </div>
               )}
 
               {/* No summary message (non-host only, no recording) */}
@@ -772,27 +824,43 @@ export function EventDetailPopup({
         </div>
 
         {/* Footer for non-pending future events with meeting link or in-app call */}
-        {!isPending && !isPastEvent && (event.meetingLink || event.locationType === 'chat' || event.meetingProvider === 'stream') && (
-          <div className="sticky bottom-0 px-5 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
-            {event.meetingLink ? (
-              <a
-                href={event.meetingLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full text-center px-4 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 transition-colors"
-              >
-                Join Meeting
-              </a>
-            ) : (
-              <Link
-                href={`/call/event-${event.id}`}
-                className="block w-full text-center px-4 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 transition-colors"
-              >
-                Join Call
-              </Link>
-            )}
-          </div>
-        )}
+        {/* Coaches always see join button, users only within 1 hour */}
+        {!isPending && !isPastEvent && (() => {
+          const hasExternalLink = !!event.meetingLink;
+          const isInAppCall = event.locationType === 'chat' || event.meetingProvider === 'stream';
+          const withinTimeWindow = isHost || isWithinOneHourBefore(event.startTime);
+          const canJoinInApp = isInAppCall && !hasExternalLink && withinTimeWindow;
+
+          if (hasExternalLink && withinTimeWindow) {
+            return (
+              <div className="sticky bottom-0 px-5 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+                <a
+                  href={event.meetingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center px-4 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 transition-colors"
+                >
+                  Join Meeting
+                </a>
+              </div>
+            );
+          }
+
+          if (canJoinInApp) {
+            return (
+              <div className="sticky bottom-0 px-5 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+                <Link
+                  href={`/call/event-${event.id}`}
+                  className="block w-full text-center px-4 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 transition-colors"
+                >
+                  Join Call
+                </Link>
+              </div>
+            );
+          }
+
+          return null;
+        })()}
       </div>
     </>,
     document.body

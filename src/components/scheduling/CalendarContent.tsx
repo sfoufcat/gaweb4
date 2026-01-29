@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { addMonths, subMonths } from 'date-fns';
 import {
   Calendar,
@@ -20,13 +21,17 @@ import {
   RefreshCw,
   UserMinus,
   PhoneIncoming,
+  PlayCircle,
+  FileText,
 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { useSchedulingEvents, useSchedulingActions, usePendingProposals } from '@/hooks/useScheduling';
 import { useOrgCredits } from '@/hooks/useOrgCredits';
 import { RescheduleCallModal } from './RescheduleCallModal';
 import { CounterProposeModal } from './CounterProposeModal';
+import { EventDetailPopup } from './EventDetailPopup';
 import type { UnifiedEvent } from '@/types';
+import { isWithinOneHourBefore } from '@/lib/utils';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -58,7 +63,7 @@ function DateSeparator({ date }: { date: Date }) {
   return (
     <div className="flex items-center gap-3 py-3">
       <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#262b35]" />
-      <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] whitespace-nowrap">
+      <span className="font-albert text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] whitespace-nowrap">
         {formatted}
       </span>
       <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#262b35]" />
@@ -249,18 +254,18 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
               <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] line-clamp-1">
                 {finalDisplayTitle}
               </p>
-              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+              <p className="font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                 {typeInfo.label}
               </p>
             </div>
             {isConfirmed && (
-              <span className="flex items-center gap-1 px-2.5 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
+              <span className="flex items-center gap-1 px-2.5 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-xs font-albert font-medium">
                 <CheckCircle className="w-3.5 h-3.5" />
                 Confirmed
               </span>
             )}
             {needsResponse && !isSuccess && (
-              <span className="flex items-center gap-1 px-2.5 py-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 rounded-full text-xs font-medium">
+              <span className="flex items-center gap-1 px-2.5 py-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 rounded-full text-xs font-albert font-medium">
                 <AlertCircle className="w-3.5 h-3.5" />
                 Pending
               </span>
@@ -269,13 +274,13 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
 
           <div className="mt-2 space-y-1">
             {!hideDate && (
-              <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+              <div className="flex items-center gap-2 font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                 <Calendar className="w-3.5 h-3.5" />
                 <span>{formatDate(startTime)}</span>
               </div>
             )}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+              <div className="flex items-center gap-2 font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                 <Clock className="w-3.5 h-3.5" />
                 <span>
                   {formatTime(startTime)}
@@ -293,7 +298,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
               )}
             </div>
             {event.locationLabel && (
-              <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+              <div className="flex items-center gap-2 font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                 <MapPin className="w-3.5 h-3.5" />
                 <span>{event.locationLabel}</span>
               </div>
@@ -337,7 +342,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
               {pendingProposedTimes.length === 1 && (
                 <>
                   <div className="p-4 bg-gradient-to-r from-[#f9f8f7] to-[#f5f4f2] dark:from-[#262b35] dark:to-[#2a303b] rounded-2xl border border-[#e1ddd8] dark:border-[#363c49]">
-                    <div className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
+                    <div className="flex items-center gap-3 font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                       <div className="p-2 bg-white dark:bg-[#1e222a] rounded-xl shadow-sm">
                         <Calendar className="w-4 h-4 text-brand-accent" />
                       </div>
@@ -347,7 +352,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                       <button
                         onClick={handleDecline}
                         disabled={isAccepting}
-                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl font-albert text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isAccepting && !acceptedTimeId ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -359,7 +364,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                       <button
                         onClick={() => handleAccept(pendingProposedTimes[0].id)}
                         disabled={isAccepting}
-                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-albert text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isAccepting && acceptedTimeId === pendingProposedTimes[0].id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -374,7 +379,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                   {onCounterPropose && (
                     <button
                       onClick={() => onCounterPropose(event.id)}
-                      className="w-full text-center text-sm text-brand-accent hover:underline py-1"
+                      className="w-full text-center font-albert text-sm text-brand-accent hover:underline py-1"
                     >
                       Suggest different time →
                     </button>
@@ -385,7 +390,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
               {/* MULTIPLE proposed times - individual Accept buttons + Decline All */}
               {pendingProposedTimes.length > 1 && (
                 <>
-                  <p className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
+                  <p className="font-albert text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
                     {pendingProposedTimes.length} proposed times:
                   </p>
                   <div className="space-y-2">
@@ -395,7 +400,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                         className="group p-4 bg-gradient-to-r from-[#f9f8f7] to-[#f5f4f2] dark:from-[#262b35] dark:to-[#2a303b] rounded-2xl border border-[#e1ddd8] dark:border-[#363c49] transition-all duration-300 hover:shadow-md hover:border-brand-accent/30 animate-in fade-in slide-in-from-left-2"
                         style={{ animationDelay: `${index * 100}ms` }}
                       >
-                        <div className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
+                        <div className="flex items-center gap-3 font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                           <div className="p-2 bg-white dark:bg-[#1e222a] rounded-xl shadow-sm">
                             <Calendar className="w-4 h-4 text-brand-accent" />
                           </div>
@@ -404,7 +409,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                         <button
                           onClick={() => handleAccept(time.id)}
                           disabled={isAccepting}
-                          className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
+                          className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-albert text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
                         >
                           {isAccepting && acceptedTimeId === time.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -421,7 +426,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                   <button
                     onClick={handleDecline}
                     disabled={isAccepting}
-                    className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                    className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl font-albert text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                   >
                     {isAccepting && !acceptedTimeId ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -435,7 +440,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                   {onCounterPropose && (
                     <button
                       onClick={() => onCounterPropose(event.id)}
-                      className="w-full text-center text-sm text-brand-accent hover:underline py-1"
+                      className="w-full text-center font-albert text-sm text-brand-accent hover:underline py-1"
                     >
                       Suggest different time →
                     </button>
@@ -449,7 +454,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                   <button
                     onClick={handleDecline}
                     disabled={isAccepting}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl font-albert text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isAccepting && !acceptedTimeId ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -461,7 +466,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                   <button
                     onClick={() => handleAccept(event.proposedTimes?.[0]?.id || '')}
                     disabled={isAccepting}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-albert text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isAccepting ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -480,24 +485,61 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
       {/* Confirmed event actions - OUTSIDE flex container for full width */}
       {isConfirmed && (
         <div className="mt-4 space-y-2">
-          {event.meetingLink && (
-            <a
-              href={event.meetingLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-accent text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:opacity-90 active:scale-95 transition-all duration-200"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Join Call
-            </a>
-          )}
+          {/* Join button or "Link will appear" message */}
+          {(() => {
+            const locationLower = event.locationLabel?.toLowerCase() || '';
+            const isInAppCall = event.locationType === 'chat' ||
+                               event.meetingProvider === 'stream' ||
+                               locationLower.includes('in-app') ||
+                               locationLower.includes('in app') ||
+                               locationLower === 'chat';
+            const hasExternalLink = !!event.meetingLink;
+            const hasJoinableCall = hasExternalLink || isInAppCall;
+            const withinTimeWindow = isWithinOneHourBefore(event.startDateTime);
+
+            if (hasExternalLink && withinTimeWindow) {
+              return (
+                <a
+                  href={event.meetingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-accent text-white rounded-xl font-albert text-sm font-semibold shadow-md hover:shadow-lg hover:opacity-90 active:scale-95 transition-all duration-200"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Join Call
+                </a>
+              );
+            }
+
+            if (isInAppCall && !hasExternalLink && withinTimeWindow) {
+              return (
+                <Link
+                  href={`/call/event-${event.id}`}
+                  className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-accent text-white rounded-xl font-albert text-sm font-semibold shadow-md hover:shadow-lg hover:opacity-90 active:scale-95 transition-all duration-200"
+                >
+                  <Video className="w-4 h-4" />
+                  Join Call
+                </Link>
+              );
+            }
+
+            if (hasJoinableCall && !withinTimeWindow) {
+              return (
+                <p className="text-center font-albert text-sm text-text-muted">
+                  Link will appear 1 hour before the call
+                </p>
+              );
+            }
+
+            return null;
+          })()}
           {/* Community events: Remove RSVP. Group calls: no actions. Individual: Reschedule + Cancel */}
           {event.eventType === 'community_event' ? (
             // Community event - Remove RSVP option
             onCancel && (
               <button
                 onClick={() => setShowCancelConfirm(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
               >
                 <UserMinus className="w-4 h-4" />
                 Remove RSVP
@@ -512,7 +554,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
               {onReschedule && (
                 <button
                   onClick={() => onReschedule(event)}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Reschedule
@@ -521,7 +563,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
               {onCancel && (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-red-600 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm active:scale-95 transition-all duration-200"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-red-600 dark:text-red-400 rounded-xl font-albert text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm active:scale-95 transition-all duration-200"
                 >
                   <XCircle className="w-4 h-4" />
                   Cancel
@@ -537,7 +579,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
         const isCommunityEvent = event.eventType === 'community_event';
         return (
           <div className="mt-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl">
-            <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-3">
+            <p className="font-albert text-sm font-medium text-red-700 dark:text-red-300 mb-3">
               {isCommunityEvent ? 'Remove your RSVP from this event?' : 'Are you sure you want to cancel this call?'}
             </p>
             <textarea
@@ -545,7 +587,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
               onChange={(e) => setCancelReason(e.target.value)}
               placeholder={isCommunityEvent ? 'Reason (optional)' : 'Reason for cancellation (optional)'}
               rows={2}
-              className="w-full px-3 py-2 text-sm bg-white dark:bg-[#1e222a] border border-red-200 dark:border-red-800/30 rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-3"
+              className="w-full px-3 py-2 font-albert text-sm bg-white dark:bg-[#1e222a] border border-red-200 dark:border-red-800/30 rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-3"
             />
             <div className="flex gap-2">
               <button
@@ -553,7 +595,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                   setShowCancelConfirm(false);
                   setCancelReason('');
                 }}
-                className="flex-1 px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                className="flex-1 px-4 py-2 font-albert text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
               >
                 {isCommunityEvent ? 'Keep RSVP' : 'Keep Call'}
               </button>
@@ -563,7 +605,7 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                   setShowCancelConfirm(false);
                   setCancelReason('');
                 }}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                className="flex-1 px-4 py-2 font-albert text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
               >
                 {isCommunityEvent ? 'Remove RSVP' : 'Cancel Call'}
               </button>
@@ -571,6 +613,65 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+// Compact past event item with Recording link
+interface PastEventItemProps {
+  event: UnifiedEvent;
+}
+
+function PastEventItem({ event }: PastEventItemProps) {
+  if (!event || !event.startDateTime) return null;
+
+  const typeInfo = EVENT_TYPE_INFO[event.eventType] || EVENT_TYPE_INFO.coaching_1on1;
+  const Icon = typeInfo.icon;
+  const startTime = new Date(event.startDateTime);
+  const hasRecording = !!event.recordingUrl;
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  // Strip "Call request with" prefix
+  const displayTitle = event.title?.replace(/^Call request with\s*/i, '') || event.title || 'Event';
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className={`w-9 h-9 rounded-lg bg-gradient-to-br from-[#f3f1ef] to-[#ebe8e4] dark:from-[#262b35] dark:to-[#2a303c] flex items-center justify-center flex-shrink-0`}>
+          <Icon className={`w-4 h-4 ${typeInfo.color}`} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-albert font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+            {displayTitle}
+          </p>
+          <p className="font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+            {formatDate(startTime)} at {formatTime(startTime)}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+        <Link
+          href={`/discover/events/${event.id}`}
+          className="flex items-center gap-1 px-2 py-1.5 text-xs font-albert font-medium text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+        >
+          <PlayCircle className="w-3.5 h-3.5" />
+          {hasRecording ? 'Recording' : 'Details'}
+        </Link>
+      </div>
     </div>
   );
 }
@@ -594,6 +695,7 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
   const currentUserId = user?.id;
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [rescheduleEvent, setRescheduleEvent] = useState<UnifiedEvent | null>(null);
+  const [selectedPastEvent, setSelectedPastEvent] = useState<UnifiedEvent | null>(null);
   const [counterProposeEvent, setCounterProposeEvent] = useState<UnifiedEvent | null>(null);
   const [isCounterProposing, setIsCounterProposing] = useState(false);
   const [counterProposeError, setCounterProposeError] = useState<string | null>(null);
@@ -768,7 +870,7 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
                 <h3 className="font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                   Pending Responses
                 </h3>
-                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                <p className="font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                   {proposals.length} call{proposals.length > 1 ? 's' : ''} waiting for your response
                 </p>
               </div>
@@ -799,7 +901,7 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
         {/* Error state */}
         {error && (
           <div className="p-4">
-            <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl text-red-600 dark:text-red-400">
+            <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl font-albert text-red-600 dark:text-red-400">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <p>{error}</p>
             </div>
@@ -817,10 +919,10 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
                 <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#11141b] rounded-full flex items-center justify-center mx-auto mb-4">
                   <Calendar className="w-7 h-7 text-text-muted" />
                 </div>
-                <p className="font-sans text-[15px] text-text-secondary">
+                <p className="font-albert text-[15px] text-text-secondary">
                   No upcoming events
                 </p>
-                <p className="font-sans text-[13px] text-text-muted mt-1">
+                <p className="font-albert text-[13px] text-text-muted mt-1">
                   Your scheduled calls and events will appear here
                 </p>
               </div>
@@ -851,22 +953,18 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
           </div>
         )}
 
-        {/* Past Events - show only in non-compact view */}
-        {!compact && !isLoading && !error && pastEvents.length > 0 && (
+        {/* Past Events - show with Recording/Details links */}
+        {!isLoading && !error && pastEvents.length > 0 && (
           <div className="p-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
             <h3 className="font-albert font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-3">
               Past Events
             </h3>
-            <div className="opacity-60">
-              {Array.from(groupEventsByDate(pastEvents.slice(0, 5))).map(([dateKey, dateEvents]) => (
-                <div key={dateKey}>
-                  <DateSeparator date={new Date(dateKey + 'T00:00:00')} />
-                  <div className="space-y-3">
-                    {dateEvents.map(event => (
-                      <EventItem key={event.id} event={event} currentUserId={currentUserId} hideDate hasOrgCredits={hasOrgCredits} isCoach={isCoach} />
-                    ))}
-                  </div>
-                </div>
+            <div className="space-y-2">
+              {pastEvents.slice(0, 5).map(event => (
+                <PastEventItem
+                  key={event.id}
+                  event={event}
+                />
               ))}
             </div>
           </div>
@@ -892,6 +990,15 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
           onSubmit={handleCounterProposeSubmit}
           isLoading={isCounterProposing}
           error={counterProposeError}
+        />
+      )}
+
+      {/* Past Event Detail Popup */}
+      {selectedPastEvent && (
+        <EventDetailPopup
+          event={selectedPastEvent}
+          isOpen={!!selectedPastEvent}
+          onClose={() => setSelectedPastEvent(null)}
         />
       )}
     </div>

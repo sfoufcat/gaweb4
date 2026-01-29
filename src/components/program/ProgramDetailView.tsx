@@ -18,6 +18,7 @@ import { WeeklySection } from './WeeklySection';
 import { ProgramSchedule } from './ProgramSchedule';
 import { CoachNotes } from './CoachNotes';
 import { WeeklyResources } from './WeeklyResources';
+import { isWithinOneHourBefore } from '@/lib/utils';
 
 /**
  * ProgramDetailView Component
@@ -49,7 +50,7 @@ export function ProgramDetailView({
   showBackButton = true,
   onRefresh,
 }: ProgramDetailViewProps) {
-  const router = useRouter();
+  const _router = useRouter();
   const { user } = useUser();
   const { isDemoMode, openSignupModal } = useDemoMode();
   const {
@@ -575,21 +576,31 @@ export function ProgramDetailView({
               </>
             )}
 
-            {/* Go to chat button */}
-            <button
-              onClick={() => {
-                if (isDemoMode) {
-                  openSignupModal();
-                } else if (chatChannelId) {
-                  router.push(`/chat?channel=${chatChannelId}`);
-                } else {
-                  router.push('/chat');
-                }
-              }}
-              className="w-full bg-brand-accent border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-brand-accent-foreground leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all"
-            >
-              Go to chat
-            </button>
+            {/* Go to call button - always visible when call is scheduled */}
+            {nextCall?.datetime && nextCall?.eventId && nextCall?.locationType === 'chat' && (
+              isWithinOneHourBefore(nextCall.datetime) ? (
+                <Link
+                  href={`/call/event-${nextCall.eventId}`}
+                  className="w-full bg-brand-accent border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-brand-accent-foreground leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+                >
+                  <Video className="w-5 h-5" />
+                  Go to call
+                </Link>
+              ) : (
+                <>
+                  <button
+                    disabled
+                    className="w-full bg-brand-accent/50 border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-brand-accent-foreground/70 leading-[1.4] tracking-[-0.5px] cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <Video className="w-5 h-5" />
+                    Go to call
+                  </button>
+                  <p className="text-center text-sm text-[#5f5a55] dark:text-[#b2b6c2] pt-2">
+                    Link will appear 1 hour before the call
+                  </p>
+                </>
+              )
+            )}
           </div>
         </div>
       )}

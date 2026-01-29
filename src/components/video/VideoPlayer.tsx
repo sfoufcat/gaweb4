@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, SyntheticEvent } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ReactPlayer = require('react-player').default as any;
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2, AlertCircle } from 'lucide-react';
@@ -25,8 +25,7 @@ export function VideoPlayer({
   onEnded,
   aspectRatio = '16:9',
 }: VideoPlayerProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [playing, setPlaying] = useState(autoPlay);
@@ -67,16 +66,36 @@ export function VideoPlayer({
     setPlaying((prev) => !prev);
   }, [hasStarted]);
 
-  const handleProgress = useCallback(
-    (state: { played: number; loaded: number; playedSeconds: number }) => {
-      if (!seeking) {
-        setPlayed(state.played);
-        setLoaded(state.loaded);
-        onProgress?.(state.played * 100);
+  // v3: onTimeUpdate gives standard event
+  const handleTimeUpdate = useCallback(
+    (e: SyntheticEvent<HTMLVideoElement>) => {
+      if (seeking) return;
+      const video = e.target as HTMLVideoElement;
+      if (video.duration && !isNaN(video.duration)) {
+        const playedRatio = video.currentTime / video.duration;
+        setPlayed(playedRatio);
+        onProgress?.(playedRatio * 100);
       }
     },
     [seeking, onProgress]
   );
+
+  // v3: onProgress for buffer tracking
+  const handleBufferProgress = useCallback((e: SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.target as HTMLVideoElement;
+    if (video.buffered.length > 0 && video.duration) {
+      const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+      setLoaded(bufferedEnd / video.duration);
+    }
+  }, []);
+
+  // v3: onDurationChange
+  const handleDurationChange = useCallback((e: SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.target as HTMLVideoElement;
+    if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
+      setDuration(video.duration);
+    }
+  }, []);
 
   const handleSeekChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setPlayed(parseFloat(e.target.value));
@@ -86,10 +105,14 @@ export function VideoPlayer({
     setSeeking(true);
   }, []);
 
+  // v3: use currentTime instead of seekTo
   const handleSeekMouseUp = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
     setSeeking(false);
-    playerRef.current?.seekTo(parseFloat((e.target as HTMLInputElement).value));
-  }, []);
+    const value = parseFloat((e.target as HTMLInputElement).value);
+    if (playerRef.current && duration) {
+      playerRef.current.currentTime = value * duration;
+    }
+  }, [duration]);
 
   const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
@@ -133,6 +156,7 @@ export function VideoPlayer({
 
   const handleEnded = useCallback(() => {
     setPlaying(false);
+    setPlayed(0);
     onEnded?.();
   }, [onEnded]);
 
@@ -150,35 +174,33 @@ export function VideoPlayer({
       {/* Video Player */}
       <ReactPlayer
         ref={playerRef}
-        url={src}
+        src={src}
         playing={playing}
         muted={muted}
         volume={volume}
         width="100%"
         height="100%"
         style={{ position: 'absolute', top: 0, left: 0 }}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onProgress={handleProgress as any}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onDuration={setDuration as any}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onEnded={handleEnded as any}
-        onBuffer={() => setIsBuffering(true)}
-        onBufferEnd={() => setIsBuffering(false)}
+        poster={poster}
+        playsInline
+        preload="metadata"
+        // v3 callbacks (HTMLMediaElement-style)
+        onTimeUpdate={handleTimeUpdate}
+        onDurationChange={handleDurationChange}
+        onProgress={handleBufferProgress}
+        onEnded={handleEnded}
+        onWaiting={() => setIsBuffering(true)}
+        onPlaying={() => {
+          setIsBuffering(false);
+          setHasStarted(true);
+        }}
         onStart={() => setHasStarted(true)}
         onError={(e: unknown) => {
           console.error('[VideoPlayer] Playback error:', e);
           setHasError(true);
         }}
         config={{
-          file: {
-            attributes: {
-              poster,
-              preload: 'metadata',
-              playsInline: true,
-            },
-            forceHLS: src?.includes('.m3u8'),
-          },
+          hls: {},
         }}
       />
 

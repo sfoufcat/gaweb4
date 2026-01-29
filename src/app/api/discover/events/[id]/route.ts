@@ -145,7 +145,7 @@ export async function GET(
       }
     }
 
-    const event: DiscoverEvent & { coachName?: string; coachImageUrl?: string } = {
+    const event: DiscoverEvent & { coachName?: string; coachImageUrl?: string; eventType?: string } = {
       id: eventDoc.id,
       title: eventData?.title,
       coverImageUrl: eventData?.coverImageUrl,
@@ -159,6 +159,7 @@ export async function GET(
       meetingLink: eventData?.meetingLink,
       locationType: eventData?.locationType,
       locationLabel: eventData?.locationLabel,
+      eventType: eventData?.eventType,
       shortDescription: eventData?.shortDescription,
       longDescription: eventData?.longDescription,
       bulletPoints: eventData?.bulletPoints || [],

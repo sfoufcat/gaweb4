@@ -21,6 +21,8 @@ interface InlineRecordingUploadProps {
   onUploadComplete?: () => void;
   /** Called with the recording URL after it's set on the event */
   onRecordingUploaded?: (recordingUrl: string) => void;
+  /** Display variant - 'default' shows full button, 'link' shows text link */
+  variant?: 'default' | 'link';
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'encoding' | 'saving' | 'completed' | 'error';
@@ -39,6 +41,7 @@ export function InlineRecordingUpload({
   eventId,
   onUploadComplete,
   onRecordingUploaded,
+  variant = 'default',
 }: InlineRecordingUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<UploadStatus>('idle');
@@ -303,8 +306,30 @@ export function InlineRecordingUpload({
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
-  // Idle state - show upload button
+  // Idle state - show upload button or link
   if (status === 'idle' && !file) {
+    // Link variant - compact text link
+    if (variant === 'link') {
+      return (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_FORMATS.join(',')}
+            onChange={handleFileInputChange}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:underline transition-colors"
+          >
+            Upload Instead
+          </button>
+        </>
+      );
+    }
+
+    // Default variant - full button
     return (
       <div className="space-y-2">
         <input
