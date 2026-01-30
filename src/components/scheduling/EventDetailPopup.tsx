@@ -288,29 +288,7 @@ export function EventDetailPopup({
     }
   }, [isOpen, onClose]);
 
-  // Close on click outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      // Don't close if clicking inside the popup
-      if (popupRef.current && popupRef.current.contains(target)) {
-        return;
-      }
-      // Don't close if clicking inside a dialog/drawer overlay (e.g., summary modal)
-      const dialogOverlay = (target as Element).closest?.('[data-radix-dialog-overlay], [data-vaul-overlay], [role="dialog"]');
-      if (dialogOverlay) {
-        return;
-      }
-      onClose();
-    };
-    if (isOpen) {
-      // Delay to prevent immediate close on the click that opened the popup
-      setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-      }, 100);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isOpen, onClose]);
+  // Note: Click outside is handled by backdrop onClick for desktop popup
 
   const isPending = event.schedulingStatus === 'proposed' || event.schedulingStatus === 'counter_proposed';
   const pendingProposedTimes = event.proposedTimes?.filter(t => t.status === 'pending') || [];
@@ -852,24 +830,29 @@ export function EventDetailPopup({
 
   return createPortal(
     <>
-      {/* Backdrop */}
+      {/* Backdrop - use onMouseDown to prevent interference with popup clicks */}
       <div
         className="fixed inset-0 z-[60] bg-black/30 animate-backdrop-fade-in"
-        onClick={onClose}
+        onMouseDown={(e) => {
+          // Only close if clicking directly on backdrop, not on popup above it
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
       />
 
       {/* Positioned popup */}
       <div
         ref={popupRef}
-        className="fixed z-[60] bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl w-96 max-h-[70vh] flex flex-col overflow-hidden animate-modal-zoom-in"
+        className="fixed z-[61] bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl w-96 max-h-[70vh] flex flex-col overflow-hidden animate-modal-zoom-in"
         style={computedPosition ? {
           top: `${computedPosition.top}px`,
           left: `${computedPosition.left}px`,
-        } : position ? {
+        } : {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-        } : undefined}
+        }}
       >
         {PopupContent}
       </div>

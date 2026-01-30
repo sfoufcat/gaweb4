@@ -54,9 +54,10 @@ interface CallSummaryResult {
   followUpQuestions?: string[];
   weekContent?: {
     notes: string[];           // Max 3 client-facing reminder/context notes
-    currentFocus: string[];    // Max 3 focus areas for the week
+    goals?: string[];          // Max 3 goals for the week (new)
+    currentFocus?: string[];   // Legacy: kept for backwards compat
     theme?: string;            // Optional week theme
-    description?: string;      // Brief week overview
+    description?: string;      // What client should focus on this week
   };
 }
 
@@ -103,17 +104,17 @@ Output must be valid JSON matching this structure:
   "followUpQuestions": ["Question 1?", "Question 2?", ...],
   "weekContent": {
     "notes": ["Reminder 1 for client", "Reminder 2", "Reminder 3"],
-    "currentFocus": ["Focus area 1", "Focus area 2", "Focus area 3"],
+    "goals": ["Goal 1 for the week", "Goal 2", "Goal 3"],
     "theme": "Optional theme for the week (e.g., 'Building Momentum')",
-    "description": "Brief overview of what to focus on this week"
+    "description": "What the client should focus on and accomplish this week"
   }
 }
 
-The weekContent section should:
-- notes: Extract 3 key reminders/context items from the call for the client to remember
-- currentFocus: Identify 3 priority focus areas based on what was discussed
-- theme: A short inspiring theme if one naturally emerges from the conversation
-- description: A 1-2 sentence summary of the week's direction based on the call`;
+The weekContent section should describe what the CLIENT'S UPCOMING WEEK should look like (NOT a summary of the call):
+- notes: 3 key reminders or context items the client should keep in mind this week
+- goals: 3 specific goals or focus areas the client should work toward this week based on what was discussed
+- theme: A short inspiring theme that captures the spirit of the week ahead (e.g., 'Building Momentum', 'Taking Bold Action')
+- description: A 1-2 sentence description of what the client should prioritize and accomplish this week. Write it as guidance for the week ahead, not a recap of the call.`;
 
 function buildUserPrompt(input: CallSummaryInput): string {
   let prompt = `Please analyze this ${Math.round(input.durationSeconds / 60)} minute coaching call transcript and extract key insights.\n\n`;
@@ -1104,8 +1105,10 @@ export async function autoFillWeekFromSummary(
           if (summaryData.weekContent.notes?.length) {
             weeks[context.weekIndex].notes = summaryData.weekContent.notes;
           }
-          if (summaryData.weekContent.currentFocus?.length) {
-            weeks[context.weekIndex].currentFocus = summaryData.weekContent.currentFocus;
+          // Use goals if available, fall back to currentFocus for backwards compat
+          const goalsOrFocus = summaryData.weekContent.goals || summaryData.weekContent.currentFocus;
+          if (goalsOrFocus?.length) {
+            weeks[context.weekIndex].currentFocus = goalsOrFocus;
           }
           if (summaryData.weekContent.theme) {
             weeks[context.weekIndex].theme = summaryData.weekContent.theme;
@@ -1123,11 +1126,24 @@ export async function autoFillWeekFromSummary(
       return { success: false, error: 'No action items in summary to convert to tasks' };
     }
 
-    // 6. Build source content with action items
+    // 6. Distribute action items to days using deterministic logic (no AI call needed)
+    // The action items already have frequency/targetDayName from summary generation
+    // Falls back to pattern matching on description if frequency field is missing
+    const result = distributeActionItemsToDays(
+      summaryData.actionItems,
+      fillConfig.weeks,
+      fillConfig.skipWeekends,
+      summaryData.weekContent
+    );
+
+    console.log(`[Auto-Fill] Deterministic distribution completed for ${summaryData.actionItems.length} action items`);
+
+    // --- AI-BASED FILL (COMMENTED OUT FOR FUTURE USE) ---
+    // If deterministic logic isn't sufficient, uncomment this block to use AI for task distribution.
+    // Cost: ~$0.01-0.02 per call (Claude Sonnet)
+    /*
     const sourceContent = buildSourceContent(summaryData);
 
-    // 7. Build flat list of all days to fill (for AI prompt)
-    // Format: "W1D3" = Week 1, Day 3; "W2D1" = Week 2, Day 1
     const allDaysToFill: string[] = [];
     for (const weekPlan of fillConfig.weeks) {
       for (const day of weekPlan.daysToFill) {
@@ -1135,7 +1151,6 @@ export async function autoFillWeekFromSummary(
       }
     }
 
-    // 8. Generate tasks for all days at once
     const { system, user } = buildMultiWeekFillPrompt(
       {
         content: sourceContent,
@@ -1156,13 +1171,11 @@ export async function autoFillWeekFromSummary(
       messages: [{ role: 'user', content: user }],
     });
 
-    // Extract text content
     const textContent = message.content.find((c) => c.type === 'text');
     if (!textContent || textContent.type !== 'text') {
       return { success: false, error: 'No text response from AI' };
     }
 
-    // 9. Parse response
     let result: MultiWeekFillResult;
     try {
       let jsonStr = textContent.text;
@@ -1175,6 +1188,8 @@ export async function autoFillWeekFromSummary(
       console.error('[Auto-Fill] Failed to parse response:', textContent.text);
       return { success: false, error: 'Failed to parse AI response' };
     }
+    */
+    // --- END AI-BASED FILL ---
 
     // 10. Apply to instance - update each week
     const weeks = [...(instance.weeks || [])];
@@ -1231,7 +1246,9 @@ export async function autoFillWeekFromSummary(
       week.days = days;
       if (weekData.theme) week.theme = weekData.theme;
       if (weekData.description) week.description = weekData.description;
-      if (weekData.currentFocus) week.currentFocus = weekData.currentFocus;
+      // Use goals if available, fall back to currentFocus for backwards compat
+      const goalsOrFocus = weekData.goals || weekData.currentFocus;
+      if (goalsOrFocus) week.currentFocus = goalsOrFocus;
       week.fillSource = {
         type: 'call_summary',
         sourceId: summaryId,
@@ -1265,8 +1282,10 @@ export async function autoFillWeekFromSummary(
           if (summaryData.weekContent.notes?.length) {
             weeks[weekIdx].notes = summaryData.weekContent.notes;
           }
-          if (summaryData.weekContent.currentFocus?.length) {
-            weeks[weekIdx].currentFocus = summaryData.weekContent.currentFocus;
+          // Use goals if available, fall back to currentFocus for backwards compat
+          const goalsOrFocus = summaryData.weekContent.goals || summaryData.weekContent.currentFocus;
+          if (goalsOrFocus?.length) {
+            weeks[weekIdx].currentFocus = goalsOrFocus;
           }
           if (summaryData.weekContent.theme) {
             weeks[weekIdx].theme = summaryData.weekContent.theme;
@@ -1320,9 +1339,209 @@ interface MultiWeekFillResult {
       };
       theme?: string;
       description?: string;
-      currentFocus?: string[];
+      goals?: string[];
+      currentFocus?: string[];  // Legacy, prefer goals
     };
   };
+}
+
+// Day name to index mapping (Monday = 1, Sunday = 7)
+const DAY_NAME_TO_INDEX: Record<string, number> = {
+  monday: 1, mon: 1,
+  tuesday: 2, tue: 2, tues: 2,
+  wednesday: 3, wed: 3,
+  thursday: 4, thu: 4, thurs: 4,
+  friday: 5, fri: 5,
+  saturday: 6, sat: 6,
+  sunday: 7, sun: 7,
+};
+
+// Patterns that indicate daily frequency
+const DAILY_PATTERNS = [
+  /every\s*day/i,
+  /everyday/i,
+  /each\s*day/i,
+  /daily/i,
+  /every\s*morning/i,
+  /every\s*night/i,
+  /every\s*evening/i,
+  /each\s*morning/i,
+  /nightly/i,
+  /morning\s*routine/i,
+  /evening\s*routine/i,
+];
+
+// Patterns that indicate a specific day (captures day name)
+const SPECIFIC_DAY_PATTERNS = [
+  /\bon\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
+  /\bby\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
+  /\bbefore\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
+  /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*morning/i,
+  /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*evening/i,
+  /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*night/i,
+  /\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
+  /\bthis\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
+];
+
+/**
+ * Infer frequency from action item description as fallback
+ */
+function inferFrequencyFromDescription(description: string): {
+  frequency: 'daily' | 'once' | 'specific_day';
+  targetDayName?: string;
+} {
+  const text = description.toLowerCase();
+
+  // Check for daily patterns
+  for (const pattern of DAILY_PATTERNS) {
+    if (pattern.test(text)) {
+      return { frequency: 'daily' };
+    }
+  }
+
+  // Check for specific day patterns
+  for (const pattern of SPECIFIC_DAY_PATTERNS) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      const dayName = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+      return { frequency: 'specific_day', targetDayName: dayName };
+    }
+  }
+
+  // Default to 'once'
+  return { frequency: 'once' };
+}
+
+/**
+ * Get day index (1-7) from day name
+ */
+function getDayIndexFromName(dayName: string): number | null {
+  const normalized = dayName.toLowerCase().trim();
+  return DAY_NAME_TO_INDEX[normalized] ?? null;
+}
+
+/**
+ * Distribute action items to days deterministically (no AI call)
+ * Uses structured frequency field from summary generation, with fallback pattern matching
+ */
+function distributeActionItemsToDays(
+  actionItems: CallSummaryActionItem[],
+  weekPlans: WeekFillPlan[],
+  skipWeekends: boolean,
+  weekContent?: CallSummary['weekContent']
+): MultiWeekFillResult {
+  const result: MultiWeekFillResult = { weeks: {} };
+
+  // Initialize week structure
+  for (const weekPlan of weekPlans) {
+    const weekKey = `week_${weekPlan.weekNumber}`;
+    result.weeks[weekKey] = {
+      days: {},
+      // Apply weekContent to first week only
+      ...(weekPlan.weekIndex === 0 && weekContent ? {
+        theme: weekContent.theme,
+        description: weekContent.description,
+        goals: weekContent.goals || weekContent.currentFocus,
+      } : {}),
+    };
+
+    // Initialize each day that can be filled
+    for (const dayIdx of weekPlan.daysToFill) {
+      result.weeks[weekKey].days[String(dayIdx)] = { tasks: [] };
+    }
+  }
+
+  // Build a flat list of all (weekKey, dayIndex) pairs for distributing 'once' tasks
+  const allDaySlots: Array<{ weekKey: string; dayIndex: number }> = [];
+  for (const weekPlan of weekPlans) {
+    const weekKey = `week_${weekPlan.weekNumber}`;
+    for (const dayIdx of weekPlan.daysToFill) {
+      // Skip weekends if needed
+      if (skipWeekends && (dayIdx === 6 || dayIdx === 7)) continue;
+      allDaySlots.push({ weekKey, dayIndex: dayIdx });
+    }
+  }
+
+  // Track which slot to use for 'once' tasks (round-robin distribution)
+  let onceTaskSlotIndex = 0;
+
+  // Filter to only client-assigned tasks
+  const clientTasks = actionItems.filter(
+    item => item.assignedTo === 'client' || item.assignedTo === 'both'
+  );
+
+  for (const actionItem of clientTasks) {
+    // Determine frequency - use structured field, fallback to pattern matching
+    let frequency = actionItem.frequency;
+    let targetDayName = actionItem.targetDayName;
+
+    if (!frequency) {
+      const inferred = inferFrequencyFromDescription(actionItem.description);
+      frequency = inferred.frequency;
+      if (inferred.targetDayName) {
+        targetDayName = inferred.targetDayName;
+      }
+      console.log(`[Auto-Fill] Inferred frequency for "${actionItem.description.slice(0, 50)}...": ${frequency}${targetDayName ? ` (${targetDayName})` : ''}`);
+    }
+
+    // Create task object
+    const task = {
+      label: actionItem.description,
+      type: 'task' as const,
+      isPrimary: actionItem.priority === 'high',
+    };
+
+    // Distribute based on frequency
+    if (frequency === 'daily') {
+      // Add to ALL days across ALL weeks
+      for (const slot of allDaySlots) {
+        result.weeks[slot.weekKey].days[String(slot.dayIndex)].tasks.push({ ...task });
+      }
+      console.log(`[Auto-Fill] Daily task added to ${allDaySlots.length} days: "${task.label.slice(0, 40)}..."`);
+    } else if (frequency === 'specific_day' && targetDayName) {
+      // Add to specific day(s) matching the name
+      const targetDayIndex = getDayIndexFromName(targetDayName);
+      if (targetDayIndex) {
+        let placed = false;
+        for (const weekPlan of weekPlans) {
+          const weekKey = `week_${weekPlan.weekNumber}`;
+          if (weekPlan.daysToFill.includes(targetDayIndex)) {
+            result.weeks[weekKey].days[String(targetDayIndex)].tasks.push({ ...task });
+            placed = true;
+            console.log(`[Auto-Fill] Specific day task placed on ${targetDayName} (day ${targetDayIndex}) in week ${weekPlan.weekNumber}: "${task.label.slice(0, 40)}..."`);
+          }
+        }
+        // If target day not in fill range, place on nearest available day
+        if (!placed && allDaySlots.length > 0) {
+          const nearestSlot = allDaySlots.reduce((nearest, slot) => {
+            const nearestDiff = Math.abs(nearest.dayIndex - targetDayIndex);
+            const slotDiff = Math.abs(slot.dayIndex - targetDayIndex);
+            return slotDiff < nearestDiff ? slot : nearest;
+          });
+          result.weeks[nearestSlot.weekKey].days[String(nearestSlot.dayIndex)].tasks.push({ ...task });
+          console.log(`[Auto-Fill] Target day ${targetDayName} not available, placed on day ${nearestSlot.dayIndex}: "${task.label.slice(0, 40)}..."`);
+        }
+      } else {
+        // Unknown day name, treat as 'once'
+        if (allDaySlots.length > 0) {
+          const slot = allDaySlots[onceTaskSlotIndex % allDaySlots.length];
+          result.weeks[slot.weekKey].days[String(slot.dayIndex)].tasks.push({ ...task });
+          onceTaskSlotIndex++;
+          console.log(`[Auto-Fill] Unknown day "${targetDayName}", treated as once task on day ${slot.dayIndex}: "${task.label.slice(0, 40)}..."`);
+        }
+      }
+    } else {
+      // 'once' - place on single day, round-robin distribution
+      if (allDaySlots.length > 0) {
+        const slot = allDaySlots[onceTaskSlotIndex % allDaySlots.length];
+        result.weeks[slot.weekKey].days[String(slot.dayIndex)].tasks.push({ ...task });
+        onceTaskSlotIndex++;
+        console.log(`[Auto-Fill] Once task placed on week ${slot.weekKey} day ${slot.dayIndex}: "${task.label.slice(0, 40)}..."`);
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -1378,8 +1597,9 @@ OUTPUT SCHEMA:
         "4": { "tasks": [...] },
         "5": { "tasks": [...] }
       },
-      "theme": "optional theme",
-      "currentFocus": ["focus1", "focus2"]
+      "theme": "Inspiring theme for the week",
+      "description": "What the client should focus on this week (forward-looking, not a recap)",
+      "goals": ["Goal 1 for the week", "Goal 2"]
     },
     "week_2": {
       "days": {

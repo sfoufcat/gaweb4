@@ -105,11 +105,26 @@ export async function POST(
     }
 
     // Validate: summary doesn't already exist
-    if (event.callSummaryId) {
-      return NextResponse.json(
-        { error: 'Summary already exists for this event' },
-        { status: 400 }
-      );
+    if (event.callSummaryId && organizationId) {
+      // Verify the summary doc actually exists (handle orphaned references)
+      // Summaries are stored in org subcollection: organizations/{orgId}/call_summaries/{summaryId}
+      const summaryDoc = await adminDb
+        .collection('organizations')
+        .doc(organizationId)
+        .collection('call_summaries')
+        .doc(event.callSummaryId)
+        .get();
+      if (summaryDoc.exists) {
+        return NextResponse.json(
+          { error: 'Summary already exists for this event' },
+          { status: 400 }
+        );
+      }
+      // Orphaned reference - clear it and proceed with generation
+      await adminDb.collection('events').doc(eventId).update({
+        callSummaryId: FieldValue.delete(),
+      });
+      console.log(`[GENERATE_SUMMARY] Cleared orphaned callSummaryId for event ${eventId}`);
     }
 
     // Validate: not already processing

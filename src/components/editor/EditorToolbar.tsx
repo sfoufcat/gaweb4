@@ -63,8 +63,10 @@ export function EditorToolbar({
           title="Italic (Ctrl+I)"
           style={editor.isActive('italic') ? { color: accentColor } : undefined}
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10 4h4m-2 0v16m6-16h-4m-8 16h4" transform="skewX(-10)" />
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <line x1="19" y1="4" x2="10" y2="4" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+            <line x1="14" y1="20" x2="5" y2="20" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+            <line x1="15" y1="4" x2="9" y2="20" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
           </svg>
         </button>
 
@@ -76,8 +78,8 @@ export function EditorToolbar({
           title="Strikethrough"
           style={editor.isActive('strike') ? { color: accentColor } : undefined}
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 12h12M9 6a3 3 0 016 0c0 1.5-1 2-3 3m0 6c2 0 3 1 3 3a3 3 0 01-6 0" />
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <path d="M17.5 12h-11M15.5 7.5c0-1.657-1.567-3-3.5-3s-3.5 1.343-3.5 3c0 .832.335 1.585.879 2.136M8.5 16.5c0 1.657 1.567 3 3.5 3s3.5-1.343 3.5-3c0-.832-.335-1.585-.879-2.136" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
           </svg>
         </button>
       </div>

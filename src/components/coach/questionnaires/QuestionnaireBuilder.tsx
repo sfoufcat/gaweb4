@@ -53,8 +53,16 @@ export function QuestionnaireBuilder({
   const [copiedLink, setCopiedLink] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
 
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+
+  // Track initial mount for animations
+  useEffect(() => {
+    // Delay to allow initial render without animations
+    const timer = setTimeout(() => setHasMounted(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
@@ -153,7 +161,7 @@ export function QuestionnaireBuilder({
   };
 
   return (
-    <div className="min-h-screen bg-[#f9f8f6] dark:bg-[#11141b]">
+    <div className="min-h-screen bg-[#f9f8f6] dark:bg-[#11141b] animate-fadeIn">
       {/* Header - Redesigned */}
       <div className="sticky top-0 z-10 bg-[#f9f8f6]/95 dark:bg-[#11141b]/95 backdrop-blur-sm border-b border-[#e1ddd8] dark:border-[#262b35]/50">
         <div className="px-6 py-4">
@@ -315,23 +323,26 @@ export function QuestionnaireBuilder({
             {/* Questions */}
             <div className="space-y-4">
               {questions.length > 0 ? (
-                <Reorder.Group
-                  axis="y"
-                  values={questions}
-                  onReorder={handleReorder}
-                  className="space-y-4"
-                >
-                  {questions.map(question => (
-                    <QuestionItem
-                      key={question.id}
-                      question={question}
-                      onUpdate={updates => handleUpdateQuestion(question.id, updates)}
-                      onDelete={() => handleDeleteQuestion(question.id)}
-                      onDuplicate={() => handleDuplicateQuestion(question)}
-                      allQuestions={questions}
-                    />
-                  ))}
-                </Reorder.Group>
+                <AnimatePresence mode="popLayout">
+                  <Reorder.Group
+                    axis="y"
+                    values={questions}
+                    onReorder={handleReorder}
+                    className="space-y-4"
+                  >
+                    {questions.map(question => (
+                      <QuestionItem
+                        key={question.id}
+                        question={question}
+                        onUpdate={updates => handleUpdateQuestion(question.id, updates)}
+                        onDelete={() => handleDeleteQuestion(question.id)}
+                        onDuplicate={() => handleDuplicateQuestion(question)}
+                        allQuestions={questions}
+                        enableLayoutAnimation={hasMounted}
+                      />
+                    ))}
+                  </Reorder.Group>
+                </AnimatePresence>
               ) : (
                 <div className="text-center py-12">
                   <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
@@ -421,9 +432,40 @@ export function QuestionnaireBuilder({
                 <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
                   Shareable Link
                 </p>
-                <code className="block w-full bg-[#f3f1ef] dark:bg-[#262b35] px-3 py-2 rounded-lg text-xs text-[#1a1a1a] dark:text-[#f5f5f8] break-all">
-                  {typeof window !== 'undefined' ? `${window.location.origin}/q/${questionnaire.slug}` : `/q/${questionnaire.slug}`}
-                </code>
+                <div
+                  className="flex items-center bg-[#f3f1ef] dark:bg-[#262b35] rounded-lg overflow-hidden cursor-pointer hover:bg-[#e9e7e4] dark:hover:bg-[#2d3340] transition-colors"
+                  onClick={handleCopyLink}
+                  title="Click to copy"
+                >
+                  <code className="flex-1 min-w-0 px-3 py-2 text-xs text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                    {typeof window !== 'undefined' ? `${window.location.origin}/q/${questionnaire.slug}` : `/q/${questionnaire.slug}`}
+                  </code>
+                  <div className="flex-shrink-0 px-2 py-2 border-l border-[#e1ddd8]/50 dark:border-[#3a4150]/50">
+                    <AnimatePresence mode="wait">
+                      {copiedLink ? (
+                        <motion.div
+                          key="check"
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.8, opacity: 0 }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          <Check className="w-4 h-4 text-green-500" />
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="copy"
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.8, opacity: 0 }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -515,17 +557,67 @@ function SettingsModal({
 
             {/* Shareable Link */}
             <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
-              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                Shareable Link:{' '}
-                <code className="bg-[#f3f1ef] dark:bg-[#262b35] px-2 py-0.5 rounded text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  {shareableLink}
-                </code>
+              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                Shareable Link
               </p>
+              <CopyLinkBox shareableLink={shareableLink} />
             </div>
           </div>
         </div>
       </DrawerContent>
     </Drawer>
+  );
+}
+
+// Copy Link Box with animation - reusable component (truncated link with attached copy button)
+function CopyLinkBox({ shareableLink }: { shareableLink: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareableLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
+
+  return (
+    <div
+      className="flex items-center bg-[#f3f1ef] dark:bg-[#262b35] rounded-lg overflow-hidden cursor-pointer hover:bg-[#e9e7e4] dark:hover:bg-[#2d3340] transition-colors"
+      onClick={handleCopy}
+      title="Click to copy"
+    >
+      <code className="flex-1 min-w-0 px-3 py-2 text-xs text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+        {shareableLink}
+      </code>
+      <div className="flex-shrink-0 px-2 py-2 border-l border-[#e1ddd8]/50 dark:border-[#3a4150]/50">
+        <AnimatePresence mode="wait">
+          {copied ? (
+            <motion.div
+              key="check"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <Check className="w-4 h-4 text-green-500" />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="copy"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 }
 
@@ -536,12 +628,14 @@ function QuestionItem({
   onDelete,
   onDuplicate,
   allQuestions,
+  enableLayoutAnimation = true,
 }: {
   question: QuestionnaireQuestion;
   onUpdate: (updates: Partial<QuestionnaireQuestion>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
   allQuestions: QuestionnaireQuestion[];
+  enableLayoutAnimation?: boolean;
 }) {
   const dragControls = useDragControls();
 
@@ -552,6 +646,11 @@ function QuestionItem({
         value={question}
         dragListener={false}
         dragControls={dragControls}
+        layout={enableLayoutAnimation}
+        initial={enableLayoutAnimation ? { opacity: 0 } : false}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15, layout: { duration: 0.2 } }}
         className="group"
       >
         <div className="flex items-center gap-3 py-2">
@@ -595,6 +694,11 @@ function QuestionItem({
       value={question}
       dragListener={false}
       dragControls={dragControls}
+      layout={enableLayoutAnimation}
+      initial={enableLayoutAnimation ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15, layout: { duration: 0.2 } }}
       className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40 shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
     >
       <div className="p-4">

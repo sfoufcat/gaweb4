@@ -136,7 +136,6 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
   const currentPage = pages[currentPageIndex];
   const isFirstPage = currentPageIndex === 0;
   const isLastPage = currentPageIndex === pages.length - 1;
-  const progress = pages.length > 0 ? ((currentPageIndex + 1) / pages.length) * 100 : 0;
 
   // Calculate which question number we're on for display
   const currentQuestionNumber = useMemo(() => {
@@ -333,56 +332,55 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
 
   return (
     <div
-      className="min-h-[100dvh] flex flex-col bg-gradient-to-b from-[#faf9f7] to-[#f5f3f0] dark:from-[#0f1218] dark:to-[#0a0c10]"
+      className="min-h-[100dvh] bg-[#faf9f7] dark:bg-[#0f1218]"
       onKeyDown={handleKeyDown}
     >
-      {/* Minimal top header with progress */}
-      <header className="w-full px-4 sm:px-6 pt-6 pb-4">
+      {/* Segmented progress bar - Tally style */}
+      <div className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 pt-4">
         <div className="max-w-xl mx-auto">
-          {/* Progress indicator - elegant thin line with glow */}
-          <div className="relative">
-            <div className="h-0.5 bg-[#e8e4df] dark:bg-[#1e232d] rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-brand-accent to-brand-accent/80 rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-              />
-            </div>
-            {/* Subtle glow effect on progress */}
-            <motion.div
-              className="absolute top-0 h-0.5 bg-brand-accent/30 blur-sm rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-            />
-          </div>
-
-          {/* Step indicator */}
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-xs font-medium text-[#8a857f] dark:text-[#6b7280] font-albert tracking-wide uppercase">
-              {actualQuestions.length > 0 ? (
-                <>Question {Math.min(currentQuestionNumber, actualQuestions.length)} of {actualQuestions.length}</>
-              ) : (
-                <>Step {currentPageIndex + 1} of {pages.length}</>
-              )}
-            </p>
-            {!isFirstPage && (
-              <button
-                onClick={goToPrevious}
-                disabled={submitting}
-                className="flex items-center gap-1 text-xs font-medium text-[#8a857f] dark:text-[#6b7280] hover:text-[#5f5a55] dark:hover:text-[#9ca3af] transition-colors font-albert"
+          <div className="flex gap-1">
+            {pages.map((page, index) => (
+              <div
+                key={page.id}
+                className="flex-1 h-1 rounded-full overflow-hidden bg-[#e8e4df] dark:bg-[#1e232d]"
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                Back
-              </button>
-            )}
+                <motion.div
+                  className="h-full bg-brand-accent rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: index < currentPageIndex ? '100%' : index === currentPageIndex ? '100%' : '0%' }}
+                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                />
+              </div>
+            ))}
           </div>
         </div>
-      </header>
+      </div>
+
+      {/* Question counter */}
+      <div className="fixed top-8 left-0 right-0 z-40 px-4 sm:px-6">
+        <div className="max-w-xl mx-auto flex items-center justify-between">
+          <p className="text-xs font-medium text-[#8a857f] dark:text-[#6b7280] font-albert tracking-wide uppercase">
+            {actualQuestions.length > 0 ? (
+              <>Question {Math.min(currentQuestionNumber, actualQuestions.length)} of {actualQuestions.length}</>
+            ) : (
+              <>Step {currentPageIndex + 1} of {pages.length}</>
+            )}
+          </p>
+          {!isFirstPage && (
+            <button
+              onClick={goToPrevious}
+              disabled={submitting}
+              className="flex items-center gap-1 text-xs font-medium text-[#8a857f] dark:text-[#6b7280] hover:text-[#5f5a55] dark:hover:text-[#9ca3af] transition-colors font-albert"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              Back
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Main content area - centered */}
-      <main className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-6">
+      <main className="min-h-[100dvh] flex flex-col justify-center px-4 sm:px-6 py-24">
         <div className="w-full max-w-xl mx-auto">
           <AnimatePresence mode="wait">
             {currentPage?.isPageBreak ? (
@@ -453,8 +451,8 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
         </div>
       </main>
 
-      {/* Footer with action button - proper safe area handling */}
-      <footer className="w-full px-4 sm:px-6 pb-6 pt-4" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+      {/* Footer with action button - fixed at bottom, centered */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 sm:px-6 pb-6 pt-4 bg-gradient-to-t from-[#faf9f7] via-[#faf9f7] to-transparent dark:from-[#0f1218] dark:via-[#0f1218]">
         <div className="max-w-xl mx-auto">
           <motion.button
             onClick={goToNext}
@@ -485,7 +483,7 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
             </p>
           )}
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

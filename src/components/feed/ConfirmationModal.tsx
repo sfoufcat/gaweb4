@@ -91,13 +91,13 @@ export function ConfirmationModal({
   const modalContent = (
     <>
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] animate-backdrop-fade-in"
+      <div
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[10002] animate-backdrop-fade-in"
         onClick={onClose}
       />
-      
+
       {/* Modal */}
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
         <div 
           className="bg-white dark:bg-[#171b22] rounded-[24px] p-6 max-w-[400px] w-full animate-modal-zoom-in pointer-events-auto shadow-xl"
           onClick={(e) => e.stopPropagation()}

@@ -160,18 +160,18 @@ export function FillWeekPreviewModal({
   };
 
   const ActionItemCard = ({ item }: { item: CallSummaryActionItem }) => (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-[#f5f3f0] dark:bg-[#1e222a] border border-[#e5e1dc] dark:border-[#2a2f3a] shadow-sm">
+    <div className="flex items-center gap-2 p-2 rounded-lg bg-[#f5f3f0] dark:bg-[#1e222a] border border-[#e5e1dc] dark:border-[#2a2f3a]">
       <Badge variant={getPriorityVariant(item.priority)} className="shrink-0 text-xs font-albert">
         {item.priority}
       </Badge>
-      <span className="flex-1 text-[14px] leading-relaxed text-[#3a3a3a] dark:text-[#e0e0e5] font-albert">
+      <span className="flex-1 text-sm text-[#3a3a3a] dark:text-[#e0e0e5] font-albert">
         {item.description}
       </span>
     </div>
   );
 
   const content = (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Success State */}
       {state === 'success' && result && (
         <div className="p-6 rounded-xl bg-emerald-50/70 dark:bg-emerald-900/20 backdrop-blur-sm border border-emerald-200/60 dark:border-emerald-800/60">
@@ -237,17 +237,15 @@ export function FillWeekPreviewModal({
 
       {/* Preview State */}
       {state === 'preview' && (
-        <>
-          {/* Action Items Preview */}
-          <div className="space-y-4">
+        <div className="max-h-[520px] overflow-y-auto space-y-3">
             {/* Client Tasks */}
             {clientItems.length > 0 && (
               <div>
-                <h4 className="text-sm font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-2.5 flex items-center gap-2">
+                <h4 className="text-sm font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-sky-500" />
                   Client Tasks ({clientItems.length})
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {clientItems.map((item) => (
                     <ActionItemCard key={item.id} item={item} />
                   ))}
@@ -258,11 +256,11 @@ export function FillWeekPreviewModal({
             {/* Coach Tasks */}
             {coachItems.length > 0 && (
               <div>
-                <h4 className="text-sm font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-2.5 flex items-center gap-2">
+                <h4 className="text-sm font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-violet-500" />
                   Coach Tasks ({coachItems.length})
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {coachItems.map((item) => (
                     <ActionItemCard key={item.id} item={item} />
                   ))}
@@ -272,27 +270,51 @@ export function FillWeekPreviewModal({
 
             {/* No items */}
             {clientItems.length === 0 && coachItems.length === 0 && !summary?.weekContent && (
-              <div className="py-10 text-center">
-                <Wand2 className="w-8 h-8 mx-auto mb-3 text-[#c0bbb5] dark:text-[#4a4f5a]" />
+              <div className="py-6 text-center">
+                <Wand2 className="w-6 h-6 mx-auto mb-2 text-[#c0bbb5] dark:text-[#4a4f5a]" />
                 <p className="text-sm font-albert text-[#8c8c8c] dark:text-[#7d8190]">
                   No action items found in this summary
                 </p>
               </div>
             )}
-          </div>
 
-          {/* Week Content Preview (Notes, Focus) */}
-          {summary?.weekContent && (summary.weekContent.notes?.length || summary.weekContent.currentFocus?.length) && (
-            <div className="space-y-3 p-4 rounded-xl bg-amber-50/40 dark:bg-amber-900/10 backdrop-blur-sm border border-amber-200/50 dark:border-amber-700/30">
+          {/* Week Content Preview (Theme, Description, Notes, Goals) */}
+          {summary?.weekContent && (summary.weekContent.theme || summary.weekContent.description || summary.weekContent.notes?.length || summary.weekContent.currentFocus?.length) && (
+            <div className="space-y-2 p-3 rounded-xl bg-amber-50/40 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-700/30">
+              {/* Weekly Theme */}
+              {summary.weekContent.theme && (
+                <div>
+                  <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-0.5">
+                    Weekly Theme
+                  </h4>
+                  <p className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] italic">
+                    {summary.weekContent.theme}
+                  </p>
+                </div>
+              )}
+
+              {/* Description */}
+              {summary.weekContent.description && (
+                <div>
+                  <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-0.5">
+                    Description
+                  </h4>
+                  <p className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] line-clamp-2">
+                    {summary.weekContent.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Week Notes */}
               {summary.weekContent.notes && summary.weekContent.notes.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 flex items-center gap-2">
-                    <StickyNote className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 flex items-center gap-1.5">
+                    <StickyNote className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     Week Notes
                   </h4>
-                  <ul className="space-y-1.5">
+                  <ul className="space-y-1">
                     {summary.weekContent.notes.map((note, idx) => (
-                      <li key={idx} className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] pl-3 border-l-2 border-amber-400/60 dark:border-amber-500/40">
+                      <li key={idx} className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] pl-2.5 border-l-2 border-amber-400/60 dark:border-amber-500/40">
                         {note}
                       </li>
                     ))}
@@ -300,30 +322,25 @@ export function FillWeekPreviewModal({
                 </div>
               )}
 
-              {summary.weekContent.currentFocus && summary.weekContent.currentFocus.length > 0 && (
+              {/* Goals */}
+              {(summary.weekContent.goals?.length || summary.weekContent.currentFocus?.length) ? (
                 <div>
-                  <h4 className="text-sm font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 flex items-center gap-2">
-                    <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    Focus Areas
+                  <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    Goals
                   </h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {summary.weekContent.currentFocus.map((focus, idx) => (
+                  <div className="flex flex-wrap gap-1">
+                    {(summary.weekContent.goals || summary.weekContent.currentFocus || []).map((goal, idx) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-1 text-xs font-medium font-albert bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md"
+                        className="px-2 py-0.5 text-xs font-medium font-albert bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md"
                       >
-                        {focus}
+                        {goal}
                       </span>
                     ))}
                   </div>
                 </div>
-              )}
-
-              {summary.weekContent.theme && (
-                <p className="text-xs font-albert text-[#8c8c8c] dark:text-[#7d8190] italic">
-                  Theme: {summary.weekContent.theme}
-                </p>
-              )}
+              ) : null}
             </div>
           )}
 
@@ -384,7 +401,7 @@ export function FillWeekPreviewModal({
               <Wand2 className="w-4 h-4" />
             </button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

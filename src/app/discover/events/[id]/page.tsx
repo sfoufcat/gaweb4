@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
-import { MapPin, AlertCircle, CheckCircle, CalendarClock, XCircle, Video, PlayCircle, CalendarCheck, ExternalLink } from 'lucide-react';
+import { MapPin, AlertCircle, CheckCircle, CalendarClock, XCircle, Video, PlayCircle, CalendarCheck } from 'lucide-react';
 import { BackButton, ShareButton, AttendeeAvatars, RichContent, AddToCalendarButton, ContentPurchaseSheet } from '@/components/discover';
 import { Button } from '@/components/ui/button';
 import { MediaPlayer } from '@/components/video/MediaPlayer';
@@ -685,18 +685,6 @@ function EventContent({
                       className="w-full"
                       isAudioOnly={normalizedEvent.isAudioOnly}
                     />
-                  </div>
-                  {/* Open in new tab link */}
-                  <div className="px-4 pb-4 pt-0">
-                    <a
-                      href={normalizedEvent.recordingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 text-sm text-earth-500 hover:text-earth-600 dark:text-earth-400 dark:hover:text-earth-300 transition-colors"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Open in New Tab
-                    </a>
                   </div>
                 </div>
               ) : (

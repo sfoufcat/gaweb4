@@ -6034,9 +6034,10 @@ export interface CallSummary {
   // Pre-generated week content (generated during summary creation, applied during "Fill Week")
   weekContent?: {
     notes: string[];           // Max 3 client-facing reminder/context notes
-    currentFocus: string[];    // Max 3 focus areas for the week
+    goals?: string[];          // Max 3 goals for the week (new field)
+    currentFocus?: string[];   // Legacy: focus areas (kept for backwards compat, use goals instead)
     theme?: string;            // Optional week theme
-    description?: string;      // Brief week overview
+    description?: string;      // What client should focus on this week (forward-looking)
   };
 
   status: 'processing' | 'completed' | 'failed';

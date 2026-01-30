@@ -14,7 +14,9 @@ import { EngagementInsights } from './EngagementInsights';
 import { UpcomingSection, type UpcomingItem, type PastSessionItem } from './UpcomingSection';
 import { type DashboardViewContext } from './ClientCohortSelector';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
-import type { Program, ProgramEnrollment, ProgramCohort, ProgramHabitTemplate, TaskDistribution } from '@/types';
+import { EventDetailPopup } from '@/components/scheduling/EventDetailPopup';
+import { FillWeekPreviewModal } from '@/components/scheduling/FillWeekPreviewModal';
+import type { Program, ProgramEnrollment, ProgramCohort, ProgramHabitTemplate, TaskDistribution, UnifiedEvent, CallSummary } from '@/types';
 
 // API response types
 interface ProgramDashboardData {
@@ -151,6 +153,17 @@ export function ProgramDashboard({
   const [isNudging, setIsNudging] = useState<string | null>(null);
   const [nudgedUsers, setNudgedUsers] = useState<Set<string>>(new Set());
 
+  // Event detail modal state
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [showEventDetailPopup, setShowEventDetailPopup] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
+  const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | undefined>(undefined);
+
+  // Fill week modal state
+  const [fillWeekEventId, setFillWeekEventId] = useState<string | null>(null);
+  const [fillWeekSummary, setFillWeekSummary] = useState<CallSummary | null>(null);
+  const [isFetchingSummary, setIsFetchingSummary] = useState(false);
+
   // Sync viewContext when props change (header selector updates)
   React.useEffect(() => {
     const newContext = getInitialContext();
@@ -198,14 +211,14 @@ export function ProgramDashboard({
     : null;
 
   // Fetch program/cohort-wide data
-  const { data: programData, isLoading: programLoading } = useSWR<ProgramDashboardData>(
+  const { data: programData, isLoading: programLoading, mutate: mutateProgramData } = useSWR<ProgramDashboardData>(
     programDashboardUrl,
     fetcher,
     { revalidateOnFocus: false }
   );
 
   // Fetch client-specific data
-  const { data: clientData, isLoading: clientLoading } = useSWR<ClientDashboardData>(
+  const { data: clientData, isLoading: clientLoading, mutate: mutateClientData } = useSWR<ClientDashboardData>(
     clientDashboardUrl,
     fetcher,
     { revalidateOnFocus: false }
@@ -273,6 +286,72 @@ export function ProgramDashboard({
     }
   }, [onProgramUpdate, hasSettingsChanged, includeWeekends, taskDistribution]);
 
+  // Handle clicking on a past session
+  const handlePastSessionClick = useCallback(async (item: PastSessionItem, clickPosition?: { x: number; y: number }) => {
+    setSelectedEventId(item.eventId);
+    setPopupPosition(clickPosition);
+
+    // Create minimal event from item data to show popup immediately
+    const minimalEvent: UnifiedEvent = {
+      id: item.eventId,
+      title: item.title,
+      startDateTime: item.date,
+      eventType: item.eventType || 'coaching_1on1',
+    } as UnifiedEvent;
+
+    setSelectedEvent(minimalEvent);
+    setShowEventDetailPopup(true);
+
+    // Fetch full event data in background to enrich the popup
+    try {
+      const response = await fetch(`/api/events/${item.eventId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const eventData = data.event || data;
+        if (eventData?.id && eventData?.startDateTime) {
+          setSelectedEvent(eventData);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch event:', err);
+    }
+  }, []);
+
+  // Handle summary generated - refresh the dashboard data
+  const handleSummaryGenerated = useCallback(() => {
+    // Mutate both endpoints to refresh data
+    mutateProgramData();
+    mutateClientData();
+  }, [mutateProgramData, mutateClientData]);
+
+  // Handle fill week - fetch summary and open modal
+  const handleFillWeek = useCallback(async (eventId: string) => {
+    setIsFetchingSummary(true);
+    try {
+      const response = await fetch(`/api/events/${eventId}/summary`);
+      if (response.ok) {
+        const data = await response.json();
+        setFillWeekSummary(data.summary);
+        setFillWeekEventId(eventId);
+      }
+    } catch (error) {
+      console.error('Failed to fetch summary:', error);
+    } finally {
+      setIsFetchingSummary(false);
+    }
+  }, []);
+
+  // Enrich pastSessions with onClick, onSummaryGenerated, and onFillWeek handlers
+  const enrichPastSessions = useCallback((sessions?: PastSessionItem[]): PastSessionItem[] | undefined => {
+    if (!sessions) return undefined;
+    return sessions.map(item => ({
+      ...item,
+      onClick: (e: React.MouseEvent) => handlePastSessionClick(item, { x: e.clientX, y: e.clientY }),
+      onSummaryGenerated: handleSummaryGenerated,
+      onFillWeek: item.hasSummary ? () => handleFillWeek(item.eventId) : undefined,
+    }));
+  }, [handlePastSessionClick, handleSummaryGenerated, handleFillWeek]);
+
   return (
     <div className={cn('space-y-6', className)}>
       {/* Loading state */}
@@ -290,7 +369,7 @@ export function ProgramDashboard({
 
           {/* Row 1: Upcoming + Top Performers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <UpcomingSection items={programData.upcoming} pastItems={programData.pastSessions} />
+            <UpcomingSection items={programData.upcoming} pastItems={enrichPastSessions(programData.pastSessions)} />
             <TopPerformerCard
               performers={programData.topPerformers}
               onViewClient={handleViewClient}
@@ -319,7 +398,7 @@ export function ProgramDashboard({
 
           {/* Row 1: Upcoming + Week Progress side by side */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <UpcomingSection items={clientData.upcoming} pastItems={clientData.pastSessions} />
+            <UpcomingSection items={clientData.upcoming} pastItems={enrichPastSessions(clientData.pastSessions)} />
             <WeekProgressList
               weeks={clientData.weekProgress}
               currentWeek={clientData.stats.currentWeek}
@@ -351,7 +430,7 @@ export function ProgramDashboard({
 
           {/* Row 1: Upcoming + Top Performers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <UpcomingSection items={programData.upcoming} pastItems={programData.pastSessions} />
+            <UpcomingSection items={programData.upcoming} pastItems={enrichPastSessions(programData.pastSessions)} />
             <TopPerformerCard
               performers={programData.topPerformers}
               onViewClient={handleViewClient}
@@ -484,6 +563,42 @@ export function ProgramDashboard({
             </div>
           )}
         </div>
+      )}
+
+      {/* Event Detail Popup for 1:1 calls */}
+      {selectedEvent && showEventDetailPopup && (
+        <EventDetailPopup
+          event={selectedEvent}
+          isOpen={showEventDetailPopup}
+          onClose={() => {
+            setShowEventDetailPopup(false);
+            setSelectedEvent(null);
+            setSelectedEventId(null);
+            setPopupPosition(undefined);
+          }}
+          isHost={true}
+          position={popupPosition}
+        />
+      )}
+
+      {/* Fill Week Preview Modal */}
+      {fillWeekEventId && (
+        <FillWeekPreviewModal
+          isOpen={!!fillWeekEventId}
+          onClose={() => {
+            setFillWeekEventId(null);
+            setFillWeekSummary(null);
+          }}
+          eventId={fillWeekEventId}
+          summary={fillWeekSummary}
+          onFilled={() => {
+            setFillWeekEventId(null);
+            setFillWeekSummary(null);
+            // Refresh dashboard data
+            mutateProgramData();
+            mutateClientData();
+          }}
+        />
       )}
     </div>
   );

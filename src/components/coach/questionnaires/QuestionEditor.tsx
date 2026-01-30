@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Copy, X, Loader2, MoreHorizontal, ChevronRight, ChevronDown } from 'lucide-react';
+import { Trash2, Copy, X, Loader2, MoreVertical, ChevronRight, Workflow } from 'lucide-react';
 import { QuestionOptionEditor } from './QuestionOptionEditor';
 import { SkipLogicEditor } from './SkipLogicEditor';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -12,6 +11,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import {
   Select,
   SelectContent,
@@ -84,7 +90,7 @@ export function QuestionEditor({
                 value={question.placeholder || ''}
                 onChange={e => onUpdate({ placeholder: e.target.value })}
                 placeholder="Enter placeholder text..."
-                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
               />
             </div>
             <div className="flex gap-4">
@@ -100,7 +106,7 @@ export function QuestionEditor({
                   }
                   placeholder="0"
                   min={0}
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
                 />
               </div>
               <div className="flex-1">
@@ -115,7 +121,7 @@ export function QuestionEditor({
                   }
                   placeholder={question.type === 'short_text' ? '500' : '5000'}
                   min={1}
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
                 />
               </div>
             </div>
@@ -134,7 +140,7 @@ export function QuestionEditor({
                 value={question.placeholder || ''}
                 onChange={e => onUpdate({ placeholder: e.target.value })}
                 placeholder="Enter a number"
-                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
               />
             </div>
             <div className="flex gap-4">
@@ -149,7 +155,7 @@ export function QuestionEditor({
                     onUpdate({ minValue: e.target.value ? parseFloat(e.target.value) : undefined })
                   }
                   placeholder="No min"
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
                 />
               </div>
               <div className="flex-1">
@@ -163,7 +169,7 @@ export function QuestionEditor({
                     onUpdate({ maxValue: e.target.value ? parseFloat(e.target.value) : undefined })
                   }
                   placeholder="No max"
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
                 />
               </div>
             </div>
@@ -184,7 +190,7 @@ export function QuestionEditor({
                   onChange={e => onUpdate({ minValue: parseInt(e.target.value) || 1 })}
                   min={0}
                   max={9}
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
                 />
               </div>
               <div className="flex-1">
@@ -197,7 +203,7 @@ export function QuestionEditor({
                   onChange={e => onUpdate({ maxValue: parseInt(e.target.value) || 5 })}
                   min={2}
                   max={10}
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
                 />
               </div>
             </div>
@@ -215,7 +221,7 @@ export function QuestionEditor({
                     })
                   }
                   placeholder="e.g., Not satisfied"
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
                 />
               </div>
               <div className="flex-1">
@@ -231,7 +237,7 @@ export function QuestionEditor({
                     })
                   }
                   placeholder="e.g., Very satisfied"
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
                 />
               </div>
             </div>
@@ -313,7 +319,7 @@ export function QuestionEditor({
                 onChange={e => onUpdate({ maxFileSizeMB: parseInt(e.target.value) || 10 })}
                 min={1}
                 max={100}
-                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
               />
             </div>
           </div>
@@ -331,49 +337,61 @@ export function QuestionEditor({
     }
   };
 
-  // Skip Logic Section (shared between desktop sidebar and mobile inline)
-  const SkipLogicSection = () => (
-    <div className="pt-2">
+  // Skip logic button element - inline row style like Required
+  const skipLogicButton = (
+    <div className="flex items-center justify-between">
+      <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Skip logic</span>
       <button
-        onClick={() => setShowSkipLogic(!showSkipLogic)}
-        className="flex items-center gap-1.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors font-albert"
+        onClick={() => setShowSkipLogic(true)}
+        className="flex items-center gap-1 text-xs text-brand-accent hover:text-brand-accent/80 transition-colors font-albert"
       >
-        {showSkipLogic ? (
-          <ChevronDown className="w-4 h-4" />
-        ) : (
-          <ChevronRight className="w-4 h-4" />
-        )}
-        Skip logic
-        {(question.skipLogic?.length || 0) > 0 && (
-          <span className="text-xs bg-brand-accent/10 text-brand-accent px-1.5 py-0.5 rounded-full">
+        {(question.skipLogic?.length || 0) > 0 ? (
+          <span className="bg-brand-accent/10 px-1.5 py-0.5 rounded-full">
             {question.skipLogic?.length}
           </span>
+        ) : (
+          <span className="text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent">Add</span>
         )}
+        <ChevronRight className="w-3.5 h-3.5" />
       </button>
+    </div>
+  );
 
-      <AnimatePresence initial={false}>
-        {showSkipLogic && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{
-              height: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
-              opacity: { duration: 0.2, delay: showSkipLogic ? 0.1 : 0 }
-            }}
-            className="overflow-hidden"
-          >
-            <div className="mt-3">
+  // Skip logic modal - rendered inline to prevent remounting
+  const skipLogicModal = hasSkipLogic && (
+    isDesktop ? (
+      <Dialog open={showSkipLogic} onOpenChange={setShowSkipLogic}>
+        <DialogContent className="sm:max-w-xl bg-white dark:bg-[#171b22] border border-[#e1ddd8]/30 dark:border-white/10 rounded-2xl shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-albert text-lg">Skip Logic</DialogTitle>
+          </DialogHeader>
+          <div className="p-1">
+            <SkipLogicEditor
+              question={question}
+              allQuestions={allQuestions}
+              onUpdate={skipLogic => onUpdate({ skipLogic })}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    ) : (
+      <Drawer open={showSkipLogic} onOpenChange={setShowSkipLogic}>
+        <DrawerContent className="max-h-[85dvh] bg-white dark:bg-[#171b22]">
+          <div className="p-4 pb-8">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
+              Skip Logic
+            </h3>
+            <div className="p-1">
               <SkipLogicEditor
                 question={question}
                 allQuestions={allQuestions}
                 onUpdate={skipLogic => onUpdate({ skipLogic })}
               />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
+    )
   );
 
   // Desktop Layout
@@ -427,7 +445,7 @@ export function QuestionEditor({
           </div>
 
           {/* Skip Logic (desktop) */}
-          {hasSkipLogic && <SkipLogicSection />}
+          {hasSkipLogic && skipLogicButton}
 
           {/* Actions */}
           <div className="flex items-center gap-1 pt-2 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/30">
@@ -447,6 +465,9 @@ export function QuestionEditor({
             </button>
           </div>
         </div>
+
+        {/* Skip Logic Modal */}
+        {skipLogicModal}
       </div>
     );
   }
@@ -496,10 +517,21 @@ export function QuestionEditor({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors">
-                <MoreHorizontal className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                <MoreVertical className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[140px]">
+              {hasSkipLogic && (
+                <DropdownMenuItem onClick={() => setShowSkipLogic(true)}>
+                  <Workflow className="w-4 h-4 mr-2" />
+                  Skip logic
+                  {(question.skipLogic?.length || 0) > 0 && (
+                    <span className="ml-auto text-xs bg-brand-accent/10 text-brand-accent px-1.5 py-0.5 rounded-full">
+                      {question.skipLogic?.length}
+                    </span>
+                  )}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onDuplicate}>
                 <Copy className="w-4 h-4 mr-2" />
                 Duplicate
@@ -516,8 +548,8 @@ export function QuestionEditor({
       {/* Type-specific configuration */}
       {renderTypeConfig()}
 
-      {/* Skip Logic (mobile - inline at bottom) */}
-      {hasSkipLogic && <SkipLogicSection />}
+      {/* Skip Logic Modal */}
+      {skipLogicModal}
     </div>
   );
 }

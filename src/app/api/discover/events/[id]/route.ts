@@ -197,9 +197,15 @@ export async function GET(
 
     // Fetch call summary if available
     let callSummary: CallSummary | null = null;
-    if (eventData?.callSummaryId) {
+    if (eventData?.callSummaryId && eventData?.organizationId) {
       try {
-        const summaryDoc = await adminDb.collection('call_summaries').doc(eventData.callSummaryId).get();
+        // Summaries are stored in org subcollection: organizations/{orgId}/call_summaries/{summaryId}
+        const summaryDoc = await adminDb
+          .collection('organizations')
+          .doc(eventData.organizationId)
+          .collection('call_summaries')
+          .doc(eventData.callSummaryId)
+          .get();
         if (summaryDoc.exists) {
           const summaryData = summaryDoc.data();
           // Filter for client-friendly view: hide coaching notes, filter action items

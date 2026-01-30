@@ -50,7 +50,9 @@ interface PastSessionItem {
   date: string;
   coverImageUrl?: string;
   hasRecording: boolean;
+  hasSummary?: boolean;
   eventId: string;
+  eventType?: 'coaching_1on1' | 'cohort_call' | 'squad_call' | 'intake_call' | 'community_event';
 }
 
 interface ProgramDashboardData {
@@ -944,6 +946,11 @@ export async function GET(
 
       for (const doc of pastEventsSnapshot.docs) {
         const data = doc.data();
+        // Skip cancelled events
+        const status = data.status?.toLowerCase();
+        if (status === 'cancelled' || status === 'canceled') {
+          continue;
+        }
         // Filter to cohort if specified
         if (cohortId && data.cohortId && data.cohortId !== cohortId) {
           continue;
@@ -954,7 +961,9 @@ export async function GET(
           date: data.startDateTime,
           coverImageUrl: data.coverImageUrl,
           hasRecording: !!data.recordingUrl,
+          hasSummary: !!data.callSummaryId,
           eventId: doc.id,
+          eventType: data.eventType || 'community_event',
         });
       }
     } catch (err) {

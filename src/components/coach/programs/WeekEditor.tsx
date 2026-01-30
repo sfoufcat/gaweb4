@@ -3268,7 +3268,7 @@ export function WeekEditor({
                   }
                 }}
                 placeholder={formData.currentFocus.length === 0 ? "Type goals separated by comma..." : "Add another goal..."}
-                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
+                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
               />
               <button
                 type="button"

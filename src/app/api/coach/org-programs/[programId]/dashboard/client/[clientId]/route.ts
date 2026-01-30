@@ -55,7 +55,9 @@ interface PastSessionItem {
   date: string;
   coverImageUrl?: string;
   hasRecording: boolean;
+  hasSummary?: boolean;
   eventId: string;
+  eventType?: 'coaching_1on1' | 'cohort_call' | 'squad_call' | 'intake_call' | 'community_event';
 }
 
 interface ClientDashboardData {
@@ -532,7 +534,9 @@ export async function GET(
             date: data.startDateTime,
             coverImageUrl: data.coverImageUrl,
             hasRecording: !!data.recordingUrl,
+            hasSummary: !!data.callSummaryId,
             eventId: doc.id,
+            eventType: data.eventType || 'coaching_1on1',
           });
         }
       }

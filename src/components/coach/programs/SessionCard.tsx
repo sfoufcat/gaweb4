@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import type { UnifiedEvent } from '@/types';
 import { MediaPlayer } from '@/components/video/MediaPlayer';
 import { InlineRecordingUpload } from '@/components/scheduling/InlineRecordingUpload';
+import { SummaryConfirmationModal } from './SummaryConfirmationModal';
 
 interface SessionCardProps {
   event: UnifiedEvent;
@@ -24,6 +25,7 @@ interface SessionCardProps {
   hasRecording: boolean;
   recordingStatus?: string;
   isToday: boolean;
+  hasFilledFromSummary?: boolean;
   onRemove: () => void;
   onViewSummary?: () => void;
   onSummaryGenerated?: (summaryId: string) => void;
@@ -43,6 +45,7 @@ export function SessionCard({
   hasRecording,
   recordingStatus,
   isToday,
+  hasFilledFromSummary,
   onRemove,
   onViewSummary,
   onSummaryGenerated,
@@ -53,6 +56,7 @@ export function SessionCard({
   const [isFetching, setIsFetching] = useState(false);
   const [fetchMessage, setFetchMessage] = useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [showSummaryConfirm, setShowSummaryConfirm] = useState(false);
 
   // Compute session state
   const sessionState = useMemo(() => {
@@ -253,10 +257,13 @@ export function SessionCard({
                 e.stopPropagation();
                 onFillWeek();
               }}
-              className="p-1.5 rounded-lg bg-brand-accent/5 hover:bg-brand-accent/10 transition-colors"
-              title="Fill week from summary"
+              className="relative p-1.5 rounded-lg bg-brand-accent/5 hover:bg-brand-accent/10 transition-colors"
+              title={hasFilledFromSummary ? "Week filled from summary" : "Fill week from summary"}
             >
               <Wand2 className="w-4 h-4 text-brand-accent" />
+              {hasFilledFromSummary && (
+                <Check className="w-2.5 h-2.5 text-green-500 absolute -bottom-0.5 -right-0.5" />
+              )}
             </button>
           )}
 
@@ -277,7 +284,7 @@ export function SessionCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                handleGenerateSummary();
+                setShowSummaryConfirm(true);
               }}
               disabled={isGeneratingSummary}
               className={cn(
@@ -444,7 +451,7 @@ export function SessionCard({
                   {/* Generate Summary button if no summary yet - compact inline style */}
                   {!hasSummary && onSummaryGenerated && (
                     <button
-                      onClick={handleGenerateSummary}
+                      onClick={() => setShowSummaryConfirm(true)}
                       disabled={isGeneratingSummary}
                       className={cn(
                         "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all",
@@ -485,6 +492,17 @@ export function SessionCard({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Summary confirmation modal */}
+      <SummaryConfirmationModal
+        isOpen={showSummaryConfirm}
+        onClose={() => setShowSummaryConfirm(false)}
+        onConfirm={async () => {
+          await handleGenerateSummary();
+          setShowSummaryConfirm(false);
+        }}
+        isLoading={isGeneratingSummary}
+      />
     </div>
   );
 }
