@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import useSWR, { useSWRConfig } from 'swr';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -21,6 +20,7 @@ export interface CompactPostPreview {
 
 interface FeedSidebarProps {
   onSelectPost?: (postId: string) => void;
+  onOpenBookmarks?: () => void;
 }
 
 // SWR fetcher
@@ -78,7 +78,7 @@ export function optimisticallyRemoveBookmark(postId: string) {
  * - Saved: Always shows (with empty state)
  * - Trending: Only shows if there are trending posts from the past week
  */
-export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
+export function FeedSidebar({ onSelectPost, onOpenBookmarks }: FeedSidebarProps) {
   // Set shared mutate for optimistic updates from other components
   const { mutate } = useSWRConfig();
   setSharedMutate(mutate);
@@ -130,15 +130,17 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
   const showTrendingSection = !isLoadingTrending && trendingPosts.length > 0;
 
   return (
-    <aside className="hidden lg:block w-full space-y-6">
+    <aside className="hidden lg:block w-full space-y-5">
       {/* Pinned Posts Section - Only shows if there are pinned posts */}
       {showPinnedSection && (
-        <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
-            <h3 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
-              <svg className="w-5 h-5 text-brand-accent" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M16 12V4h1V2H7v2h1v8l-3 5v2h6v5l1 1 1-1v-5h6v-2l-3-5z" />
-              </svg>
+        <div className="feed-sidebar-glass overflow-hidden">
+          <div className="px-4 py-3.5">
+            <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-blue-400 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M16 12V4h1V2H7v2h1v8l-3 5v2h6v5l1 1 1-1v-5h6v-2l-3-5z" />
+                </svg>
+              </div>
               Pinned
             </h3>
           </div>
@@ -154,22 +156,24 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
       )}
 
       {/* Bookmarked Posts Section */}
-      <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
+      <div className="feed-sidebar-glass overflow-hidden">
+        <div className="px-4 py-3.5">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
-              <svg className="w-5 h-5 text-brand-accent" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-              </svg>
+            <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </div>
               Saved
             </h3>
             {bookmarkedPosts.length > 0 && (
-              <Link 
-                href="/feed/bookmarks" 
-                className="text-[14px] text-brand-accent hover:underline"
+              <button
+                onClick={onOpenBookmarks}
+                className="text-[12px] text-amber-500 dark:text-amber-400 hover:underline font-medium"
               >
                 See all
-              </Link>
+              </button>
             )}
           </div>
         </div>
@@ -181,10 +185,10 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
               {[1, 2, 3].map((i) => (
                 <div key={i} className="p-2 rounded-xl animate-pulse">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#f5f3f0] dark:bg-[#262b35]" />
+                    <div className="w-10 h-10 rounded-full bg-amber-100/50 dark:bg-[#262b35]" />
                     <div className="flex-1 space-y-2">
-                      <div className="w-24 h-3.5 bg-[#f5f3f0] dark:bg-[#262b35] rounded" />
-                      <div className="w-full h-3.5 bg-[#f5f3f0] dark:bg-[#262b35] rounded" />
+                      <div className="w-24 h-3.5 bg-amber-100/50 dark:bg-[#262b35] rounded" />
+                      <div className="w-full h-3.5 bg-amber-50/50 dark:bg-[#262b35] rounded" />
                     </div>
                   </div>
                 </div>
@@ -201,7 +205,7 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
                   exit={{ opacity: 0 }}
                   className="py-8 text-center"
                 >
-                  <p className="text-[14px] text-[#8a857f]">
+                  <p className="text-[13px] text-[#9a958f]">
                     No saved posts yet
                   </p>
                 </motion.div>
@@ -233,15 +237,17 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
 
       {/* Trending Posts Section - Only shows if there are trending posts */}
       {showTrendingSection && (
-        <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
-            <h3 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
-              <svg className="w-5 h-5 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
+        <div className="feed-sidebar-glass overflow-hidden">
+          <div className="px-4 py-3.5">
+            <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-rose-400 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
               Trending
             </h3>
-            <p className="text-[12px] text-[#8a857f] mt-1">Popular this week</p>
+            <p className="text-[11px] text-[#a5a09a] mt-0.5 ml-9">Popular this week</p>
           </div>
 
           <div className="p-3">
@@ -281,17 +287,17 @@ function CompactPostItem({ post, rank, onSelect }: { post: CompactPostPreview; r
   return (
     <button
       onClick={() => onSelect?.(post.id)}
-      className="w-full text-left flex items-start gap-3 p-2.5 rounded-xl hover:bg-[#f5f3f0] dark:hover:bg-[#1a1f2a] transition-colors"
+      className="w-full text-left flex items-start gap-3 p-2.5 rounded-xl feed-hover-warm transition-all duration-200"
     >
       {/* Rank number for trending */}
       {rank && (
-        <div className="w-6 h-6 rounded-full bg-[#f5f3f0] dark:bg-[#262b35] flex items-center justify-center flex-shrink-0 mt-0.5">
-          <span className="text-[11px] font-bold text-[#8a857f]">{rank}</span>
+        <div className="w-6 h-6 rounded-full bg-rose-50 dark:bg-[#262b35] flex items-center justify-center flex-shrink-0 mt-0.5">
+          <span className="text-[11px] font-bold text-rose-400 dark:text-[#8a857f]">{rank}</span>
         </div>
       )}
 
       {/* Author avatar */}
-      <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
+      <div className="w-10 h-10 rounded-full overflow-hidden bg-[#faf7f4] dark:bg-[#262b35] flex-shrink-0 ring-2 ring-white/50 dark:ring-transparent">
         {post.author?.imageUrl ? (
           <Image
             src={post.author.imageUrl}

@@ -96,6 +96,7 @@ export async function GET(request: NextRequest) {
         id: postDoc.id,
         authorId: postData.authorId,
         text: postData.text,
+        contentHtml: postData.contentHtml,
         images: postData.images,
         videoUrl: postData.videoUrl,
         createdAt: postData.createdAt,

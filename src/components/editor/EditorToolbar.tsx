@@ -29,16 +29,16 @@ export function EditorToolbar({
   isUploading = false,
 }: EditorToolbarProps) {
   // Button base classes
-  const buttonBase = 'p-1.5 rounded-lg transition-colors';
-  const buttonInactive = 'text-[#8a857f] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35]';
-  const buttonActive = 'bg-[#f5f3f0] dark:bg-[#262b35]';
+  const buttonBase = 'p-1.5 rounded-xl transition-colors';
+  const buttonInactive = 'text-[#9a958f] hover:bg-[#f0ede8]/80 dark:hover:bg-[#2a2f3a]';
+  const buttonActive = 'bg-[#f0ede8] dark:bg-[#2a2f3a]';
 
   // Get active state style
   const getButtonClass = (isActive: boolean) => 
     `${buttonBase} ${isActive ? buttonActive : buttonInactive}`;
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 px-2 py-2.5 border-b border-[#e8e4df]/60 dark:border-[#262b35]/60 bg-white dark:bg-[#171b22] mb-3">
+    <div className="flex flex-wrap items-center gap-0.5 px-3 py-2.5 rounded-2xl border border-[#e8e4df]/60 dark:border-[#262b35]/60 bg-[#fafaf9]/80 dark:bg-[#1a1f2a]/80 backdrop-blur-sm mb-3">
       {/* Text formatting group */}
       <div className="flex items-center gap-0.5 mr-2">
         {/* Bold */}
@@ -83,7 +83,7 @@ export function EditorToolbar({
       </div>
 
       {/* Divider */}
-      <div className="w-px h-5 bg-[#e8e4df] dark:bg-[#262b35] mx-1" />
+      <div className="w-px h-4 bg-[#e8e4df]/70 dark:bg-[#3a3f4a] mx-1.5 rounded-full" />
 
       {/* Heading group */}
       <div className="flex items-center gap-0.5 mr-2">
@@ -119,7 +119,7 @@ export function EditorToolbar({
       </div>
 
       {/* Divider */}
-      <div className="w-px h-5 bg-[#e8e4df] dark:bg-[#262b35] mx-1" />
+      <div className="w-px h-4 bg-[#e8e4df]/70 dark:bg-[#3a3f4a] mx-1.5 rounded-full" />
 
       {/* List group */}
       <div className="flex items-center gap-0.5 mr-2">
@@ -151,7 +151,7 @@ export function EditorToolbar({
       </div>
 
       {/* Divider */}
-      <div className="w-px h-5 bg-[#e8e4df] dark:bg-[#262b35] mx-1" />
+      <div className="w-px h-4 bg-[#e8e4df]/70 dark:bg-[#3a3f4a] mx-1.5 rounded-full" />
 
       {/* Link and Image group */}
       <div className="flex items-center gap-0.5">

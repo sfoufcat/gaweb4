@@ -52,6 +52,12 @@ interface CallSummaryResult {
   };
   actionItems: CallSummaryActionItem[];
   followUpQuestions?: string[];
+  weekContent?: {
+    notes: string[];           // Max 3 client-facing reminder/context notes
+    currentFocus: string[];    // Max 3 focus areas for the week
+    theme?: string;            // Optional week theme
+    description?: string;      // Brief week overview
+  };
 }
 
 // =============================================================================
@@ -94,8 +100,20 @@ Output must be valid JSON matching this structure:
       "targetDayName": "Monday" (only if frequency is "specific_day")
     }
   ],
-  "followUpQuestions": ["Question 1?", "Question 2?", ...]
-}`;
+  "followUpQuestions": ["Question 1?", "Question 2?", ...],
+  "weekContent": {
+    "notes": ["Reminder 1 for client", "Reminder 2", "Reminder 3"],
+    "currentFocus": ["Focus area 1", "Focus area 2", "Focus area 3"],
+    "theme": "Optional theme for the week (e.g., 'Building Momentum')",
+    "description": "Brief overview of what to focus on this week"
+  }
+}
+
+The weekContent section should:
+- notes: Extract 3 key reminders/context items from the call for the client to remember
+- currentFocus: Identify 3 priority focus areas based on what was discussed
+- theme: A short inspiring theme if one naturally emerges from the conversation
+- description: A 1-2 sentence summary of the week's direction based on the call`;
 
 function buildUserPrompt(input: CallSummaryInput): string {
   let prompt = `Please analyze this ${Math.round(input.durationSeconds / 60)} minute coaching call transcript and extract key insights.\n\n`;
@@ -345,6 +363,7 @@ async function generateAndStoreSummary(
       summary: result.summary,
       actionItems: result.actionItems,
       followUpQuestions: result.followUpQuestions || [],
+      weekContent: result.weekContent,
       status: 'completed',
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -1030,7 +1049,7 @@ export async function autoFillWeekFromSummary(
   orgId: string,
   summaryId: string,
   context: AutoFillContext
-): Promise<{ success: boolean; error?: string; daysUpdated?: number; weeksUpdated?: number }> {
+): Promise<{ success: boolean; error?: string; daysUpdated?: number; weeksUpdated?: number; notesApplied?: boolean; weeksWithNotes?: number[] }> {
   try {
     console.log(`[Auto-Fill] Starting auto-fill for summary ${summaryId}, instance ${context.instanceId}, target: ${context.autoFillTarget}`);
 
@@ -1074,10 +1093,40 @@ export async function autoFillWeekFromSummary(
       console.log(`[Auto-Fill]   Week ${w.weekNumber} (index ${w.weekIndex}): days ${w.daysToFill.join(', ')}`);
     });
 
-    // 5. Build source content with action items
+    // 5. Check if there are action items to convert
+    if (!summaryData.actionItems?.length) {
+      console.log('[Auto-Fill] No action items in summary - skipping task generation');
+      // Still apply weekContent if available
+      if (summaryData.weekContent) {
+        // Apply weekContent to current week only
+        const weeks = [...(instance.weeks || [])];
+        if (weeks[context.weekIndex]) {
+          if (summaryData.weekContent.notes?.length) {
+            weeks[context.weekIndex].notes = summaryData.weekContent.notes;
+          }
+          if (summaryData.weekContent.currentFocus?.length) {
+            weeks[context.weekIndex].currentFocus = summaryData.weekContent.currentFocus;
+          }
+          if (summaryData.weekContent.theme) {
+            weeks[context.weekIndex].theme = summaryData.weekContent.theme;
+          }
+          if (summaryData.weekContent.description) {
+            weeks[context.weekIndex].description = summaryData.weekContent.description;
+          }
+          await adminDb.collection('program_instances').doc(context.instanceId).update({
+            weeks,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+          return { success: true, daysUpdated: 0, weeksUpdated: 0, notesApplied: true, weeksWithNotes: [context.weekIndex + 1] };
+        }
+      }
+      return { success: false, error: 'No action items in summary to convert to tasks' };
+    }
+
+    // 6. Build source content with action items
     const sourceContent = buildSourceContent(summaryData);
 
-    // 6. Build flat list of all days to fill (for AI prompt)
+    // 7. Build flat list of all days to fill (for AI prompt)
     // Format: "W1D3" = Week 1, Day 3; "W2D1" = Week 2, Day 1
     const allDaysToFill: string[] = [];
     for (const weekPlan of fillConfig.weeks) {
@@ -1086,7 +1135,7 @@ export async function autoFillWeekFromSummary(
       }
     }
 
-    // 7. Generate tasks for all days at once
+    // 8. Generate tasks for all days at once
     const { system, user } = buildMultiWeekFillPrompt(
       {
         content: sourceContent,
@@ -1113,7 +1162,7 @@ export async function autoFillWeekFromSummary(
       return { success: false, error: 'No text response from AI' };
     }
 
-    // 8. Parse response
+    // 9. Parse response
     let result: MultiWeekFillResult;
     try {
       let jsonStr = textContent.text;
@@ -1127,7 +1176,7 @@ export async function autoFillWeekFromSummary(
       return { success: false, error: 'Failed to parse AI response' };
     }
 
-    // 9. Apply to instance - update each week
+    // 10. Apply to instance - update each week
     const weeks = [...(instance.weeks || [])];
     let totalDaysUpdated = 0;
     let weeksUpdated = 0;
@@ -1151,7 +1200,15 @@ export async function autoFillWeekFromSummary(
         const dayArrayIndex = days.findIndex(d => d.dayIndex === targetDayIndex);
 
         if (dayArrayIndex !== -1 && days[dayArrayIndex]) {
-          const newTasks = (dayData.tasks || []).map((t: { label: string; type?: string; isPrimary?: boolean; estimatedMinutes?: number; notes?: string }) => ({
+          const rawTasks = dayData.tasks || [];
+
+          // Only process if there are actual tasks to add
+          if (rawTasks.length === 0) {
+            console.log(`[Auto-Fill] Skipping week ${weekPlan.weekNumber} day ${targetDayIndex} - no tasks generated`);
+            continue;
+          }
+
+          const newTasks = rawTasks.map((t: { label: string; type?: string; isPrimary?: boolean; estimatedMinutes?: number; notes?: string }) => ({
             id: generateTaskId(),
             label: t.label,
             type: (t.type === 'learning' || t.type === 'admin' || t.type === 'habit' ? t.type : 'task') as 'task' | 'habit' | 'learning' | 'admin',
@@ -1160,12 +1217,14 @@ export async function autoFillWeekFromSummary(
             notes: t.notes,
           }));
 
+          // APPEND new tasks to existing ones instead of replacing
+          const existingTasks = days[dayArrayIndex].tasks || [];
           days[dayArrayIndex] = {
             ...days[dayArrayIndex],
-            tasks: newTasks,
+            tasks: [...existingTasks, ...newTasks],
           };
           totalDaysUpdated++;
-          console.log(`[Auto-Fill] Updated week ${weekPlan.weekNumber} day ${targetDayIndex} with ${newTasks.length} tasks`);
+          console.log(`[Auto-Fill] Added ${newTasks.length} tasks to week ${weekPlan.weekNumber} day ${targetDayIndex} (now ${existingTasks.length + newTasks.length} total)`);
         }
       }
 
@@ -1183,6 +1242,44 @@ export async function autoFillWeekFromSummary(
       weeksUpdated++;
     }
 
+    // 11. Apply pre-generated weekContent (notes, currentFocus, theme, description)
+    // Logic: If call was on Thu-Sun, apply to BOTH current and next week; otherwise just current
+    let weeksWithNotes: number[] = [];
+    if (summaryData.weekContent) {
+      const callDate = summaryData.callStartedAt
+        ? new Date(summaryData.callStartedAt)
+        : new Date();
+      const dayOfWeek = callDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+      const isThursdayOrAfter = dayOfWeek === 0 || dayOfWeek >= 4; // Thu=4, Fri=5, Sat=6, Sun=0
+
+      // Determine which week indices to apply notes to
+      const currentWeekIndex = context.weekIndex;
+      const weeksToApplyNotes = isThursdayOrAfter && currentWeekIndex !== undefined
+        ? [currentWeekIndex, currentWeekIndex + 1]
+        : currentWeekIndex !== undefined
+          ? [currentWeekIndex]
+          : [];
+
+      for (const weekIdx of weeksToApplyNotes) {
+        if (weeks[weekIdx]) {
+          if (summaryData.weekContent.notes?.length) {
+            weeks[weekIdx].notes = summaryData.weekContent.notes;
+          }
+          if (summaryData.weekContent.currentFocus?.length) {
+            weeks[weekIdx].currentFocus = summaryData.weekContent.currentFocus;
+          }
+          if (summaryData.weekContent.theme) {
+            weeks[weekIdx].theme = summaryData.weekContent.theme;
+          }
+          if (summaryData.weekContent.description) {
+            weeks[weekIdx].description = summaryData.weekContent.description;
+          }
+          weeksWithNotes.push(weekIdx + 1); // 1-indexed for display
+          console.log(`[Auto-Fill] Applied weekContent to week ${weekIdx + 1}`);
+        }
+      }
+    }
+
     await adminDb.collection('program_instances').doc(context.instanceId).update({
       weeks,
       updatedAt: FieldValue.serverTimestamp(),
@@ -1190,7 +1287,13 @@ export async function autoFillWeekFromSummary(
 
     console.log(`[Auto-Fill] Filled ${totalDaysUpdated} days across ${weeksUpdated} weeks from summary ${summaryId}`);
 
-    return { success: true, daysUpdated: totalDaysUpdated, weeksUpdated };
+    return {
+      success: true,
+      daysUpdated: totalDaysUpdated,
+      weeksUpdated,
+      notesApplied: weeksWithNotes.length > 0,
+      weeksWithNotes,
+    };
   } catch (error) {
     console.error('[Auto-Fill] Error:', error);
     return {

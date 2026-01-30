@@ -201,14 +201,14 @@ export function StoriesRow({
       <>
         {/* Your Story skeleton */}
         <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-          <div className="w-14 h-14 rounded-full bg-earth-200 dark:bg-[#262b35] animate-pulse" />
-          <div className="w-12 h-3 bg-earth-200 dark:bg-[#262b35] rounded animate-pulse" />
+          <div className="w-14 h-14 rounded-full bg-[#faf7f4] dark:bg-[#262b35] animate-pulse ring-2 ring-white/40 dark:ring-transparent" />
+          <div className="w-12 h-3 bg-[#f5f2ef] dark:bg-[#262b35] rounded animate-pulse" />
         </div>
         {/* Other users skeletons - matching 56px size */}
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex flex-col items-center gap-1.5 flex-shrink-0">
-            <div className="w-14 h-14 rounded-full bg-earth-200 dark:bg-[#262b35] animate-pulse" />
-            <div className="w-12 h-3 bg-earth-200 dark:bg-[#262b35] rounded animate-pulse" />
+            <div className="w-14 h-14 rounded-full bg-[#faf7f4] dark:bg-[#262b35] animate-pulse ring-2 ring-white/40 dark:ring-transparent" />
+            <div className="w-12 h-3 bg-[#f5f2ef] dark:bg-[#262b35] rounded animate-pulse" />
           </div>
         ))}
       </>
@@ -297,8 +297,8 @@ export function StoriesRow({
                 )}
               </div>
             ) : (
-              // No stories - clean avatar with subtle hover ring
-              <div className="w-14 h-14 rounded-full overflow-hidden bg-earth-200 dark:bg-[#262b35] border-2 border-earth-200 dark:border-[#262b35] group-hover:border-earth-400 dark:group-hover:border-[#5a6070] transition-all">
+              // No stories - clean avatar with subtle hover ring and glass effect
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-[#faf7f4] dark:bg-[#262b35] border-2 border-white/60 dark:border-[#262b35] group-hover:border-[#e8e4df] dark:group-hover:border-[#5a6070] transition-all ring-2 ring-white/30 dark:ring-transparent">
                 {user?.imageUrl ? (
                   <Image
                     src={user.imageUrl}

@@ -275,6 +275,7 @@ export function CallSummaryViewModal({
             {summary.eventId && (
               <FillWeekFromSummaryButton
                 eventId={summary.eventId}
+                summary={summary}
                 className="mt-2"
               />
             )}

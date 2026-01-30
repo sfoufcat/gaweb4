@@ -16,6 +16,7 @@ import { ShareSheet } from '@/components/feed/ShareSheet';
 import { ReportModal } from '@/components/feed/ReportModal';
 import { StoriesRow } from '@/components/feed/StoriesRow';
 import { FeedSidebar } from '@/components/feed/FeedSidebar';
+import { BookmarksModal } from '@/components/feed/BookmarksModal';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { StoryPlayerWrapper } from '@/components/feed/StoryPlayerWrapper';
 import { PostSettingsModal } from '@/components/feed/PostSettingsModal';
@@ -128,6 +129,7 @@ export default function FeedPage() {
   const [selectedPostForReport, setSelectedPostForReport] = useState<string | null>(null);
   const [selectedPostForView, setSelectedPostForView] = useState<string | null>(null);
   const [selectedStoryUserId, setSelectedStoryUserId] = useState<string | null>(null);
+  const [showBookmarksModal, setShowBookmarksModal] = useState(false);
   
   // Handler for creating post - shows signup modal in demo mode
   const handleCreatePost = useCallback(() => {
@@ -403,10 +405,10 @@ export default function FeedPage() {
               // Default Feed View
               <>
                 {/* Create post card */}
-                <div className="bg-white dark:bg-[#171b22] rounded-[20px] border border-[#e1ddd8]/50 dark:border-[#262b35] p-4 mb-6">
+                <div className="feed-glass-card p-4 mb-6">
                   <div className="flex items-center gap-3">
                     {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-[#faf7f4] dark:bg-[#262b35] flex-shrink-0 ring-2 ring-white/60 dark:ring-transparent">
                       {user?.imageUrl ? (
                         <Image
                           src={user.imageUrl}
@@ -426,7 +428,7 @@ export default function FeedPage() {
                     {/* Input placeholder button */}
                     <button
                       onClick={handleCreatePost}
-                      className="flex-1 text-left px-4 py-2.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[15px] text-text-secondary hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors"
+                      className="flex-1 text-left px-4 py-2.5 rounded-full feed-input-glass text-[15px] text-text-secondary"
                     >
                       What&apos;s on your mind?
                     </button>
@@ -434,7 +436,7 @@ export default function FeedPage() {
                     {/* Quick image button */}
                     <button
                       onClick={handleCreatePost}
-                      className="p-2.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+                      className="p-2.5 rounded-full hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors"
                     >
                       <svg className="w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -470,7 +472,10 @@ export default function FeedPage() {
           </div>
 
           {/* Right: Sidebar (desktop only) */}
-          <FeedSidebar onSelectPost={setSelectedPostForView} />
+          <FeedSidebar
+            onSelectPost={setSelectedPostForView}
+            onOpenBookmarks={() => setShowBookmarksModal(true)}
+          />
         </div>
       </section>
 
@@ -551,6 +556,17 @@ export default function FeedPage() {
           onReport={handleReport}
         />
       )}
+
+      {/* Bookmarks modal */}
+      <BookmarksModal
+        open={showBookmarksModal}
+        onOpenChange={setShowBookmarksModal}
+        onLike={optimisticLike}
+        onBookmark={optimisticBookmark}
+        onShare={handleShare}
+        onDelete={handleDelete}
+        onReport={handleReport}
+      />
 
       {/* Story viewer with prefetching and auto-advance */}
       {selectedStoryUserId !== null && storyStartIndex >= 0 && (

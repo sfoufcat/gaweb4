@@ -158,39 +158,39 @@ export function SessionCard({
     }
   };
 
-  // Get the left icon based on state
+  // Get the left icon based on state - shows recording status
   const getLeftIcon = () => {
     switch (sessionState) {
       case 'ready':
-        return <Check className="w-4 h-4 text-brand-accent" />;
+        // Has recording - video icon with soft green bg and checkmark
+        return (
+          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-green-100 dark:bg-green-900/30">
+            <Video className="w-4 h-4 text-green-600 dark:text-green-400" />
+            <Check className="w-3 h-3 text-green-600 dark:text-green-400 absolute -bottom-0.5 -right-0.5 bg-white dark:bg-[#171b22] rounded-full" />
+          </div>
+        );
       case 'in-progress':
       case 'finding':
       case 'processing':
-        return <Loader2 className="w-4 h-4 text-brand-accent animate-spin" />;
+        return (
+          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-brand-accent/10">
+            <Loader2 className="w-4 h-4 text-brand-accent animate-spin" />
+          </div>
+        );
+      case 'no-recording':
+        return (
+          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#f3f1ef] dark:bg-[#262b35]">
+            <Calendar className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+          </div>
+        );
       default:
-        return <Calendar className="w-4 h-4 text-brand-accent" />;
+        return (
+          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-brand-accent/10">
+            <Calendar className="w-4 h-4 text-brand-accent" />
+          </div>
+        );
     }
   };
-
-  // Icon with checkmark badge component
-  const IconWithBadge = ({
-    icon: Icon,
-    bgClass,
-    iconClass
-  }: {
-    icon: typeof Video;
-    bgClass: string;
-    iconClass: string;
-  }) => (
-    <div className="relative">
-      <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg", bgClass)}>
-        <Icon className={cn("w-4 h-4", iconClass)} />
-      </div>
-      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-white dark:bg-[#171b22] flex items-center justify-center">
-        <Check className="w-2.5 h-2.5 text-green-500" />
-      </div>
-    </div>
-  );
 
   // Card background based on state
   const cardBgClass = useMemo(() => {
@@ -245,7 +245,7 @@ export function SessionCard({
         </div>
 
         {/* Right side icons - with more spacing */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-3 flex-shrink-0">
           {/* Fill Week button - only when summary exists */}
           {hasSummary && onFillWeek && (
             <button
@@ -253,7 +253,7 @@ export function SessionCard({
                 e.stopPropagation();
                 onFillWeek();
               }}
-              className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-accent/10 dark:bg-brand-accent/20 hover:bg-brand-accent/20 dark:hover:bg-brand-accent/30 transition-all hover:scale-105"
+              className="p-1.5 rounded-lg bg-brand-accent/5 hover:bg-brand-accent/10 transition-colors"
               title="Fill week from summary"
             >
               <Wand2 className="w-4 h-4 text-brand-accent" />
@@ -267,14 +267,11 @@ export function SessionCard({
                 e.stopPropagation();
                 onViewSummary?.();
               }}
-              className="hover:scale-105 transition-transform"
+              className="relative p-1.5 rounded-lg bg-brand-accent/5 hover:bg-brand-accent/10 transition-colors"
               title="View summary"
             >
-              <IconWithBadge
-                icon={FileText}
-                bgClass="bg-slate-100 dark:bg-slate-800/50"
-                iconClass="text-brand-accent"
-              />
+              <FileText className="w-[18px] h-[18px] text-brand-accent" />
+              <Check className="w-2.5 h-2.5 text-green-500 absolute -bottom-0.5 -right-0.5" />
             </button>
           ) : hasRecording && sessionState !== 'in-progress' && onSummaryGenerated ? (
             <button
@@ -303,24 +300,11 @@ export function SessionCard({
             </button>
           ) : null}
 
-          {/* Recording status icon - with checkmark badge when ready */}
-          {hasRecording ? (
-            <IconWithBadge
-              icon={Video}
-              bgClass="bg-slate-100 dark:bg-slate-800/50"
-              iconClass="text-slate-600 dark:text-slate-400"
-            />
-          ) : (sessionState === 'finding' || sessionState === 'processing' || isFetching) ? (
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800/50">
-              <Loader2 className="w-4 h-4 text-slate-500 animate-spin" />
-            </div>
-          ) : null}
-
-          {/* Chevron - with more left spacing */}
+          {/* Chevron */}
           <motion.div
             animate={{ rotate: isOpen ? 180 : 0 }}
             transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex items-center justify-center w-6 h-6 ml-1"
+            className="flex items-center justify-center w-6 h-6"
           >
             <ChevronDown className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
           </motion.div>

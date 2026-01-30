@@ -294,9 +294,9 @@ export function PostCard({
 
   // Card vs embedded styling
   const isEmbedded = variant === 'embedded';
-  
+
   return (
-    <article className={isEmbedded ? '' : 'bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] transition-shadow duration-200 hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.3)]'}>
+    <article className={isEmbedded ? '' : 'feed-glass-card'}>
       {/* Pinned indicator + Menu (combined row when hideMetadata is true) */}
       {post.pinnedToFeed && post.hideMetadata && (
         <div className={`flex items-center justify-between ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`}>
@@ -309,7 +309,7 @@ export function PostCard({
           <div className="relative overflow-visible">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+              className="p-2 rounded-full hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors"
             >
               <svg className="w-5 h-5 text-[#8a857f]" fill="currentColor" viewBox="0 0 24 24">
                 <circle cx="12" cy="6" r="1.5" />
@@ -325,11 +325,11 @@ export function PostCard({
                   className="fixed inset-0 z-50"
                   onClick={() => setShowMenu(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-[100] overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white/95 dark:bg-[#1a1f2a] backdrop-blur-xl rounded-xl shadow-lg shadow-black/5 border border-[#f0ebe5]/60 dark:border-[#262b35] z-[100] overflow-hidden">
                   {isCoach && (
                     <button
                       onClick={handleSettingsClick}
-                      className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                      className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -343,7 +343,7 @@ export function PostCard({
                       {!post.isRepost && (
                         <button
                           onClick={handleEditClick}
-                          className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                          className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -364,7 +364,7 @@ export function PostCard({
                   ) : (
                     <button
                       onClick={handleReport}
-                      className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                      className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
@@ -435,7 +435,7 @@ export function PostCard({
           <div className="relative overflow-visible">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+            className="p-2 rounded-full hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors"
           >
             <svg className="w-5 h-5 text-[#8a857f]" fill="currentColor" viewBox="0 0 24 24">
               <circle cx="12" cy="6" r="1.5" />
@@ -451,12 +451,12 @@ export function PostCard({
                 className="fixed inset-0 z-50"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-[100] overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white/95 dark:bg-[#1a1f2a] backdrop-blur-xl rounded-xl shadow-lg shadow-black/5 border border-[#f0ebe5]/60 dark:border-[#262b35] z-[100] overflow-hidden">
                 {/* Post Settings - Coach/Admin only */}
                 {isCoach && (
                   <button
                     onClick={handleSettingsClick}
-                    className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                    className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -471,7 +471,7 @@ export function PostCard({
                     {!post.isRepost && (
                       <button
                         onClick={handleEditClick}
-                        className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -492,7 +492,7 @@ export function PostCard({
                 ) : (
                   <button
                     onClick={handleReport}
-                    className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                    className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
@@ -513,7 +513,7 @@ export function PostCard({
           <div className="relative overflow-visible">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+              className="p-2 rounded-full hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors"
             >
               <svg className="w-5 h-5 text-[#8a857f]" fill="currentColor" viewBox="0 0 24 24">
                 <circle cx="12" cy="6" r="1.5" />
@@ -529,12 +529,12 @@ export function PostCard({
                   className="fixed inset-0 z-50"
                   onClick={() => setShowMenu(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-[100] overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white/95 dark:bg-[#1a1f2a] backdrop-blur-xl rounded-xl shadow-lg shadow-black/5 border border-[#f0ebe5]/60 dark:border-[#262b35] z-[100] overflow-hidden">
                   {/* Post Settings - Coach/Admin only */}
                   {isCoach && (
                     <button
                       onClick={handleSettingsClick}
-                      className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                      className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -548,7 +548,7 @@ export function PostCard({
                       {!post.isRepost && (
                         <button
                           onClick={handleEditClick}
-                          className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                          className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -569,7 +569,7 @@ export function PostCard({
                   ) : (
                     <button
                       onClick={handleReport}
-                      className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                      className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#fdf9f5] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
@@ -588,17 +588,14 @@ export function PostCard({
       {(post.contentHtml || post.text) && (
         <div className={isEmbedded ? 'pb-3' : 'px-4 pb-3'}>
           {post.contentHtml ? (
-            <RichTextPreview 
+            <RichTextPreview
               content={post.contentHtml}
               className="text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]"
             />
-          ) : (
-            // Only show text fallback in card mode to prevent flash in embedded mode
-            !isEmbedded && (
-              <p className="text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] whitespace-pre-wrap break-words leading-relaxed">
-                {post.text}
-              </p>
-            )
+          ) : post.text && (
+            <p className="text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] whitespace-pre-wrap break-words leading-relaxed">
+              {post.text}
+            </p>
           )}
         </div>
       )}
@@ -678,20 +675,24 @@ export function PostCard({
 
       {/* Action bar - Hidden when interactions are disabled */}
       {!post.disableInteractions && (
-        <div className={`flex items-center justify-between py-3 border-t border-[#e8e4df] dark:border-[#262b35] ${
+        <div className={`flex items-center justify-between py-3 border-t border-[#f0ebe5]/50 dark:border-[#262b35] ${
           isEmbedded ? '' : 'px-4'
         } ${
-          stickyActionBar ? 'sticky bottom-0 bg-white dark:bg-[#171b22] z-10' : ''
+          stickyActionBar ? 'sticky bottom-0 bg-white/90 dark:bg-[#171b22] backdrop-blur-sm z-10' : ''
         }`}>
-          <div className="flex items-center gap-1">
-            {/* Like - Modern rounded heart */}
+          <div className="flex items-center gap-2">
+            {/* Like - Apple glass style with rose/pink pastel */}
             <button
               onClick={handleLike}
               disabled={isLiking}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-all"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-xl backdrop-saturate-150 transition-all ${
+                post.hasLiked
+                  ? 'bg-rose-100/80 dark:bg-rose-500/20 text-rose-500 dark:text-rose-400'
+                  : 'bg-white/60 dark:bg-white/5 text-[#8a857f] hover:bg-rose-50/80 dark:hover:bg-rose-500/10 hover:text-rose-400'
+              } border border-white/30 dark:border-white/10 shadow-sm`}
             >
               <svg
-                className={`w-[22px] h-[22px] transition-all ${likeAnimating ? 'animate-heart-pop' : ''} ${post.hasLiked ? 'text-brand-accent' : 'text-[#8a857f]'}`}
+                className={`w-[20px] h-[20px] transition-all ${likeAnimating ? 'animate-heart-pop' : ''}`}
                 viewBox="0 0 24 24"
                 fill={post.hasLiked ? 'currentColor' : 'none'}
                 stroke="currentColor"
@@ -702,18 +703,22 @@ export function PostCard({
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
               {post.likeCount > 0 && (
-                <span className={`text-[13px] font-medium ${post.hasLiked ? 'text-brand-accent' : 'text-[#8a857f]'}`}>
+                <span className="text-[13px] font-medium">
                   {post.likeCount}
                 </span>
               )}
             </button>
 
-            {/* Comment - Modern rounded bubble */}
+            {/* Comment - Apple glass style with sky/blue pastel */}
             <button
               onClick={() => setShowComments(!showComments)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-all ${showComments ? 'text-brand-accent' : 'text-[#8a857f]'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-xl backdrop-saturate-150 transition-all ${
+                showComments
+                  ? 'bg-sky-100/80 dark:bg-sky-500/20 text-sky-500 dark:text-sky-400'
+                  : 'bg-white/60 dark:bg-white/5 text-[#8a857f] hover:bg-sky-50/80 dark:hover:bg-sky-500/10 hover:text-sky-400'
+              } border border-white/30 dark:border-white/10 shadow-sm`}
             >
-              <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill={showComments ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={showComments ? 0 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+              <svg className="w-[20px] h-[20px]" viewBox="0 0 24 24" fill={showComments ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={showComments ? 0 : 1.8} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
               </svg>
               {post.commentCount > 0 && (
@@ -723,29 +728,33 @@ export function PostCard({
               )}
             </button>
 
-            {/* Share */}
+            {/* Share - Apple glass style with violet/purple pastel */}
             <button
               onClick={() => onShare?.(post.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors text-[#8a857f]"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-xl backdrop-saturate-150 bg-white/60 dark:bg-white/5 text-[#8a857f] hover:bg-violet-50/80 dark:hover:bg-violet-500/10 hover:text-violet-400 border border-white/30 dark:border-white/10 shadow-sm transition-all"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
             </button>
           </div>
 
-          {/* Bookmark */}
+          {/* Bookmark - Apple glass style with subtle amber/yellow */}
           <button
             onClick={handleBookmark}
             disabled={isBookmarking}
-            className="p-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+            className={`p-2 rounded-full backdrop-blur-xl backdrop-saturate-150 transition-all ${
+              post.hasBookmarked
+                ? 'bg-amber-100/70 dark:bg-amber-500/20 text-amber-500 dark:text-amber-400'
+                : 'bg-white/60 dark:bg-white/5 text-[#8a857f] hover:bg-amber-50/70 dark:hover:bg-amber-500/10 hover:text-amber-400'
+            } border border-white/30 dark:border-white/10 shadow-sm`}
           >
             <svg
-              className={`w-5 h-5 transition-colors ${bookmarkAnimating ? 'animate-bookmark-bounce' : ''} ${post.hasBookmarked ? 'text-brand-accent fill-brand-accent' : ''}`}
+              className={`w-[18px] h-[18px] transition-all ${bookmarkAnimating ? 'animate-bookmark-bounce' : ''}`}
               fill={post.hasBookmarked ? 'currentColor' : 'none'}
               viewBox="0 0 24 24"
               stroke="currentColor"
-              strokeWidth={2}
+              strokeWidth={post.hasBookmarked ? 0 : 1.8}
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
             </svg>

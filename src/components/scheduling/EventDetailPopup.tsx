@@ -26,7 +26,6 @@ import {
 import Link from 'next/link';
 import type { UnifiedEvent, CallSummary } from '@/types';
 import { InlineRecordingUpload } from './InlineRecordingUpload';
-import { InlineSummaryPreview } from './InlineSummaryPreview';
 import { GenerateSummaryButton } from './GenerateSummaryButton';
 import { FillWeekFromSummaryButton } from './FillWeekFromSummaryButton';
 import { MeetingProviderSelector, type MeetingProviderType } from './MeetingProviderSelector';
@@ -292,9 +291,17 @@ export function EventDetailPopup({
   // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        onClose();
+      const target = e.target as Node;
+      // Don't close if clicking inside the popup
+      if (popupRef.current && popupRef.current.contains(target)) {
+        return;
       }
+      // Don't close if clicking inside a dialog/drawer overlay (e.g., summary modal)
+      const dialogOverlay = (target as Element).closest?.('[data-radix-dialog-overlay], [data-vaul-overlay], [role="dialog"]');
+      if (dialogOverlay) {
+        return;
+      }
+      onClose();
     };
     if (isOpen) {
       // Delay to prevent immediate close on the click that opened the popup
@@ -670,16 +677,8 @@ export function EventDetailPopup({
                 />
               )}
 
-              {/* Inline Summary Preview (if summary exists and pre-fetched) */}
-              {hasSummary && inlineSummary && onViewSummary && (
-                <InlineSummaryPreview
-                  summary={inlineSummary}
-                  onViewFull={() => onViewSummary(event.callSummaryId!)}
-                />
-              )}
-
-              {/* View Summary Button (fallback if no inline summary data) */}
-              {hasSummary && !inlineSummary && onViewSummary && (
+              {/* View Summary Button */}
+              {hasSummary && onViewSummary && (
                 <button
                   onClick={() => onViewSummary(event.callSummaryId!)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
@@ -693,6 +692,7 @@ export function EventDetailPopup({
               {hasSummary && event.programId && event.instanceId && isHost && (
                 <FillWeekFromSummaryButton
                   eventId={event.id}
+                  summary={inlineSummary}
                   onFilled={() => {
                     onEventUpdated?.();
                   }}

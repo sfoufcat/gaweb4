@@ -27,40 +27,40 @@ interface FeedListProps {
 // Skeleton post card with shimmer animation
 function PostCardSkeleton({ delay = 0 }: { delay?: number }) {
   const delayClass = delay === 0 ? '' : delay === 1 ? 'animation-delay-75' : delay === 2 ? 'animation-delay-150' : 'animation-delay-225';
-  
+
   return (
     <div
-      className={`bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden animate-feed-fade-up ${delayClass}`}
+      className={`feed-skeleton-glass rounded-[20px] border border-[#f0ebe5]/40 dark:border-[#262b35] overflow-hidden animate-feed-fade-up ${delayClass}`}
     >
       {/* Header */}
       <div className="p-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full animate-skeleton-shimmer" />
+          <div className="w-10 h-10 rounded-full animate-skeleton-shimmer bg-[#faf7f4] dark:bg-[#262b35]" />
           <div className="space-y-2 flex-1">
-            <div className="w-28 h-4 rounded-md animate-skeleton-shimmer" />
-            <div className="w-20 h-3 rounded-md animate-skeleton-shimmer" />
+            <div className="w-28 h-4 rounded-md animate-skeleton-shimmer bg-[#faf7f4] dark:bg-[#262b35]" />
+            <div className="w-20 h-3 rounded-md animate-skeleton-shimmer bg-[#f5f2ef] dark:bg-[#262b35]" />
           </div>
         </div>
       </div>
-      
+
       {/* Content */}
       <div className="px-4 pb-4 space-y-2.5">
-        <div className="w-full h-4 rounded-md animate-skeleton-shimmer" />
-        <div className="w-4/5 h-4 rounded-md animate-skeleton-shimmer" />
-        <div className="w-2/3 h-4 rounded-md animate-skeleton-shimmer" />
+        <div className="w-full h-4 rounded-md animate-skeleton-shimmer bg-[#faf7f4] dark:bg-[#262b35]" />
+        <div className="w-4/5 h-4 rounded-md animate-skeleton-shimmer bg-[#f5f2ef] dark:bg-[#262b35]" />
+        <div className="w-2/3 h-4 rounded-md animate-skeleton-shimmer bg-[#f5f2ef] dark:bg-[#262b35]" />
       </div>
-      
+
       {/* Image placeholder (randomly shown) */}
       {delay !== 1 && (
-        <div className="mx-4 mb-4 h-52 rounded-xl animate-skeleton-shimmer" />
+        <div className="mx-4 mb-4 h-52 rounded-xl animate-skeleton-shimmer bg-[#faf7f4] dark:bg-[#262b35]" />
       )}
-      
+
       {/* Action bar */}
       <div className="px-4 pb-4 flex gap-3">
-        <div className="w-14 h-8 rounded-full animate-skeleton-shimmer" />
-        <div className="w-14 h-8 rounded-full animate-skeleton-shimmer" />
-        <div className="w-14 h-8 rounded-full animate-skeleton-shimmer" />
-        <div className="ml-auto w-8 h-8 rounded-full animate-skeleton-shimmer" />
+        <div className="w-14 h-8 rounded-full animate-skeleton-shimmer bg-[#f5f2ef] dark:bg-[#262b35]" />
+        <div className="w-14 h-8 rounded-full animate-skeleton-shimmer bg-[#f5f2ef] dark:bg-[#262b35]" />
+        <div className="w-14 h-8 rounded-full animate-skeleton-shimmer bg-[#f5f2ef] dark:bg-[#262b35]" />
+        <div className="ml-auto w-8 h-8 rounded-full animate-skeleton-shimmer bg-[#f5f2ef] dark:bg-[#262b35]" />
       </div>
     </div>
   );
@@ -72,15 +72,15 @@ function EmptyState({ onCreatePost }: { onCreatePost?: () => void }) {
     <div className="flex flex-col items-center justify-center py-16 px-4 animate-feed-fade-up">
       {/* Illustration */}
       <div className="relative mb-6">
-        {/* Background circles */}
+        {/* Background circles - softer glass effect */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#f5f3f0] to-[#e8e4df] dark:from-[#1a1f2a] dark:to-[#262b35] opacity-50" />
+          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-50/60 to-rose-50/40 dark:from-[#1a1f2a] dark:to-[#262b35] opacity-60 blur-sm" />
         </div>
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#f5f3f0] to-[#ebe7e2] dark:from-[#1a1f2a] dark:to-[#171b22] opacity-70" />
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-white/80 to-amber-50/60 dark:from-[#1a1f2a] dark:to-[#171b22] opacity-80" />
         </div>
-        {/* Icon container */}
-        <div className="relative w-20 h-20 rounded-full bg-white dark:bg-[#171b22] shadow-lg flex items-center justify-center border border-[#e8e4df] dark:border-[#262b35]">
+        {/* Icon container - glass effect */}
+        <div className="relative w-20 h-20 rounded-full bg-white/90 dark:bg-[#171b22] backdrop-blur-sm shadow-lg shadow-black/5 flex items-center justify-center border border-[#f0ebe5]/60 dark:border-[#262b35] ring-4 ring-white/40 dark:ring-transparent">
           {/* Chat bubbles icon */}
           <svg className="w-10 h-10 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M20 12c0-1.657-1.343-3-3-3H7c-1.657 0-3 1.343-3 3v5c0 1.657 1.343 3 3 3h1v2l3-2h6c1.657 0 3-1.343 3-3v-5z" />
@@ -88,15 +88,15 @@ function EmptyState({ onCreatePost }: { onCreatePost?: () => void }) {
           </svg>
         </div>
       </div>
-      
+
       {/* Text */}
       <h3 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#faf8f6] mb-2 tracking-[-0.5px]">
         No posts yet
       </h3>
-      <p className="text-[15px] text-[#8a857f] text-center max-w-xs mb-6 leading-relaxed">
+      <p className="text-[15px] text-[#9a958f] text-center max-w-xs mb-6 leading-relaxed">
         Be the first to share something with your community! Start a conversation.
       </p>
-      
+
       {/* CTA Button */}
       {onCreatePost && (
         <button
@@ -212,8 +212,8 @@ export function FeedList({
       {/* End of feed */}
       {!hasMore && posts.length > 0 && (
         <div className="text-center py-10 animate-fade-up">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[14px] text-[#8a857f]">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/60 dark:bg-[#1a1f2a] backdrop-blur-sm border border-[#f0ebe5]/50 dark:border-[#262b35] text-[14px] text-[#9a958f] shadow-sm">
+            <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
             You&apos;re all caught up!

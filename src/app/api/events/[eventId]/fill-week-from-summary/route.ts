@@ -91,6 +91,8 @@ export async function POST(
       success: true,
       daysUpdated: result.daysUpdated,
       weeksUpdated: result.weeksUpdated,
+      notesApplied: result.notesApplied,
+      weeksWithNotes: result.weeksWithNotes,
     });
   } catch (error) {
     console.error('[fill-week-from-summary] Error:', error);

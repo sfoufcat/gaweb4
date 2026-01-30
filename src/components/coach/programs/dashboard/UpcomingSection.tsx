@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { CalendarDays, Phone, FileQuestion, Unlock, Clock, ChevronRight, Video, History } from 'lucide-react';
+import { CalendarDays, FileQuestion, Unlock, Clock, ChevronRight, Video, History, FileText, Wand2, Check, Calendar, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,7 +20,10 @@ export interface PastSessionItem {
   date: string;
   coverImageUrl?: string;
   hasRecording: boolean;
+  hasSummary?: boolean;
   eventId: string;
+  onViewSummary?: () => void;
+  onFillWeek?: () => void;
 }
 
 interface UpcomingSectionProps {
@@ -69,10 +71,10 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
   // Empty state when no items and showing upcoming
   if (!showPast && items.length === 0) {
     return (
-      <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6', className)}>
+      <div className={cn('backdrop-blur-2xl backdrop-saturate-150 bg-white/80 dark:bg-[#171b22]/80 rounded-2xl border border-white/40 dark:border-white/10 shadow-lg p-6', className)}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-900/30">
+            <div className="p-2.5 rounded-xl backdrop-blur-sm bg-violet-100/80 dark:bg-violet-500/20">
               <CalendarDays className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
@@ -92,7 +94,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
           </button>
         </div>
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center mb-3">
+          <div className="w-12 h-12 rounded-full backdrop-blur-sm bg-white/50 dark:bg-white/10 border border-white/30 dark:border-white/10 flex items-center justify-center mb-3">
             <CalendarDays className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6470]" />
           </div>
           <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
@@ -107,10 +109,10 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
   }
 
   return (
-    <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6', className)}>
+    <div className={cn('backdrop-blur-2xl backdrop-saturate-150 bg-white/80 dark:bg-[#171b22]/80 rounded-2xl border border-white/40 dark:border-white/10 shadow-lg p-6', className)}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-900/30">
+          <div className="p-2.5 rounded-xl backdrop-blur-sm bg-violet-100/80 dark:bg-violet-500/20">
             {showPast ? (
               <History className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             ) : (
@@ -163,32 +165,37 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
               const dateObj = new Date(item.date);
               const formattedDate = format(dateObj, 'MMM d, yyyy');
 
+              // Card background based on recording status (matches SessionCard)
+              const cardBgClass = item.hasRecording
+                ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200/30 dark:border-green-800/30'
+                : 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200/30 dark:border-amber-800/30';
+
               return (
                 <Link
                   key={item.id}
                   href={`/discover/events/${item.eventId}`}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a] hover:border-violet-200 dark:hover:border-violet-800/50 transition-colors group"
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-2xl backdrop-blur-2xl backdrop-saturate-150 border shadow-sm hover:shadow-md transition-all group",
+                    cardBgClass
+                  )}
                 >
-                  {/* Thumbnail */}
-                  <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#e1ddd8] dark:bg-[#262b35]">
-                    {item.coverImageUrl ? (
-                      <Image
-                        src={item.coverImageUrl}
-                        alt={item.title}
-                        width={48}
-                        height={48}
-                        className="w-full h-full object-cover"
-                      />
+                  {/* Left icon - Video with checkmark or Calendar */}
+                  <div className="flex-shrink-0">
+                    {item.hasRecording ? (
+                      <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-green-100 dark:bg-green-900/30">
+                        <Video className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        <Check className="w-3 h-3 text-green-600 dark:text-green-400 absolute -bottom-0.5 -right-0.5 bg-white dark:bg-[#171b22] rounded-full" />
+                      </div>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Phone className="w-5 h-5 text-[#a7a39e] dark:text-[#5f6470]" />
+                      <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#f3f1ef] dark:bg-[#262b35]">
+                        <Calendar className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
                       </div>
                     )}
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
                       {item.title}
                     </p>
                     <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] mt-0.5">
@@ -196,12 +203,39 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
                     </p>
                   </div>
 
-                  {/* Recording icon */}
-                  {item.hasRecording && (
-                    <div className="flex-shrink-0 p-1.5 rounded-lg bg-green-100 dark:bg-green-900/30">
-                      <Video className="w-4 h-4 text-green-600 dark:text-green-400" />
-                    </div>
-                  )}
+                  {/* Right side icons */}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {/* Fill Week button - only when summary exists */}
+                    {item.hasSummary && item.onFillWeek && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          item.onFillWeek?.();
+                        }}
+                        className="p-1.5 rounded-lg bg-brand-accent/5 hover:bg-brand-accent/10 transition-colors"
+                        title="Fill week from summary"
+                      >
+                        <Wand2 className="w-4 h-4 text-brand-accent" />
+                      </button>
+                    )}
+
+                    {/* Summary icon with checkmark */}
+                    {item.hasSummary && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          item.onViewSummary?.();
+                        }}
+                        className="relative p-1.5 rounded-lg bg-brand-accent/5 hover:bg-brand-accent/10 transition-colors"
+                        title="View summary"
+                      >
+                        <FileText className="w-[18px] h-[18px] text-brand-accent" />
+                        <Check className="w-2.5 h-2.5 text-green-500 absolute -bottom-0.5 -right-0.5" />
+                      </button>
+                    )}
+                  </div>
 
                   {/* Arrow */}
                   <ChevronRight className="w-4 h-4 text-[#8c8c8c] dark:text-[#7d8190] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
@@ -213,7 +247,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
             {hasMorePast && (
               <button
                 onClick={handleLoadMore}
-                className="w-full py-3 text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a] rounded-xl hover:border-violet-200 dark:hover:border-violet-800/50 transition-colors"
+                className="w-full py-3 text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 backdrop-blur-xl backdrop-saturate-150 bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl hover:bg-white/80 dark:hover:bg-white/10 shadow-sm hover:shadow-md transition-all"
               >
                 Load more ({remainingCount} remaining)
               </button>
@@ -222,7 +256,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
             {/* Empty state for past */}
             {pastItems.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center mb-3">
+                <div className="w-12 h-12 rounded-full backdrop-blur-sm bg-white/50 dark:bg-white/10 border border-white/30 dark:border-white/10 flex items-center justify-center mb-3">
                   <History className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6470]" />
                 </div>
                 <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
@@ -258,10 +292,10 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
               return (
                 <div
                   key={`${item.type}-${index}`}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a] hover:border-violet-200 dark:hover:border-violet-800/50 transition-colors group"
+                  className="flex items-center gap-3 p-3 rounded-xl backdrop-blur-xl backdrop-saturate-150 bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 shadow-sm hover:shadow-md hover:bg-white/80 dark:hover:bg-white/10 transition-all group"
                 >
                   {/* Icon */}
-                  <div className={cn('p-2 rounded-lg flex-shrink-0', config.bg)}>
+                  <div className={cn('p-2.5 rounded-xl flex-shrink-0 backdrop-blur-sm', config.bg)}>
                     <TypeIcon className={cn('w-4 h-4', config.color)} />
                   </div>
 
@@ -280,9 +314,9 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
                     )}
                   </div>
 
-                  {/* Relative time badge */}
+                  {/* Relative time badge - glassy pill */}
                   {relativeTime && (
-                    <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] bg-[#e1ddd8] dark:bg-[#262b35] px-2 py-1 rounded-full flex-shrink-0">
+                    <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] backdrop-blur-sm bg-white/50 dark:bg-white/10 border border-white/30 dark:border-white/10 px-2.5 py-1 rounded-full flex-shrink-0">
                       {relativeTime}
                     </span>
                   )}
@@ -291,7 +325,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
                   {onAction && item.actionType && (
                     <button
                       onClick={() => onAction(item, item.actionType!)}
-                      className="p-1.5 rounded-lg hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-1.5 rounded-lg hover:bg-white/50 dark:hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
                     >
                       <ChevronRight className="w-4 h-4 text-[#8c8c8c] dark:text-[#7d8190]" />
                     </button>

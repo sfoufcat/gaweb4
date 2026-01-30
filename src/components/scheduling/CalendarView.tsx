@@ -769,7 +769,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
         const res = await fetch(`/api/coach/call-summaries/${event.callSummaryId}`);
         if (res.ok) {
           const data = await res.json();
-          setInlineSummary(data);
+          setInlineSummary(data.summary); // Extract summary from response wrapper
         }
       } catch (err) {
         console.error('Failed to fetch inline summary:', err);
@@ -1002,7 +1002,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
       const res = await fetch(`/api/coach/call-summaries/${summaryId}`);
       if (res.ok) {
         const data = await res.json();
-        setInlineSummary(data);
+        setInlineSummary(data.summary); // Extract summary from response wrapper
       }
     } catch (err) {
       console.error('Failed to fetch new summary:', err);

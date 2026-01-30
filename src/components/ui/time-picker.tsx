@@ -23,53 +23,89 @@ export interface TimePickerProps {
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1)
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5)
+const PERIODS: ('AM' | 'PM')[] = ['AM', 'PM']
 
 function WheelPicker({
   items,
   value,
   onChange,
-  formatItem = (v) => String(v)
+  formatItem = (v) => String(v),
+  width = 'w-[52px]'
 }: {
-  items: number[]
-  value: number
-  onChange: (v: number) => void
-  formatItem?: (v: number) => string
+  items: (number | string)[]
+  value: number | string
+  onChange: (v: number | string) => void
+  formatItem?: (v: number | string) => string
+  width?: string
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null)
-  const itemHeight = 40
+  const itemHeight = 36
+  const isScrolling = React.useRef(false)
+  const scrollTimeout = React.useRef<NodeJS.Timeout | null>(null)
 
-  // Scroll to value on mount and when value changes
+  // Scroll to value on mount and when value changes (but not during active scrolling)
   React.useEffect(() => {
-    if (containerRef.current) {
+    if (containerRef.current && !isScrolling.current) {
       const index = items.indexOf(value)
       if (index !== -1) {
-        containerRef.current.scrollTop = index * itemHeight
+        containerRef.current.scrollTo({
+          top: index * itemHeight,
+          behavior: 'auto'
+        })
       }
     }
   }, [value, items])
 
   const handleScroll = () => {
-    if (containerRef.current) {
-      const scrollTop = containerRef.current.scrollTop
-      const index = Math.round(scrollTop / itemHeight)
-      const clampedIndex = Math.max(0, Math.min(index, items.length - 1))
-      if (items[clampedIndex] !== value) {
-        onChange(items[clampedIndex])
-      }
+    if (!containerRef.current) return
+
+    isScrolling.current = true
+
+    // Clear existing timeout
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current)
     }
+
+    // Debounce the value change to slow down responsiveness
+    scrollTimeout.current = setTimeout(() => {
+      if (containerRef.current) {
+        const scrollTop = containerRef.current.scrollTop
+        const index = Math.round(scrollTop / itemHeight)
+        const clampedIndex = Math.max(0, Math.min(index, items.length - 1))
+
+        if (items[clampedIndex] !== value) {
+          onChange(items[clampedIndex])
+        }
+
+        // Snap to position
+        containerRef.current.scrollTo({
+          top: clampedIndex * itemHeight,
+          behavior: 'smooth'
+        })
+      }
+
+      // Reset scrolling flag after a delay
+      setTimeout(() => {
+        isScrolling.current = false
+      }, 150)
+    }, 80)
   }
 
   return (
-    <div className="relative h-[120px] overflow-hidden">
+    <div className={cn("relative h-[108px] overflow-hidden", width)}>
       {/* Selection highlight */}
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-10 bg-brand-accent/10 rounded-lg pointer-events-none z-0" />
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-9 bg-brand-accent/10 rounded-lg pointer-events-none z-0" />
 
       {/* Scroll container */}
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto snap-y snap-mandatory scrollbar-none relative z-10"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="h-full overflow-y-auto scrollbar-none relative z-10"
+        style={{
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          scrollSnapType: 'y mandatory'
+        }}
       >
         {/* Spacer top */}
         <div style={{ height: itemHeight }} />
@@ -80,11 +116,12 @@ function WheelPicker({
             <div
               key={item}
               onClick={() => onChange(item)}
+              style={{ scrollSnapAlign: 'center' }}
               className={cn(
-                "h-10 flex items-center justify-center snap-center cursor-pointer transition-all",
+                "h-9 flex items-center justify-center cursor-pointer transition-all",
                 isSelected
-                  ? "text-brand-accent font-semibold text-lg"
-                  : "text-[#a7a39e] text-base"
+                  ? "text-brand-accent font-semibold text-base"
+                  : "text-[#c5c0bb] text-sm"
               )}
             >
               {formatItem(item)}
@@ -111,31 +148,31 @@ export function TimePicker({
   const [open, setOpen] = React.useState(false)
 
   const parsedValue = React.useMemo(() => {
-    if (!value) return { hour: 12, minute: 0, isPM: false }
+    if (!value) return { hour: 12, minute: 0, period: 'AM' as const }
     const [h, m] = value.split(':').map(Number)
     return {
       hour: h % 12 || 12,
       minute: Math.round(m / 5) * 5,
-      isPM: h >= 12
+      period: (h >= 12 ? 'PM' : 'AM') as 'AM' | 'PM'
     }
   }, [value])
 
   const [selectedHour, setSelectedHour] = React.useState(parsedValue.hour)
   const [selectedMinute, setSelectedMinute] = React.useState(parsedValue.minute)
-  const [isPM, setIsPM] = React.useState(parsedValue.isPM)
+  const [selectedPeriod, setSelectedPeriod] = React.useState<'AM' | 'PM'>(parsedValue.period)
 
   React.useEffect(() => {
     if (open) {
       setSelectedHour(parsedValue.hour)
       setSelectedMinute(parsedValue.minute)
-      setIsPM(parsedValue.isPM)
+      setSelectedPeriod(parsedValue.period)
     }
   }, [open, parsedValue])
 
   const handleConfirm = () => {
     let hour24 = selectedHour
-    if (isPM && selectedHour !== 12) hour24 = selectedHour + 12
-    if (!isPM && selectedHour === 12) hour24 = 0
+    if (selectedPeriod === 'PM' && selectedHour !== 12) hour24 = selectedHour + 12
+    if (selectedPeriod === 'AM' && selectedHour === 12) hour24 = 0
     onChange?.(`${String(hour24).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}`)
     setOpen(false)
   }
@@ -176,7 +213,7 @@ export function TimePicker({
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="w-[260px] p-4 rounded-2xl border-0 shadow-xl bg-white dark:bg-[#171b22]"
+          className="w-[240px] p-4 rounded-2xl border-0 shadow-xl bg-white dark:bg-[#171b22]"
           hideCloseButton
           zIndex={zIndex}
         >
@@ -184,47 +221,26 @@ export function TimePicker({
             <DialogTitle>Select time</DialogTitle>
           </VisuallyHidden.Root>
 
-          {/* Wheels */}
-          <div className="flex items-center gap-2 mb-4">
+          {/* Wheels - all three scroll together */}
+          <div className="flex items-center justify-center gap-1 mb-3">
             <WheelPicker
               items={HOURS}
               value={selectedHour}
-              onChange={setSelectedHour}
+              onChange={(v) => setSelectedHour(v as number)}
             />
-            <span className="text-2xl font-light text-[#d1cdc8]">:</span>
+            <span className="text-xl font-light text-[#d1cdc8]">:</span>
             <WheelPicker
               items={MINUTES}
               value={selectedMinute}
-              onChange={setSelectedMinute}
+              onChange={(v) => setSelectedMinute(v as number)}
               formatItem={(v) => String(v).padStart(2, '0')}
             />
-            {/* AM/PM */}
-            <div className="flex flex-col gap-1 ml-1">
-              <button
-                type="button"
-                onClick={() => setIsPM(false)}
-                className={cn(
-                  "px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all",
-                  !isPM
-                    ? "bg-brand-accent text-white"
-                    : "text-[#a7a39e] hover:text-[#1a1a1a]"
-                )}
-              >
-                AM
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsPM(true)}
-                className={cn(
-                  "px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all",
-                  isPM
-                    ? "bg-brand-accent text-white"
-                    : "text-[#a7a39e] hover:text-[#1a1a1a]"
-                )}
-              >
-                PM
-              </button>
-            </div>
+            <WheelPicker
+              items={PERIODS}
+              value={selectedPeriod}
+              onChange={(v) => setSelectedPeriod(v as 'AM' | 'PM')}
+              width="w-[44px]"
+            />
           </div>
 
           {/* Confirm */}

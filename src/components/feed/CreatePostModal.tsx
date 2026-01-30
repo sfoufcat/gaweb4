@@ -286,17 +286,17 @@ export function CreatePostModal({
         onClick={handleClose}
       >
         <div
-          className="h-full w-full md:h-auto md:max-h-[85vh] md:w-full md:max-w-2xl bg-white dark:bg-[#171b22] md:rounded-2xl shadow-xl flex flex-col overflow-hidden animate-modal-slide-up md:animate-modal-zoom-in"
+          className="h-full w-full md:h-auto md:max-h-[85vh] md:w-full md:max-w-2xl bg-white/95 dark:bg-[#171b22] backdrop-blur-xl md:rounded-3xl shadow-xl shadow-black/10 flex flex-col overflow-hidden animate-modal-slide-up md:animate-modal-zoom-in md:border md:border-white/20 dark:md:border-[#262b35]"
           onClick={(e) => e.stopPropagation()}
         >
         {/* Header */}
         <div
-          className="flex-shrink-0 flex items-center justify-between px-4 py-4 border-b border-[#e8e4df] dark:border-[#262b35]"
+          className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-[#f0ebe5]/60 dark:border-[#262b35]"
           style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 1rem))' }}
         >
           <button
             onClick={handleClose}
-            className="text-[15px] text-[#8a857f] hover:text-[#5f5a55] transition-colors"
+            className="text-[15px] text-[#9a958f] hover:text-[#5f5a55] transition-colors font-medium"
           >
             Cancel
           </button>
@@ -306,10 +306,10 @@ export function CreatePostModal({
           <button
             onClick={handleSubmit}
             disabled={!hasContent || isSubmitting}
-            className={`px-4 py-1.5 rounded-full text-[14px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              hasContent 
-                ? 'bg-brand-accent text-brand-accent-foreground' 
-                : 'bg-[#e8e4df] dark:bg-[#262b35] text-[#8a857f]'
+            className={`px-5 py-2 rounded-full text-[14px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+              hasContent
+                ? 'bg-brand-accent text-brand-accent-foreground shadow-sm hover:shadow-md'
+                : 'bg-[#f5f2ef] dark:bg-[#262b35] text-[#a5a09a]'
             }`}
           >
             {isSubmitting ? 'Posting...' : 'Post'}
@@ -317,16 +317,16 @@ export function CreatePostModal({
         </div>
 
         {/* Body */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 overscroll-contain">
           {/* User info */}
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
+            <div className="w-11 h-11 rounded-full overflow-hidden bg-[#faf7f4] dark:bg-[#262b35] flex-shrink-0 ring-2 ring-white/60 dark:ring-transparent shadow-sm">
               {user?.imageUrl ? (
                 <Image
                   src={user.imageUrl}
                   alt="Your avatar"
-                  width={40}
-                  height={40}
+                  width={44}
+                  height={44}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -471,10 +471,10 @@ export function CreatePostModal({
 
         {/* Footer - Media buttons (for attachments separate from inline images) */}
         <div
-          className="flex-shrink-0 p-4 border-t border-[#e8e4df] dark:border-[#262b35]"
+          className="flex-shrink-0 px-5 py-4 border-t border-[#f0ebe5]/60 dark:border-[#262b35] bg-[#fdfcfb]/80 dark:bg-transparent"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 flex-wrap">
             {/* Hidden file input */}
             <input
               ref={fileInputRef}
@@ -488,9 +488,9 @@ export function CreatePostModal({
             <button
               onClick={() => canAddImage && fileInputRef.current?.click()}
               disabled={!canAddImage || isUploading}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/70 dark:bg-[#1a1f2a] border border-[#f0ebe5]/80 dark:border-[#262b35] text-[13px] font-medium text-[#6b665f] dark:text-[#b5b0ab] hover:bg-white hover:border-[#e5e0da] dark:hover:bg-[#262b35] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               Attach Photo
@@ -505,9 +505,9 @@ export function CreatePostModal({
                 }
               }}
               disabled={!canAddVideo || isUploading}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/70 dark:bg-[#1a1f2a] border border-[#f0ebe5]/80 dark:border-[#262b35] text-[13px] font-medium text-[#6b665f] dark:text-[#b5b0ab] hover:bg-white hover:border-[#e5e0da] dark:hover:bg-[#262b35] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
               Video
@@ -517,9 +517,9 @@ export function CreatePostModal({
             <button
               onClick={() => setShowPollComposer(true)}
               disabled={!canAddPoll || isUploading}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/70 dark:bg-[#1a1f2a] border border-[#f0ebe5]/80 dark:border-[#262b35] text-[13px] font-medium text-[#6b665f] dark:text-[#b5b0ab] hover:bg-white hover:border-[#e5e0da] dark:hover:bg-[#262b35] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               Poll

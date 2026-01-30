@@ -6031,6 +6031,14 @@ export interface CallSummary {
 
   followUpQuestions?: string[];
 
+  // Pre-generated week content (generated during summary creation, applied during "Fill Week")
+  weekContent?: {
+    notes: string[];           // Max 3 client-facing reminder/context notes
+    currentFocus: string[];    // Max 3 focus areas for the week
+    theme?: string;            // Optional week theme
+    description?: string;      // Brief week overview
+  };
+
   status: 'processing' | 'completed' | 'failed';
   processingError?: string;
   callDurationSeconds: number;
