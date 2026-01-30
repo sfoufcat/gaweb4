@@ -87,7 +87,7 @@ export function CreateArticleModal({
   // Stripe Connect status for paid pricing
   const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
   const [showStripeModal, setShowStripeModal] = useState(false);
-  const canAcceptPayments = stripeConnected || stripeLoading;
+  const canAcceptPayments = stripeConnected;
 
   // Track if this is the initial mount to skip animation on first open
   const isInitialMount = useRef(true);
@@ -542,7 +542,7 @@ function DetailsStep({ data, onChange, error, programsApiEndpoint, categoriesApi
         </div>
 
         {/* Connect Stripe prompt - show when not connected */}
-        {!stripeLoading && !stripeConnected && (
+        {!stripeConnected && (
           <StripeConnectPrompt onClick={onOpenStripeModal} />
         )}
 

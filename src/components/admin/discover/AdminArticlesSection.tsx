@@ -257,7 +257,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                   "flex items-center overflow-hidden transition-all duration-300 ease-out",
                   isSearchExpanded ? "opacity-100" : "w-0 opacity-0"
                 )}
-                style={{ width: isSearchExpanded ? `${filtersWidth}px` : 0 }}
+                style={{ width: isSearchExpanded ? `${Math.max(filtersWidth, 200)}px` : 0 }}
               >
                 <input
                   ref={searchInputRef}
@@ -265,7 +265,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                   placeholder="Search articles..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
+                  className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-0 font-albert"
                 />
               </div>
 

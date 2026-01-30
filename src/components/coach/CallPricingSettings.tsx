@@ -7,7 +7,7 @@ import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
-import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectPrompt } from '@/components/ui/StripeConnectPrompt';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 import type { CallPricingModel, CoachCallSettings } from '@/types';
 
@@ -80,7 +80,7 @@ export function CallPricingSettings() {
   // Stripe Connect status for paid pricing models
   const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
   const [showStripeModal, setShowStripeModal] = useState(false);
-  const canAcceptPayments = stripeConnected || stripeLoading;
+  const canAcceptPayments = stripeConnected;
 
   // Fetch current settings
   useEffect(() => {
@@ -271,16 +271,10 @@ export function CallPricingSettings() {
           })}
         </div>
 
-        {/* Stripe Warning when trying to use paid models without Stripe */}
+        {/* Stripe Connect Prompt when trying to use paid models without Stripe */}
         {!canAcceptPayments && settings.pricingModel === 'free' && (
           <div className="mt-4">
-            <StripeConnectWarning
-              variant="inline"
-              showCta={true}
-              message="Connect Stripe to enable paid call pricing"
-              subMessage="Charge clients per call or offer monthly call credits."
-              onConnectClick={() => setShowStripeModal(true)}
-            />
+            <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
           </div>
         )}
 

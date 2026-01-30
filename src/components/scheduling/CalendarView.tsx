@@ -299,8 +299,10 @@ function EventCard({ event, compact = false, onClick, onRespond, onCounterPropos
     <div
       className={cn(
         `p-3 rounded-xl ${typeColors.bg} ${typeColors.border} border`,
-        isPast && 'opacity-60'
+        isPast && 'opacity-60',
+        onClick && 'cursor-pointer'
       )}
+      onClick={onClick}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -975,7 +977,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
       const res = await fetch(`/api/coach/call-summaries/${summaryId}`);
       if (!res.ok) throw new Error('Failed to fetch summary');
       const data = await res.json();
-      setSummaryData(data);
+      setSummaryData(data.summary);
       setSummaryModalOpen(true);
     } catch (err) {
       console.error('Failed to fetch summary:', err);
@@ -1513,12 +1515,12 @@ export function CalendarView({ mode = 'coach', onScheduleClick, initialDisplayMo
             <span className="text-[#5f5a55] dark:text-[#b2b6c2]">1:1</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700" />
-            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Program Calls</span>
-          </div>
-          <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-teal-100 dark:bg-teal-900/30 border border-teal-300 dark:border-teal-700" />
             <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Intake Calls</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700" />
+            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Program Calls</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700" />

@@ -21,7 +21,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronRight, Trash2, Play, Plus, Settings, GripVertical, Folder, LayoutGrid, BarChart3, Lock, Unlock, Pencil } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ArrowLeft, Layers, BookOpen, Clock, ChevronDown, ChevronRight, Trash2, Play, Plus, Settings, GripVertical, Folder, LayoutGrid, BarChart3, Lock, Unlock, Pencil, Check, Loader2, X } from 'lucide-react';
 import { CourseOverview } from './CourseOverview';
 
 // Generate unique ID for new modules/lessons
@@ -85,12 +90,13 @@ export function CourseEditor({
 }: CourseEditorProps) {
   const isEditing = !!course;
   const [saving, setSaving] = useState(false);
-  const [hasChanges, setHasChanges] = useState(!isEditing); // New courses start with "changes" so Save is enabled
+  const [showSaved, setShowSaved] = useState(false);
   const [basicInfoOpen, setBasicInfoOpen] = useState(false);
   const [selectedModuleIndex, setSelectedModuleIndex] = useState<number | null>(null);
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set([0]));
-  const [activeTab, setActiveTab] = useState<'overview' | 'content'>(isEditing ? 'overview' : 'content');
+  const [activeTab, setActiveTab] = useState<'content' | 'analytics'>('content');
+  const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
   const [deleteModuleIndex, setDeleteModuleIndex] = useState<number | null>(null);
   const [deleteLessonInfo, setDeleteLessonInfo] = useState<{ moduleIndex: number; lessonIndex: number } | null>(null);
 
@@ -144,7 +150,7 @@ export function CourseEditor({
     // Clear all pending videos when a save happens (simpler approach)
   };
 
-  const [formData, setFormDataInternal] = useState({
+  const getInitialFormData = () => ({
     title: '',
     coverImageUrl: '',
     shortDescription: '',
@@ -157,15 +163,20 @@ export function CourseEditor({
     pricing: getDefaultPricingData() as ContentPricingData,
   });
 
-  // Wrapper that marks form as having changes
-  const setFormData: typeof setFormDataInternal = (value) => {
-    setFormDataInternal(value);
-    setHasChanges(true);
+  const [formData, setFormData] = useState(getInitialFormData());
+  const [originalFormData, setOriginalFormData] = useState(getInitialFormData());
+
+  // Compute hasChanges by comparing current to original
+  const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData);
+
+  // Discard changes - reset to original
+  const handleDiscard = () => {
+    setFormData(originalFormData);
   };
 
   useEffect(() => {
     if (course) {
-      setFormDataInternal({
+      const courseData = {
         title: course.title || '',
         coverImageUrl: course.coverImageUrl || '',
         shortDescription: course.shortDescription || '',
@@ -181,29 +192,20 @@ export function CourseEditor({
           purchaseType: course.purchaseType || 'popup',
           isPublic: course.isPublic !== false,
         },
-      });
+      };
+      setFormData(courseData);
+      setOriginalFormData(courseData);
       // Expand first module by default
       if (course.modules?.length > 0) {
         setExpandedModules(new Set([0]));
       }
     } else {
-      setFormDataInternal({
-        title: '',
-        coverImageUrl: '',
-        shortDescription: '',
-        category: '',
-        level: '',
-        programIds: [],
-        featured: false,
-        trending: false,
-        modules: [],
-        pricing: getDefaultPricingData(),
-      });
+      const emptyData = getInitialFormData();
+      setFormData(emptyData);
+      setOriginalFormData(emptyData);
       // Open basic info for new courses
       setBasicInfoOpen(true);
     }
-    // Reset hasChanges when course data is loaded (not a user change)
-    setHasChanges(!course); // New courses need Save enabled, existing courses start clean
   }, [course]);
 
   const handleSubmit = async () => {
@@ -250,8 +252,11 @@ export function CourseEditor({
 
       // Clear pending video IDs - they're now saved
       setPendingBunnyVideoIds([]);
-      setHasChanges(false);
-      onSave();
+      // Update original to match current (no more changes)
+      setOriginalFormData(formData);
+      // Show saved indicator
+      setShowSaved(true);
+      setTimeout(() => setShowSaved(false), 2000);
     } catch (err) {
       console.error('Error saving course:', err);
       alert(err instanceof Error ? err.message : 'Failed to save course');
@@ -381,30 +386,59 @@ export function CourseEditor({
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-h-[40px]">
             {/* Tab Navigation */}
             {isEditing && (
               <>
                 {/* Mobile: dropdown style + settings */}
                 <div className="sm:hidden flex items-center gap-1 mr-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab(activeTab === 'overview' ? 'content' : 'overview')}
-                    className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                  >
-                    {activeTab === 'overview' ? (
-                      <>
-                        <BarChart3 className="w-3.5 h-3.5" />
-                        <span>Overview</span>
-                      </>
-                    ) : (
-                      <>
-                        <LayoutGrid className="w-3.5 h-3.5" />
-                        <span>Content</span>
-                      </>
-                    )}
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </button>
+                  <Popover open={isTabDropdownOpen} onOpenChange={setIsTabDropdownOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                      >
+                        {activeTab === 'content' ? (
+                          <>
+                            <LayoutGrid className="w-3.5 h-3.5" />
+                            <span>Content</span>
+                          </>
+                        ) : (
+                          <>
+                            <BarChart3 className="w-3.5 h-3.5" />
+                            <span>Analytics</span>
+                          </>
+                        )}
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-40 p-1.5 rounded-2xl" align="start">
+                      <button
+                        type="button"
+                        onClick={() => { setActiveTab('content'); setIsTabDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-xl transition-colors ${
+                          activeTab === 'content'
+                            ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+                        }`}
+                      >
+                        <LayoutGrid className="w-4 h-4" />
+                        Content
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setActiveTab('analytics'); setIsTabDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-xl transition-colors ${
+                          activeTab === 'analytics'
+                            ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+                        }`}
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                        Analytics
+                      </button>
+                    </PopoverContent>
+                  </Popover>
                   <button
                     type="button"
                     onClick={() => setBasicInfoOpen(true)}
@@ -437,18 +471,6 @@ export function CourseEditor({
                 <div className="hidden sm:flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setActiveTab('overview')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
-                      activeTab === 'overview'
-                        ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
-                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
-                    }`}
-                  >
-                    <BarChart3 className="w-4 h-4" />
-                    Overview
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setActiveTab('content')}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
                       activeTab === 'content'
@@ -458,6 +480,18 @@ export function CourseEditor({
                   >
                     <LayoutGrid className="w-4 h-4" />
                     Content
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('analytics')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium font-albert transition-all whitespace-nowrap ${
+                      activeTab === 'analytics'
+                        ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8]'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    Analytics
                   </button>
                   {/* Settings Button - next to Content */}
                   <button
@@ -472,29 +506,75 @@ export function CourseEditor({
               </>
             )}
 
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              disabled={saving}
-              className="hidden sm:inline-flex px-4 border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#262b35] font-albert"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={saving || !formData.title.trim() || !hasChanges}
-              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm sm:text-base px-6 sm:px-8"
-            >
-              {saving ? 'Saving...' : isEditing ? 'Save' : 'Create'}
-            </Button>
+            {/* Mobile discard button - only show when there are unsaved changes */}
+            <AnimatePresence mode="wait">
+              {hasChanges && !showSaved && (
+                <motion.button
+                  type="button"
+                  onClick={handleDiscard}
+                  disabled={saving}
+                  className="sm:hidden p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors disabled:opacity-50"
+                  title="Discard changes"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              )}
+            </AnimatePresence>
+            {/* Desktop discard button - only show when there are unsaved changes */}
+            <AnimatePresence mode="wait">
+              {hasChanges && !showSaved && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, x: 10 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, x: 10 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                >
+                  <Button
+                    variant="outline"
+                    onClick={handleDiscard}
+                    disabled={saving}
+                    className="hidden sm:inline-flex px-4 border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#262b35] font-albert"
+                  >
+                    Discard
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {/* Save button or Saved indicator - always rendered to prevent layout shift */}
+            {showSaved ? (
+              <Button
+                disabled
+                className="bg-green-500/10 hover:bg-green-500/10 text-green-600 dark:text-green-400 font-albert text-sm sm:text-base px-6 sm:px-8 cursor-default"
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Saved
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={saving || !formData.title.trim() || !hasChanges}
+                className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm sm:text-base px-6 sm:px-8 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : isEditing ? 'Save' : 'Create'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden p-4 bg-[#faf8f6] dark:bg-[#0d0f14]">
-        {/* Overview Tab Content */}
-        {activeTab === 'overview' && isEditing && course && (
+        {/* Analytics Tab Content */}
+        {activeTab === 'analytics' && isEditing && course && (
           <div className="h-full overflow-y-auto rounded-2xl border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
             <CourseOverview
               course={course}
@@ -515,7 +595,7 @@ export function CourseEditor({
           </div>
 
           {/* Module List */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4">
             <Reorder.Group
               axis="y"
               values={formData.modules}
@@ -710,15 +790,20 @@ export function CourseEditor({
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-                <Play className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] hidden md:block" />
-                <input
-                  type="text"
-                  value={selectedLesson.title}
-                  onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, title: e.target.value })}
-                  placeholder="Lesson title..."
-                  className="flex-1 text-base font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] font-albert"
-                />
-                <Pencil className="w-3 h-3 text-[#c4c0bb] dark:text-[#5f6470] flex-shrink-0" />
+                <Play className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] hidden md:block flex-shrink-0" />
+                <div className="flex-1 min-w-0 flex items-center group">
+                  <div className="relative">
+                    <span className="invisible text-base font-medium font-albert whitespace-pre">{selectedLesson.title || 'Lesson title...'}</span>
+                    <input
+                      type="text"
+                      value={selectedLesson.title}
+                      onChange={(e) => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, title: e.target.value })}
+                      placeholder="Lesson title..."
+                      className="absolute inset-0 w-full text-base font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] font-albert caret-brand-accent"
+                    />
+                  </div>
+                  <Pencil className="w-3.5 h-3.5 text-[#c4c0bb] dark:text-[#5f6470] ml-3 flex-shrink-0 group-focus-within:opacity-0 transition-opacity" />
+                </div>
                 <button
                   type="button"
                   onClick={() => updateLesson(selectedModuleIndex, selectedLessonIndex, { ...selectedLesson, isLocked: !selectedLesson.isLocked })}
@@ -838,8 +923,6 @@ export function CourseEditor({
         onDescriptionChange={(shortDescription) => setFormData(prev => ({ ...prev, shortDescription }))}
         category={formData.category}
         onCategoryChange={(category) => setFormData(prev => ({ ...prev, category }))}
-        level={formData.level}
-        onLevelChange={(level) => setFormData(prev => ({ ...prev, level: level === 'none' ? '' : level }))}
         programIds={formData.programIds}
         onProgramIdsChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
         pricing={formData.pricing}

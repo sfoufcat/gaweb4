@@ -17,6 +17,8 @@ interface MediaPlayerProps {
   aspectRatio?: '16:9' | '4:3' | '1:1';
   /** If known, whether this media is audio-only (bypasses detection) */
   isAudioOnly?: boolean;
+  /** Compact mode for narrow containers like popups */
+  compact?: boolean;
 }
 
 // Audio file extensions
@@ -119,6 +121,7 @@ export function MediaPlayer({
   onEnded,
   aspectRatio = '16:9',
   isAudioOnly,
+  compact = false,
 }: MediaPlayerProps) {
   const [mediaType, setMediaType] = useState<MediaType>(() => {
     // If isAudioOnly is explicitly provided, use it directly
@@ -262,6 +265,7 @@ export function MediaPlayer({
       className={className}
       onEnded={onEnded}
       aspectRatio={aspectRatio}
+      compact={compact}
     />
   );
 }

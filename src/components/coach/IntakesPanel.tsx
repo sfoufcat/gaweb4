@@ -17,6 +17,10 @@ import {
   User,
   ChevronRight,
   Link2,
+  Plus,
+  UserPlus,
+  ChevronDown,
+  Filter,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, isPast, parseISO } from 'date-fns';
@@ -27,6 +31,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { ExpandableSearch } from '@/components/ui/expandable-search';
+import { InviteClientsDialog } from './InviteClientsDialog';
 
 interface IntakeEvent {
   id: string;
@@ -92,6 +98,7 @@ export function IntakesPanel({ onSelectClient }: IntakesPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -225,9 +232,57 @@ export function IntakesPanel({ onSelectClient }: IntakesPanelProps) {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        {/* Status Filter Tabs */}
-        <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-3 items-center justify-between">
+        {/* Mobile: Filter dropdown on left, Search + Add on right */}
+        <div className="flex items-center justify-between w-full sm:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-[#1d222b] border border-[#e1ddd8] dark:border-[#262b35] text-sm font-medium font-albert text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#faf8f6] dark:hover:bg-[#262b35] transition-colors">
+                <Filter className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                <span>{filterStatus === 'all' ? 'All' : STATUS_CONFIG[filterStatus]?.label || filterStatus}</span>
+                <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="p-1.5 rounded-2xl bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] min-w-[140px]">
+              {(['all', 'upcoming', 'completed', 'converted', 'no-show', 'cancelled'] as FilterStatus[]).map((status) => (
+                <DropdownMenuItem
+                  key={status}
+                  onClick={() => setFilterStatus(status)}
+                  className={cn(
+                    'px-3 py-2 rounded-xl text-sm font-medium font-albert cursor-pointer transition-colors',
+                    filterStatus === status
+                      ? 'bg-[#f5f3f0] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white focus:bg-[#f5f3f0] dark:focus:bg-[#262b35] focus:text-[#1a1a1a] dark:focus:text-white'
+                      : 'bg-transparent text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
+                  )}
+                >
+                  {status === 'all' ? 'All' : STATUS_CONFIG[status]?.label || status}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Right side: Search + Add */}
+          <div className="flex items-center gap-2">
+            <ExpandableSearch
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by name or email..."
+            />
+            {/* Only show + button on mobile when there are intakes */}
+            {events.length > 0 && (
+              <button
+                onClick={() => setShowInviteDialog(true)}
+                className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-accent text-white hover:bg-brand-accent/90 transition-colors flex-shrink-0"
+                title="Invite to intake call"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Desktop: Status Filter Tabs */}
+        <div className="hidden sm:flex gap-2 flex-wrap">
           {(['all', 'upcoming', 'completed', 'converted', 'no-show', 'cancelled'] as FilterStatus[]).map((status) => (
             <button
               key={status}
@@ -244,22 +299,20 @@ export function IntakesPanel({ onSelectClient }: IntakesPanelProps) {
           ))}
         </div>
 
-        {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
+        {/* Desktop: Search and Add button */}
+        <div className="hidden sm:flex items-center gap-3">
+          <ExpandableSearch
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#1d222b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/50"
+            onChange={setSearchQuery}
+            placeholder="Search by name or email..."
           />
-          {searchQuery && (
+          {events.length > 0 && (
             <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
+              onClick={() => setShowInviteDialog(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-accent text-white hover:bg-brand-accent/90 transition-colors text-sm font-medium font-albert"
             >
-              <X className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+              <UserPlus className="w-4 h-4" />
+              <span>Invite</span>
             </button>
           )}
         </div>
@@ -268,15 +321,26 @@ export function IntakesPanel({ onSelectClient }: IntakesPanelProps) {
       {/* Events List */}
       {filteredEvents.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Phone className="w-12 h-12 text-[#a7a39e] dark:text-[#7d8190] mb-4" />
+          <div className="w-16 h-16 rounded-full bg-[#f5f3f0] dark:bg-[#262b35] flex items-center justify-center mb-4">
+            <Phone className="w-8 h-8 text-[#a7a39e] dark:text-[#7d8190]" />
+          </div>
           <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
             {events.length === 0 ? 'No intake calls yet' : 'No results found'}
           </h3>
-          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-6 max-w-sm">
             {events.length === 0
-              ? 'Invite clients to book an intake call to get started.'
+              ? 'Invite prospects to book an intake call to start converting leads into clients.'
               : 'Try adjusting your filters or search query.'}
           </p>
+          {events.length === 0 && (
+            <button
+              onClick={() => setShowInviteDialog(true)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-accent text-white hover:bg-brand-accent/90 transition-colors text-sm font-medium font-albert shadow-sm"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Invite to Intake Call</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -416,6 +480,13 @@ export function IntakesPanel({ onSelectClient }: IntakesPanelProps) {
           })}
         </div>
       )}
+
+      {/* Invite Clients Dialog - opens with intake preselected */}
+      <InviteClientsDialog
+        isOpen={showInviteDialog}
+        onClose={() => setShowInviteDialog(false)}
+        initialTargetType="intake"
+      />
     </div>
   );
 }

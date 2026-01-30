@@ -14,6 +14,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
   Settings2,
@@ -23,6 +24,8 @@ import {
   List,
   ListOrdered,
   Image as ImageIcon,
+  Check,
+  Loader2,
 } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
@@ -214,6 +217,7 @@ export function ArticleEditor({
   categoriesApiEndpoint = '/api/coach/org-article-categories',
 }: ArticleEditorProps) {
   const [saving, setSaving] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
@@ -308,8 +312,10 @@ export function ArticleEditor({
         throw new Error(error.error || 'Failed to save article');
       }
 
-      onSave();
-      onClose();
+      // Update original to match current (no more changes)
+      setOriginalFormData(formData);
+      setShowSaved(true);
+      setTimeout(() => setShowSaved(false), 2000);
     } catch (err) {
       console.error('Error saving article:', err);
       alert(err instanceof Error ? err.message : 'Failed to save article');
@@ -354,7 +360,7 @@ export function ArticleEditor({
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-4">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-4 min-h-[40px]">
             {/* Settings Button - Mobile only */}
             {!isDesktop && (
               <button
@@ -367,37 +373,65 @@ export function ArticleEditor({
               </button>
             )}
 
-            {/* Mobile cancel button - only show when there are changes */}
-            {hasChanges && (
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={saving}
-                className="sm:hidden p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors disabled:opacity-50"
-                title="Discard changes"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-            {/* Desktop cancel button - only show when there are changes */}
-            {hasChanges && (
+            {/* Mobile cancel button - only show when there are unsaved changes */}
+            <AnimatePresence mode="wait">
+              {hasChanges && !showSaved && (
+                <motion.button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="sm:hidden p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors disabled:opacity-50"
+                  title="Discard changes"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              )}
+            </AnimatePresence>
+            {/* Desktop discard button - only show when there are unsaved changes */}
+            <AnimatePresence mode="wait">
+              {hasChanges && !showSaved && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, x: 10 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, x: 10 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                >
+                  <Button
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={saving}
+                    className="hidden sm:inline-flex border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] font-albert px-4"
+                  >
+                    Discard
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {/* Save button or Saved indicator - always rendered to prevent layout shift */}
+            {showSaved ? (
               <Button
-                variant="outline"
-                onClick={handleCancel}
-                disabled={saving}
-                className="hidden sm:inline-flex border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] font-albert px-4"
+                disabled
+                className="bg-green-500/10 hover:bg-green-500/10 text-green-600 dark:text-green-400 font-albert text-sm sm:text-base px-6 sm:px-8 cursor-default"
               >
-                Cancel
+                <Check className="w-4 h-4 mr-2" />
+                Saved
               </Button>
-            )}
-            {/* Save button - only show when there are changes */}
-            {hasChanges && (
+            ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={saving || !formData.title.trim()}
-                className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm sm:text-base px-6 sm:px-8"
+                disabled={saving || !formData.title.trim() || !hasChanges}
+                className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm sm:text-base px-6 sm:px-8 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : 'Save'}
               </Button>
             )}
           </div>

@@ -310,58 +310,61 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check for discover video with this bunnyVideoId
+    // Check for discover video(s) with this bunnyVideoId
+    // NOTE: We update ALL matching docs (not just first) because the upload flow
+    // can create both a placeholder doc and a metadata doc with the same bunnyVideoId
     let discoverVideosQuery;
     try {
       discoverVideosQuery = await adminDb
         .collection('discover_videos')
         .where('bunnyVideoId', '==', videoId)
-        .limit(1)
-        .get();
+        .get(); // No limit - update ALL matching docs
     } catch (queryError) {
       console.error(`[BUNNY_WEBHOOK] Failed to query bunnyVideoId for discover_videos:`, queryError);
       throw queryError; // Re-throw as this is a critical query
     }
 
     if (!discoverVideosQuery.empty) {
-      const videoDoc = discoverVideosQuery.docs[0];
+      const updatedIds: string[] = [];
+      const playbackUrl = isSuccess ? getPlaybackUrl(videoId) : null;
+      const bunnyVideoStatus = isSuccess ? await getVideoStatus(videoId) : null;
 
-      try {
-        // Check if document still exists before updating
-        const currentDoc = await videoDoc.ref.get();
-        if (!currentDoc.exists) {
-          console.warn(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} no longer exists, skipping update`);
-          return NextResponse.json({ received: true, discoverVideoId: videoDoc.id, deleted: true });
+      for (const videoDoc of discoverVideosQuery.docs) {
+        try {
+          // Check if document still exists before updating
+          const currentDoc = await videoDoc.ref.get();
+          if (!currentDoc.exists) {
+            console.warn(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} no longer exists, skipping update`);
+            continue;
+          }
+
+          if (isSuccess) {
+            await videoDoc.ref.set({
+              playbackUrl,
+              durationSeconds: durationSeconds || null,
+              videoStatus: 'ready',
+              isAudioOnly: bunnyVideoStatus?.isAudioOnly,
+              updatedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+
+            console.log(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} ready: ${playbackUrl}, isAudioOnly: ${bunnyVideoStatus?.isAudioOnly}`);
+          } else {
+            await videoDoc.ref.set({
+              videoStatus: 'failed',
+              updatedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+
+            console.error(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} encoding failed`);
+          }
+
+          updatedIds.push(videoDoc.id);
+        } catch (updateError) {
+          // Log the error but don't fail the webhook - doc may have been deleted
+          console.warn(`[BUNNY_WEBHOOK] Failed to update discover video ${videoDoc.id}:`, updateError);
         }
-
-        if (isSuccess) {
-          const playbackUrl = getPlaybackUrl(videoId);
-          const videoStatus = await getVideoStatus(videoId);
-
-          await videoDoc.ref.set({
-            playbackUrl,
-            durationSeconds: durationSeconds || null,
-            videoStatus: 'ready',
-            isAudioOnly: videoStatus.isAudioOnly,
-            updatedAt: FieldValue.serverTimestamp(),
-          }, { merge: true });
-
-          console.log(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} ready: ${playbackUrl}, isAudioOnly: ${videoStatus.isAudioOnly}`);
-        } else {
-          await videoDoc.ref.set({
-            videoStatus: 'failed',
-            updatedAt: FieldValue.serverTimestamp(),
-          }, { merge: true });
-
-          console.error(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} encoding failed`);
-        }
-
-        return NextResponse.json({ received: true, discoverVideoId: videoDoc.id });
-      } catch (updateError) {
-        // Log the error but don't fail the webhook - doc may have been deleted
-        console.warn(`[BUNNY_WEBHOOK] Failed to update discover video ${videoDoc.id}:`, updateError);
-        return NextResponse.json({ received: true, discoverVideoId: videoDoc.id, updateFailed: true });
       }
+
+      return NextResponse.json({ received: true, discoverVideoIds: updatedIds, count: updatedIds.length });
     }
 
     // Check for discover video preview with this bunnyVideoId

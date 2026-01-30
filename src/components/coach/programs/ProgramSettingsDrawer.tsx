@@ -35,7 +35,7 @@ import {
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
-import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectPrompt } from '@/components/ui/StripeConnectPrompt';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 import { useOrgEntitlements } from '@/lib/billing/use-entitlements';
 import { SingleCoachSelector } from '@/components/coach/SingleCoachSelector';
@@ -97,7 +97,7 @@ export function ProgramSettingsDrawer({
 
   // Stripe status
   const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
-  const canAcceptPayments = stripeConnected || stripeLoading;
+  const canAcceptPayments = stripeConnected;
 
   // Entitlements for coach selection
   const entitlements = useOrgEntitlements();
@@ -474,13 +474,7 @@ export function ProgramSettingsDrawer({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: 0.1 }}
                   >
-                    <StripeConnectWarning
-                      variant="inline"
-                      showCta={true}
-                      message="Connect Stripe to accept payments"
-                      subMessage="For now, you can add prepaid clients manually."
-                      onConnectClick={() => setShowStripeModal(true)}
-                    />
+                    <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
                   </motion.div>
                 )}
 

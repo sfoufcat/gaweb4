@@ -1,11 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Layers, UsersRound, FileText, BookOpen, Calendar, Download, Link as LinkIcon, Plus, PhoneIncoming } from 'lucide-react';
+import { Layers, UsersRound, FileText, BookOpen, Calendar, Download, Link as LinkIcon, Plus, PhoneIncoming, Globe, Lock, Check } from 'lucide-react';
 import { NewProgramModal } from '../programs/NewProgramModal';
 import type { Funnel, Program, FunnelTargetType, FunnelContentType, IntakeCallConfig } from '@/types';
 import { IntakeConfigSelect } from '../intake/IntakeConfigSelect';
-import { BrandedCheckbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -45,7 +44,6 @@ interface FunnelFormData {
   intakeConfigId: string;
   description: string;
   accessType: string;
-  isDefault: boolean;
 }
 
 interface FunnelEditorDialogProps {
@@ -111,7 +109,6 @@ export function FunnelEditorDialog({
     intakeConfigId: funnel?.intakeConfigId || '',
     description: funnel?.description || '',
     accessType: funnel?.accessType || 'public',
-    isDefault: funnel?.isDefault || false,
   });
 
   // Fetch content items when content type changes
@@ -235,7 +232,6 @@ export function FunnelEditorDialog({
           intakeConfigId: formData.intakeConfigId,
           description: formData.description,
           accessType: formData.accessType,
-          isDefault: formData.isDefault,
         }, mode === 'edit');
         onSaved();
         return;
@@ -253,7 +249,6 @@ export function FunnelEditorDialog({
             slug: formData.slug,
             description: formData.description || null,
             accessType: formData.accessType,
-            isDefault: formData.isDefault,
           }),
         });
       } else {
@@ -271,7 +266,6 @@ export function FunnelEditorDialog({
             contentId: formData.targetType === 'content' ? formData.contentId : null,
             description: formData.description || null,
             accessType: formData.accessType,
-            isDefault: formData.isDefault,
           }),
         });
       }
@@ -517,8 +511,8 @@ export function FunnelEditorDialog({
             <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
               URL Slug *
             </label>
-            <div className="flex items-center">
-              <span className="px-3 py-2.5 bg-[#f5f3f0] dark:bg-[#1a1f27] border border-r-0 border-[#e1ddd8] dark:border-[#262b35] rounded-l-xl text-[#8c8c8c] dark:text-[#7f8694] text-sm font-albert whitespace-nowrap">
+            <div className="flex items-stretch">
+              <span className="flex items-center px-3 bg-[#f5f3f0] dark:bg-[#1a1f27] border border-r-0 border-[#e1ddd8] dark:border-[#262b35] rounded-l-xl text-[#8c8c8c] dark:text-[#7f8694] text-sm font-albert whitespace-nowrap">
                 {getSlugPrefix()}
               </span>
               <input
@@ -554,81 +548,50 @@ export function FunnelEditorDialog({
             <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
               Access Type
             </label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <span className="relative flex items-center justify-center">
-                  <input
-                    type="radio"
-                    name="accessType"
-                    value="public"
-                    checked={formData.accessType === 'public'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, accessType: e.target.value as 'public' | 'invite_only' }))}
-                    className="sr-only"
-                  />
-                  <span className={`w-[18px] h-[18px] rounded-full border-2 transition-colors ${
-                    formData.accessType === 'public'
-                      ? 'border-brand-accent'
-                      : 'border-[#d1cdc8] dark:border-[#3a4150]'
-                  }`}>
-                    {formData.accessType === 'public' && (
-                      <span className="absolute inset-0 flex items-center justify-center">
-                        <span className="w-2.5 h-2.5 rounded-full bg-brand-accent" />
-                      </span>
-                    )}
-                  </span>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, accessType: 'public' }))}
+                className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                  formData.accessType === 'public'
+                    ? 'border-brand-accent bg-brand-accent/5'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                }`}
+              >
+                <Globe className={`w-5 h-5 ${
+                  formData.accessType === 'public' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                }`} />
+                <span className={`text-sm font-medium font-albert ${
+                  formData.accessType === 'public' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                }`}>
+                  Public
                 </span>
-                <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm">Public</span>
-              </label>
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <span className="relative flex items-center justify-center">
-                  <input
-                    type="radio"
-                    name="accessType"
-                    value="invite_only"
-                    checked={formData.accessType === 'invite_only'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, accessType: e.target.value as 'public' | 'invite_only' }))}
-                    className="sr-only"
-                  />
-                  <span className={`w-[18px] h-[18px] rounded-full border-2 transition-colors ${
-                    formData.accessType === 'invite_only'
-                      ? 'border-brand-accent'
-                      : 'border-[#d1cdc8] dark:border-[#3a4150]'
-                  }`}>
-                    {formData.accessType === 'invite_only' && (
-                      <span className="absolute inset-0 flex items-center justify-center">
-                        <span className="w-2.5 h-2.5 rounded-full bg-brand-accent" />
-                      </span>
-                    )}
-                  </span>
+                {formData.accessType === 'public' && (
+                  <Check className="w-5 h-5 text-brand-accent" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, accessType: 'invite_only' }))}
+                className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                  formData.accessType === 'invite_only'
+                    ? 'border-brand-accent bg-brand-accent/5'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                }`}
+              >
+                <Lock className={`w-5 h-5 ${
+                  formData.accessType === 'invite_only' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                }`} />
+                <span className={`text-sm font-medium font-albert ${
+                  formData.accessType === 'invite_only' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                }`}>
+                  Invite Only
                 </span>
-                <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm">Invite Only</span>
-              </label>
+                {formData.accessType === 'invite_only' && (
+                  <Check className="w-5 h-5 text-brand-accent" />
+                )}
+              </button>
             </div>
-            <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1">
-              {formData.accessType === 'public'
-                ? 'Anyone with the link can access this funnel'
-                : 'Only users with an invite code can access this funnel'}
-            </p>
-          </div>
-
-          {/* Is Default */}
-          <div>
-            <div className="flex items-center gap-2">
-              <BrandedCheckbox
-                checked={formData.isDefault}
-                onChange={(checked) => setFormData(prev => ({ ...prev, isDefault: checked }))}
-              />
-              <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, isDefault: !prev.isDefault }))}>
-                Set as default funnel for this {formData.targetType === 'content' ? 'content item' : formData.targetType}
-              </span>
-            </div>
-            <p className="text-xs text-[#8c8c8c] dark:text-[#7f8694] font-albert mt-1 ml-6">
-              {formData.targetType === 'squad'
-                ? 'The default funnel is used when users visit /join/squad/[slug] without specifying a funnel'
-                : formData.targetType === 'content'
-                ? 'The default funnel is used when users visit /join/content/[type]/[id] without specifying a funnel'
-                : 'The default funnel is used when users visit /join/[program] without specifying a funnel'}
-            </p>
           </div>
 
           {/* Error */}
@@ -713,24 +676,14 @@ export function FunnelEditorDialog({
       <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
         <DrawerContent className="max-h-[90vh] flex flex-col">
           <DrawerHeader className="px-4 pb-3 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <div>
-                <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
-                </DrawerTitle>
-                <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                  {mode === 'create'
-                    ? 'Create a custom entry point'
-                    : 'Update your funnel settings'}
-                </DrawerDescription>
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-              >
-                <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              </button>
-            </div>
+            <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-left">
+              {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
+            </DrawerTitle>
+            <DrawerDescription className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5 text-left">
+              {mode === 'create'
+                ? 'Create a custom entry point'
+                : 'Update your funnel settings'}
+            </DrawerDescription>
           </DrawerHeader>
           {formContent}
           {/* Safe area padding for mobile */}

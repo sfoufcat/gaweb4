@@ -757,7 +757,7 @@ export function MediaUpload({
           ) : value ? (
             // Non-collapsible mode with preview
             <div className={`relative ${previewSize === 'thumbnail' ? 'inline-block' : ''}`}>
-              <div className={`relative rounded-lg overflow-hidden bg-[#f5f2ed] dark:bg-[#1a1f2a] border border-[#e1ddd8] dark:border-[#262b35] ${
+              <div className={`relative rounded-xl overflow-hidden ${isVideo ? 'bg-black' : 'bg-[#f5f2ed] dark:bg-[#1a1f2a] border border-[#e1ddd8] dark:border-[#262b35]'} ${
                 previewSize === 'thumbnail' ? 'w-20 h-20' : 'w-full'
               }`}>
                 {isVideo ? (

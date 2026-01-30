@@ -553,7 +553,7 @@ export function RichTextEditor({
           w-full
           ${isInline
             ? 'py-4'
-            : 'px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-b-lg bg-white dark:bg-[#171b22] overflow-auto focus-within:ring-2 focus-within:ring-brand-accent'
+            : 'px-4 py-3 border-2 border-[#e1ddd8] dark:border-[#262b35] rounded-b-lg bg-white dark:bg-[#171b22] overflow-auto transition-colors focus-within:border-brand-accent'
           }
           ${isExpanded ? 'flex-1' : ''}
         `}

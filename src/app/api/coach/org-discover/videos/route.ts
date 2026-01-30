@@ -25,12 +25,14 @@ export async function GET() {
       .orderBy('order', 'asc')
       .get();
 
-    const videos = videosSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-    }));
+    const videos = videosSnapshot.docs
+      .filter(doc => doc.data().title) // Skip placeholder docs without title
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
+        updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+      }));
 
     return NextResponse.json({
       videos,

@@ -1747,7 +1747,7 @@ export function ModuleWeeksSidebar({
   return (
     <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <div className="px-4 py-3 flex-shrink-0">
+      <div className="px-4 py-3 border-b border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <LayoutList className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
@@ -1780,7 +1780,7 @@ export function ModuleWeeksSidebar({
 
       {/* Modules & Weeks Tree */}
       <div className="flex-1 overflow-hidden relative">
-        <div className="h-full max-h-[50vh] lg:max-h-[calc(100vh-220px)] overflow-y-auto px-2 pt-4 pb-3 scrollbar-thin scrollbar-thumb-[#d1cdc8] dark:scrollbar-thumb-[#363d4a] scrollbar-track-transparent">
+        <div className="h-full max-h-[50vh] lg:max-h-[calc(100vh-220px)] overflow-y-auto px-2 py-3 scrollbar-thin scrollbar-thumb-[#d1cdc8] dark:scrollbar-thumb-[#363d4a] scrollbar-track-transparent">
         {sortedModules.length === 0 ? (
           // No modules yet - prompt to add one (only in template mode)
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6 text-center">

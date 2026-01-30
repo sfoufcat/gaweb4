@@ -57,7 +57,7 @@ import type { Funnel, Program, ProgramInvite, IntakeCallConfig } from '@/types';
 import { IntakeConfigWizard } from './intake/IntakeConfigWizard';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
-import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectPrompt } from '@/components/ui/StripeConnectPrompt';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 
 type DialogView = 'list' | 'create' | 'bulk';
@@ -123,9 +123,10 @@ const DEFAULT_WIZARD_DATA: WizardData = {
 interface InviteClientsDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTargetType?: 'program' | 'content' | 'intake';
 }
 
-export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProps) {
+export function InviteClientsDialog({ isOpen, onClose, initialTargetType }: InviteClientsDialogProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -138,7 +139,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
   // Stripe Connect status for payment features
   const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
   const [showStripeModal, setShowStripeModal] = useState(false);
-  const canAcceptPayments = stripeConnected || stripeLoading;
+  const canAcceptPayments = stripeConnected;
 
   // Selected funnel
   const [selectedFunnelId, setSelectedFunnelId] = useState<string | null>(null);
@@ -175,6 +176,21 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
       sessionStorage.setItem('inviteWizardData', JSON.stringify(wizardData));
     }
   }, [wizardStep, wizardData]);
+
+  // Handle initial target type (e.g., when opening from intakes empty state)
+  useEffect(() => {
+    if (isOpen && initialTargetType) {
+      // Clear any saved state and go directly to the target type
+      setWizardData({ ...DEFAULT_WIZARD_DATA, targetType: initialTargetType });
+      if (initialTargetType === 'intake') {
+        setWizardStep('intake-select');
+      } else if (initialTargetType === 'content') {
+        setWizardStep('content-select');
+      } else if (initialTargetType === 'program') {
+        setWizardStep('target-type');
+      }
+    }
+  }, [isOpen, initialTargetType]);
 
   // View state
   const [currentView, setCurrentView] = useState<DialogView>('list');
@@ -1963,20 +1979,14 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         transition={{ duration: 0.2 }}
                         className="space-y-3 overflow-hidden"
                       >
-                        {/* Stripe Warning */}
-                        {!stripeLoading && !stripeConnected && (
+                        {/* Stripe Connect Prompt */}
+                        {!stripeConnected && (
                           <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: 0.1 }}
                           >
-                            <StripeConnectWarning
-                              variant="inline"
-                              showCta={true}
-                              message="Connect Stripe to accept platform payments"
-                              subMessage="Without Stripe, you can still add clients as pre-paid (they paid you externally)."
-                              onConnectClick={() => setShowStripeModal(true)}
-                            />
+                            <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
                           </motion.div>
                         )}
 
@@ -2863,13 +2873,9 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                     </Select>
                   </div>
 
-                  {/* Stripe Connect Warning */}
+                  {/* Stripe Connect Prompt */}
                   {createForm.paymentStatus === 'required' && !canAcceptPayments && (
-                    <StripeConnectWarning
-                      variant="inline"
-                      showCta={true}
-                      onConnectClick={() => setShowStripeModal(true)}
-                    />
+                    <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
                   )}
 
                   {/* Send Email Toggle */}
@@ -3141,16 +3147,10 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                       </SelectContent>
                     </Select>
 
-                    {/* Stripe Warning when Payment Required selected but Stripe not connected */}
+                    {/* Stripe Connect Prompt when Payment Required selected but Stripe not connected */}
                     {createForm.paymentStatus === 'required' && !canAcceptPayments && (
                       <div className="mt-2">
-                        <StripeConnectWarning
-                          variant="inline"
-                          showCta={true}
-                          message="Connect Stripe to enable platform payments"
-                          subMessage="Use 'Pre-paid' for clients who paid you externally (Venmo, PayPal, cash, etc.)."
-                          onConnectClick={() => setShowStripeModal(true)}
-                        />
+                        <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
                       </div>
                     )}
                   </div>
@@ -3298,16 +3298,10 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         </SelectContent>
                       </Select>
 
-                      {/* Stripe Warning when Payment Required selected but Stripe not connected */}
+                      {/* Stripe Connect Prompt when Payment Required selected but Stripe not connected */}
                       {bulkPaymentStatus === 'required' && !canAcceptPayments && (
                         <div className="mt-2">
-                          <StripeConnectWarning
-                            variant="inline"
-                            showCta={true}
-                            message="Connect Stripe to enable platform payments"
-                            subMessage="Use 'Pre-paid' for clients who paid you externally."
-                            onConnectClick={() => setShowStripeModal(true)}
-                          />
+                          <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
                         </div>
                       )}
                     </div>

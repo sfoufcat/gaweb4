@@ -44,7 +44,7 @@ import {
 } from '@/components/ui/select';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
-import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectPrompt } from '@/components/ui/StripeConnectPrompt';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useOrgEntitlements } from '@/lib/billing/use-entitlements';
@@ -1278,7 +1278,7 @@ interface SettingsStepProps {
 
 function SettingsStep({ data, onChange, stripeConnected, stripeLoading, onOpenStripeModal }: SettingsStepProps) {
   const isEvergreen = data.durationType === 'evergreen';
-  const canAcceptPayments = stripeConnected || stripeLoading;
+  const canAcceptPayments = stripeConnected;
   
   return (
     <div className="space-y-6">
@@ -1367,20 +1367,14 @@ function SettingsStep({ data, onChange, stripeConnected, stripeLoading, onOpenSt
               transition={{ duration: 0.2 }}
               className="space-y-3 overflow-hidden"
             >
-              {/* Stripe Warning when Paid is selected but Stripe not connected */}
+              {/* Stripe Connect Prompt when Paid is selected but Stripe not connected */}
               {!canAcceptPayments && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: 0.1 }}
                 >
-                  <StripeConnectWarning
-                    variant="inline"
-                    showCta={true}
-                    message="Connect Stripe to accept payments"
-                    subMessage="For now, you can add prepaid clients manually who paid outside the platform."
-                    onConnectClick={onOpenStripeModal}
-                  />
+                  <StripeConnectPrompt onClick={onOpenStripeModal} />
                 </motion.div>
               )}
 

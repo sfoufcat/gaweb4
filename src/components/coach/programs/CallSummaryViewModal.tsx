@@ -7,6 +7,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { Badge } from '@/components/ui/badge';
 import {
   FileText,
@@ -19,6 +25,7 @@ import {
   ListTodo,
   HelpCircle,
 } from 'lucide-react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { CallSummary, ProgramTaskTemplate } from '@/types';
 
 interface CallSummaryViewModalProps {
@@ -37,6 +44,7 @@ export function CallSummaryViewModal({
 }: CallSummaryViewModalProps) {
   // Client-side only rendering to avoid hydration issues with portals
   const [isMounted, setIsMounted] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   useEffect(() => {
     setIsMounted(true);
@@ -75,44 +83,37 @@ export function CallSummaryViewModal({
     const hours = Math.floor(totalSeconds / 3600);
     const mins = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
-    
+
     if (hours > 0) {
       return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-brand-accent" />
-            Call Summary
-          </DialogTitle>
-          {summary && (
-            <div className="flex items-center gap-4 text-sm text-muted-foreground pt-1">
-              {summary.callStartedAt && (
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" />
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {formatDate(summary.callStartedAt as any)}
-                </span>
-              )}
-              {summary.callDurationSeconds > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4" />
-                  {formatDuration(summary.callDurationSeconds)}
-                </span>
-              )}
-            </div>
-          )}
-        </DialogHeader>
+  // Header content shared between Dialog and Drawer
+  const headerMeta = summary && (
+    <div className="flex items-center gap-4 text-sm text-muted-foreground pt-1">
+      {summary.callStartedAt && (
+        <span className="flex items-center gap-1.5">
+          <Calendar className="h-4 w-4" />
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {formatDate(summary.callStartedAt as any)}
+        </span>
+      )}
+      {summary.callDurationSeconds > 0 && (
+        <span className="flex items-center gap-1.5">
+          <Clock className="h-4 w-4" />
+          {formatDuration(summary.callDurationSeconds)}
+        </span>
+      )}
+    </div>
+  );
 
-        {!summary ? (
-          <p className="text-muted-foreground">No summary available</p>
-        ) : (
-          <div className="space-y-5 pt-2">
+  // Summary content shared between Dialog and Drawer
+  const summaryContent = !summary ? (
+    <p className="text-muted-foreground">No summary available</p>
+  ) : (
+    <div className="space-y-5 pt-2">
             {/* Executive Summary */}
             {summary.summary?.executive && (
               <div>
@@ -268,8 +269,39 @@ export function CallSummaryViewModal({
               </div>
             )}
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+        );
+
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-brand-accent" />
+              Call Summary
+            </DialogTitle>
+            {headerMeta}
+          </DialogHeader>
+          {summaryContent}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="max-h-[85vh]">
+        <DrawerHeader className="text-left">
+          <DrawerTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-brand-accent" />
+            Call Summary
+          </DrawerTitle>
+          {headerMeta}
+        </DrawerHeader>
+        <div className="px-4 pb-6 overflow-y-auto">
+          {summaryContent}
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }

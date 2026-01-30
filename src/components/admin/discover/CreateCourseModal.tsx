@@ -23,7 +23,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { CategorySelector } from '@/components/admin/CategorySelector';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
-import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectPrompt } from '@/components/ui/StripeConnectPrompt';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 
 // Wizard step types
@@ -92,7 +92,7 @@ export function CreateCourseModal({
   // Stripe Connect status for paid pricing
   const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
   const [showStripeModal, setShowStripeModal] = useState(false);
-  const canAcceptPayments = stripeConnected || stripeLoading;
+  const canAcceptPayments = stripeConnected;
 
   // Track if this is the initial mount to skip animation on first open
   const isInitialMount = useRef(true);
@@ -677,6 +677,11 @@ function StructureStep({ data, onChange, error, stripeConnected, stripeLoading, 
           </button>
         </div>
 
+        {/* Connect Stripe prompt when Paid is disabled */}
+        {!canAcceptPayments && (
+          <StripeConnectPrompt onClick={onOpenStripeModal} />
+        )}
+
         {/* Stripe Warning & Price Input */}
         <AnimatePresence mode="wait">
           {data.pricing === 'paid' && (
@@ -689,19 +694,13 @@ function StructureStep({ data, onChange, error, stripeConnected, stripeLoading, 
               className="space-y-2 overflow-hidden"
             >
               {/* Stripe Warning */}
-              {!stripeLoading && !stripeConnected && (
+              {!stripeConnected && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: 0.1 }}
                 >
-                  <StripeConnectWarning
-                    variant="inline"
-                    showCta={true}
-                    message="Connect Stripe to accept payments"
-                    subMessage="Set your price now — enable platform payments later."
-                    onConnectClick={onOpenStripeModal}
-                  />
+                  <StripeConnectPrompt onClick={onOpenStripeModal} />
                 </motion.div>
               )}
 

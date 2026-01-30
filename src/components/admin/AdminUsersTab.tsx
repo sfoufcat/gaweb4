@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { UserPlus, RefreshCw, Eye, MessageCircle, Send, Trash2, Download, Filter } from 'lucide-react';
+import { UserPlus, RefreshCw, Eye, MessageCircle, Send, Trash2, Download, Filter, Search, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { SquadManagerPopover } from './SquadManagerPopover';
 import { ProgramManagerPopover } from './ProgramManagerPopover';
 import { ComplimentaryAccessConfirmation } from './ComplimentaryAccessConfirmation';
@@ -203,6 +204,8 @@ export function AdminUsersTab({
   const [userToDelete, setUserToDelete] = useState<ClerkAdminUser | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [updatingTierUserId, setUpdatingTierUserId] = useState<string | null>(null);
   const [updatingOrgRoleUserId, setUpdatingOrgRoleUserId] = useState<string | null>(null);
   
@@ -466,6 +469,17 @@ export function AdminUsersTab({
 
     return result;
   }, [displayUsers, searchQuery, clientFilter]);
+
+  // Search expand/collapse handlers for mobile
+  const handleSearchExpand = useCallback(() => {
+    setIsSearchExpanded(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }, []);
+
+  const handleSearchCollapse = useCallback(() => {
+    setIsSearchExpanded(false);
+    setSearchQuery('');
+  }, []);
 
   const handleRoleChange = async (userId: string, currentRole: UserRole, newRole: UserRole) => {
     if (!canModifyUserRole(currentUserRole, currentRole, newRole)) {
@@ -1083,50 +1097,61 @@ export function AdminUsersTab({
         </div>
       )}
       
-      <div className="bg-white/60 dark:bg-[#171b22]/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
         {/* Header with search and actions */}
-        <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">{headerTitle}</h2>
-              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert mt-1">
-                {(searchQuery || clientFilter !== 'all')
-                  ? `${filteredUsers.length} of ${displayUsers.length} ${headerTitle.toLowerCase()} matching filters`
-                  : `${filteredUsers.length} ${headerTitle.toLowerCase()}`}
-              </p>
-            </div>
-            
-            <div className="flex flex-row flex-wrap items-center gap-3 w-full lg:w-auto">
-              {/* Search */}
-              <div className="relative flex-1 sm:flex-none">
+        <div className="p-4 sm:p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+          <div className="flex items-center justify-between gap-3">
+            {/* Title with inline count */}
+            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              {headerTitle} ({(searchQuery || clientFilter !== 'all')
+                ? `${filteredUsers.length}/${displayUsers.length}`
+                : filteredUsers.length})
+            </h2>
+
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Mobile search - animated expand */}
+              <div className="flex items-center sm:hidden">
+                <div
+                  className={cn(
+                    "flex items-center overflow-hidden transition-all duration-300 ease-out",
+                    isSearchExpanded ? "opacity-100" : "w-0 opacity-0"
+                  )}
+                  style={{ width: isSearchExpanded ? '160px' : 0 }}
+                >
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-0 font-albert"
+                  />
+                </div>
+                <button
+                  onClick={isSearchExpanded ? handleSearchCollapse : handleSearchExpand}
+                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                  title={isSearchExpanded ? "Close search" : "Search"}
+                >
+                  {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* Desktop search (hidden on mobile) */}
+              <div className="relative hidden sm:block">
                 <input
                   type="text"
                   placeholder="Search by name or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-64 pl-9 pr-4 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none font-albert"
+                  className="w-56 pl-9 pr-4 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-0 font-albert"
                 />
-                <svg
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -1163,48 +1188,35 @@ export function AdminUsersTab({
                 </SelectContent>
               </Select>
 
-              {/* Refresh Icon + Export + Add Button row */}
-              <div className="flex items-center gap-2">
-                {/* Refresh Icon */}
+              {/* Export + Add Button */}
+              {isCoachContext && (
                 <button
-                  onClick={fetchUsers}
-                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                  title="Refresh"
+                  onClick={handleExportCSV}
+                  disabled={selectedUserIds.size === 0}
+                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={selectedUserIds.size === 0 ? 'Select users to export' : 'Export selected users to CSV'}
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <Download className="w-4 h-4" />
                 </button>
+              )}
 
-                {/* Export CSV Button */}
-                {isCoachContext && (
-                  <button
-                    onClick={handleExportCSV}
-                    disabled={selectedUserIds.size === 0}
-                    className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                    title={selectedUserIds.size === 0 ? 'Select users to export' : 'Export selected users to CSV'}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">Export</span>
-                  </button>
-                )}
-
-                {/* Add Clients Button */}
-                {showInviteButton && (
-                  <button
-                    onClick={() => {
-                      if (isDemoMode) {
-                        openSignupModal();
-                        return;
-                      }
-                      setShowInviteDialog(true);
-                    }}
-                    className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
-                    title="Add New Clients"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Add New Clients</span>
-                  </button>
-                )}
-              </div>
+              {/* Add Clients Button */}
+              {showInviteButton && (
+                <button
+                  onClick={() => {
+                    if (isDemoMode) {
+                      openSignupModal();
+                      return;
+                    }
+                    setShowInviteDialog(true);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
+                  title="Add New Clients"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Add New Clients</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1316,7 +1328,7 @@ export function AdminUsersTab({
                 {showColumn('role') && !showOrgRole && <TableHead className="font-albert">Role</TableHead>}
                 {showColumn('role') && showOrgRole && <TableHead className="font-albert">Role</TableHead>}
                 {showColumn('tier') && <TableHead className="font-albert">Tier</TableHead>}
-                {showColumn('squad') && <TableHead className="font-albert">Squad</TableHead>}
+                {showColumn('squad') && <TableHead className="font-albert">Communities</TableHead>}
                 {showColumn('coach') && <TableHead className="font-albert">Coach</TableHead>}
                 {showColumn('coaching') && <TableHead className="font-albert">Coaching</TableHead>}
                 {showColumn('programs') && <TableHead className="font-albert">Programs</TableHead>}

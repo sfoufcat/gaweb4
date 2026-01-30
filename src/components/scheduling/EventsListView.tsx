@@ -448,7 +448,7 @@ export function EventsListView({ mode = 'coach', startDate, endDate, typeFilter 
       const res = await fetch(`/api/coach/call-summaries/${summaryId}`);
       if (!res.ok) throw new Error('Failed to fetch summary');
       const data = await res.json();
-      setSummaryData(data);
+      setSummaryData(data.summary);
       setSummaryModalOpen(true);
     } catch (err) {
       console.error('Failed to fetch summary:', err);

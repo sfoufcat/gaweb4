@@ -33,6 +33,7 @@ import { MeetingProviderSelector, type MeetingProviderType } from './MeetingProv
 import { MediaPlayer } from '@/components/video/MediaPlayer';
 import { normalizeUrl } from '@/lib/url-utils';
 import { isWithinOneHourBefore } from '@/lib/utils';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface EventDetailPopupProps {
   event: UnifiedEvent;
@@ -93,6 +94,7 @@ export function EventDetailPopup({
 }: EventDetailPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
   const [computedPosition, setComputedPosition] = useState<{ top: number; left: number } | null>(null);
+  const isDesktop = useMediaQuery('(min-width: 640px)');
 
   // Meeting link editing state
   const [isEditingLink, setIsEditingLink] = useState(false);
@@ -373,7 +375,7 @@ export function EventDetailPopup({
           sm:bottom-auto sm:left-auto sm:right-auto sm:rounded-2xl
           animate-modal-slide-up sm:animate-modal-zoom-in
         `}
-        style={computedPosition ? {
+        style={isDesktop ? (computedPosition ? {
           top: `${computedPosition.top}px`,
           left: `${computedPosition.left}px`,
         } : position ? {
@@ -381,7 +383,7 @@ export function EventDetailPopup({
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-        } : undefined}
+        } : undefined) : undefined}
       >
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
@@ -412,12 +414,15 @@ export function EventDetailPopup({
                 <Edit2 className="w-5 h-5" />
               </button>
             )}
-            <button
-              onClick={onClose}
-              className="flex-shrink-0 p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+{/* X button - desktop only */}
+            {isDesktop && (
+              <button
+                onClick={onClose}
+                className="flex-shrink-0 p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -706,6 +711,7 @@ export function EventDetailPopup({
                     src={event.recordingUrl}
                     className="w-full"
                     isAudioOnly={event.isAudioOnly}
+                    compact
                   />
                   <a
                     href={event.recordingUrl}

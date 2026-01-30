@@ -1,19 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronDown, Plus, Users, User, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronDown, Plus, Users, User, Loader2, AlertCircle, BookOpen } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import type { ProgramType } from '@/types';
 
@@ -68,6 +61,7 @@ export function ProgramManagerPopover({
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
   const [loadingCohorts, setLoadingCohorts] = useState(false);
   const [showCohortSelect, setShowCohortSelect] = useState(false);
+  const [showAddDropdown, setShowAddDropdown] = useState(false);
 
   // Reset state when popover closes
   useEffect(() => {
@@ -75,6 +69,7 @@ export function ProgramManagerPopover({
       setSelectedProgramId(null);
       setSelectedCohortId(null);
       setShowCohortSelect(false);
+      setShowAddDropdown(false);
     }
   }, [open]);
 
@@ -104,6 +99,7 @@ export function ProgramManagerPopover({
     if (!program) return;
 
     setSelectedProgramId(programId);
+    setShowAddDropdown(false);
 
     if (program.type === 'group') {
       // Need to select cohort for group programs
@@ -125,11 +121,12 @@ export function ProgramManagerPopover({
   };
 
   // Handle cohort selection and enrollment
-  const handleCohortSelect = async () => {
-    if (!selectedProgramId || !selectedCohortId) return;
+  const handleCohortSelect = async (cohortId: string) => {
+    if (!selectedProgramId) return;
+    setSelectedCohortId(cohortId);
 
     if (onAddToProgram) {
-      await onAddToProgram(selectedProgramId, selectedCohortId);
+      await onAddToProgram(selectedProgramId, cohortId);
       setOpen(false);
     }
   };
@@ -160,11 +157,11 @@ export function ProgramManagerPopover({
     }
     return (
       <div className="flex items-center gap-1.5 max-w-[200px]">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-albert truncate max-w-[140px] ${getBadgeColor(programs[0].programType)}`}>
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium font-albert truncate max-w-[140px] ${getBadgeColor(programs[0].programType)}`}>
           {displayText}
         </span>
         {extraCount > 0 && (
-          <span className="inline-flex items-center px-1.5 py-0.5 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 text-[#5f5a55] dark:text-[#b2b6c2] rounded-full text-xs font-medium font-albert whitespace-nowrap">
+          <span className="inline-flex items-center px-2 py-1 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 text-[#5f5a55] dark:text-[#b2b6c2] rounded-full text-xs font-medium font-albert whitespace-nowrap">
             +{extraCount}
           </span>
         )}
@@ -173,24 +170,30 @@ export function ProgramManagerPopover({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(isOpen) => {
+      setOpen(isOpen);
+      if (!isOpen) {
+        setShowAddDropdown(false);
+        setShowCohortSelect(false);
+      }
+    }}>
       <PopoverTrigger asChild>
         <button
           disabled={disabled || isEnrolling}
-          className={`flex items-center gap-1.5 max-w-[200px] px-2 py-1 rounded-lg border border-transparent hover:border-[#e1ddd8] dark:hover:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#11141b] transition-colors ${
+          className={`flex items-center gap-1.5 max-w-[220px] pr-2.5 py-1.5 rounded-xl border border-transparent hover:border-[#e1ddd8] dark:hover:border-[#262b35] hover:bg-[#faf8f6]/80 dark:hover:bg-[#11141b]/80 transition-all duration-200 ${
             disabled || isEnrolling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-          }`}
+          } ${open ? 'bg-[#faf8f6] dark:bg-[#11141b] border-[#e1ddd8] dark:border-[#262b35]' : ''}`}
           onClick={(e) => e.stopPropagation()}
         >
           {isEnrolling ? (
             <Loader2 className="w-4 h-4 animate-spin text-brand-accent" />
           ) : programs.length > 0 ? (
             <>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-albert truncate max-w-[120px] ${getBadgeColor(programs[0].programType)}`}>
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium font-albert truncate max-w-[130px] ${getBadgeColor(programs[0].programType)}`}>
                 {displayText}
               </span>
               {extraCount > 0 && (
-                <span className="inline-flex items-center px-1.5 py-0.5 bg-[#e1ddd8]/50 dark:bg-[#262b35]/50 text-[#5f5a55] dark:text-[#b2b6c2] rounded-full text-xs font-medium font-albert whitespace-nowrap">
+                <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 bg-[#e1ddd8]/60 dark:bg-[#262b35]/60 text-[#5f5a55] dark:text-[#b2b6c2] rounded-full text-xs font-medium font-albert">
                   +{extraCount}
                 </span>
               )}
@@ -198,37 +201,47 @@ export function ProgramManagerPopover({
           ) : (
             <span className="text-[#8c8c8c] dark:text-[#7d8190] text-sm font-albert">None</span>
           )}
-          <ChevronDown className="w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2] flex-shrink-0" />
+          <ChevronDown className={`w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2] flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         </button>
       </PopoverTrigger>
 
       <PopoverContent
         align="start"
-        className="w-[300px] p-0 bg-white dark:bg-[#171b22] border-[#e1ddd8] dark:border-[#262b35]"
+        sideOffset={8}
+        className="w-[320px] p-0 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-2xl shadow-lg overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-3 py-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-          <h4 className="font-albert font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-            {showCohortSelect ? 'Select Cohort' : 'Manage Programs'}
-          </h4>
-          <p className="font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
-            {showCohortSelect && selectedProgram
-              ? selectedProgram.name
-              : `${programs.length} program${programs.length !== 1 ? 's' : ''} enrolled`}
-          </p>
+        <div className="px-4 py-3 bg-gradient-to-b from-[#faf8f6] to-white dark:from-[#1a1f2a] dark:to-[#171b22]">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h4 className="font-albert font-semibold text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                {showCohortSelect ? 'Select Cohort' : 'Programs'}
+              </h4>
+              <p className="font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                {showCohortSelect && selectedProgram
+                  ? selectedProgram.name
+                  : `${programs.length} ${programs.length === 1 ? 'program' : 'programs'} enrolled`}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Cohort Selection View */}
         {showCohortSelect ? (
           <div className="p-3 space-y-3">
             {loadingCohorts ? (
-              <div className="flex items-center justify-center py-4">
+              <div className="flex items-center justify-center py-6">
                 <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
               </div>
             ) : selectedProgramCohorts.length === 0 ? (
-              <div className="py-4 text-center">
-                <AlertCircle className="w-8 h-8 mx-auto text-amber-500 mb-2" />
+              <div className="py-6 text-center">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-amber-500" />
+                </div>
                 <p className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                   No available cohorts
                 </p>
@@ -237,80 +250,63 @@ export function ProgramManagerPopover({
                 </p>
               </div>
             ) : (
-              <>
-                <Select
-                  value={selectedCohortId || ''}
-                  onValueChange={setSelectedCohortId}
-                >
-                  <SelectTrigger className="w-full h-9 font-albert text-sm">
-                    <SelectValue placeholder="Choose a cohort..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedProgramCohorts.map((cohort) => (
-                      <SelectItem key={cohort.id} value={cohort.id} className="font-albert text-sm">
-                        <div className="flex items-center gap-2">
-                          <span>{cohort.name}</span>
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${
-                            cohort.status === 'active'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                          }`}>
-                            {cohort.status}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
+              <div className="space-y-1">
+                {selectedProgramCohorts.map((cohort) => (
+                  <button
+                    key={cohort.id}
+                    onClick={() => handleCohortSelect(cohort.id)}
+                    disabled={isEnrolling}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] hover:bg-[#f5f2ef] dark:hover:bg-[#1a1f2a] transition-colors text-left"
+                  >
+                    <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      {cohort.name}
+                    </span>
+                    <span className={`text-xs font-albert px-2 py-0.5 rounded-full ${
+                      cohort.status === 'active'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                    }`}>
+                      {cohort.status}
+                    </span>
+                  </button>
+                ))}
+              </div>
             )}
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelCohortSelect}
-                className="flex-1 font-albert text-sm"
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleCohortSelect}
-                disabled={!selectedCohortId || isEnrolling}
-                className="flex-1 font-albert text-sm bg-brand-accent hover:bg-brand-accent/90"
-              >
-                {isEnrolling ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  'Add to Cohort'
-                )}
-              </Button>
-            </div>
+            {/* Back button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancelCohortSelect}
+              className="w-full font-albert text-sm rounded-xl"
+            >
+              Back to programs
+            </Button>
           </div>
         ) : (
           <>
             {/* Enrolled programs list */}
-            <div className="max-h-[200px] overflow-y-auto">
+            <div className="max-h-[220px] overflow-y-auto">
               {programs.length > 0 ? (
                 <div className="p-2 space-y-1">
                   {programs.map((program) => (
                     <div
                       key={program.programId}
-                      className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-[#faf8f6] dark:bg-[#11141b]"
+                      className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] hover:bg-[#f5f2ef] dark:hover:bg-[#1a1f2a] transition-colors"
                     >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {program.programType === 'individual' ? (
-                          <User className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                        ) : (
-                          <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                        )}
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <div className={`p-1 rounded-lg ${program.programType === 'individual' ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
+                          {program.programType === 'individual' ? (
+                            <User className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          ) : (
+                            <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          )}
+                        </div>
                         <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
                           {program.programName}
                         </span>
                       </div>
-                      <span className={`text-xs font-albert px-1.5 py-0.5 rounded flex-shrink-0 ${
+                      <span className={`text-xs font-albert px-2 py-0.5 rounded-full flex-shrink-0 ${
                         program.status === 'active'
                           ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                           : program.status === 'upcoming'
@@ -323,7 +319,10 @@ export function ProgramManagerPopover({
                   ))}
                 </div>
               ) : (
-                <div className="p-4 text-center">
+                <div className="p-6 text-center">
+                  <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-[#e1ddd8]/30 dark:bg-[#262b35]/30 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-[#8c8c8c] dark:text-[#7d8190]" />
+                  </div>
                   <p className="font-albert text-sm text-[#8c8c8c] dark:text-[#7d8190]">
                     Not enrolled in any programs
                   </p>
@@ -334,46 +333,56 @@ export function ProgramManagerPopover({
             {/* Add to program section */}
             {availablePrograms.length > 0 && onAddToProgram && (
               <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                <Select
-                  value=""
-                  onValueChange={handleProgramSelect}
-                  disabled={isEnrolling}
-                >
-                  <SelectTrigger className="w-full h-8 font-albert text-sm border-dashed">
-                    <div className="flex items-center gap-1.5 text-[#5f5a55] dark:text-[#b2b6c2]">
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add to program</span>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowAddDropdown(!showAddDropdown)}
+                    disabled={isEnrolling}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50 hover:bg-brand-accent/5 transition-all duration-200 group disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-2 text-[#5f5a55] dark:text-[#b2b6c2] group-hover:text-brand-accent transition-colors">
+                      <Plus className="w-4 h-4" />
+                      <span className="font-albert text-sm font-medium">Add to program</span>
                     </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availablePrograms.map((program) => (
-                      <SelectItem key={program.id} value={program.id} className="font-albert text-sm">
-                        <div className="flex items-center gap-2">
-                          {program.type === 'individual' ? (
-                            <User className="w-3.5 h-3.5 text-amber-600" />
-                          ) : (
-                            <Users className="w-3.5 h-3.5 text-blue-600" />
-                          )}
-                          <span>{program.name}</span>
-                          <span className="text-xs text-[#8c8c8c]">
-                            ({program.type === 'individual' ? '1:1' : 'Group'})
-                          </span>
-                          {program.priceInCents > 0 && (
-                            <span className="text-xs text-green-600">
-                              ${(program.priceInCents / 100).toFixed(0)}
-                            </span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <ChevronDown className={`w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] group-hover:text-brand-accent transition-all duration-200 ${showAddDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showAddDropdown && (
+                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg overflow-hidden z-10">
+                      <div className="max-h-[180px] overflow-y-auto py-1">
+                        {availablePrograms.map((program) => (
+                          <button
+                            key={program.id}
+                            onClick={() => handleProgramSelect(program.id)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#faf8f6] dark:hover:bg-[#11141b] transition-colors"
+                          >
+                            <div className={`p-1 rounded-lg ${program.type === 'individual' ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
+                              {program.type === 'individual' ? (
+                                <User className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                              ) : (
+                                <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] block truncate">
+                                {program.name}
+                              </span>
+                              <span className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                                {program.type === 'individual' ? '1:1' : 'Group'}
+                                {program.priceInCents > 0 && ` · $${(program.priceInCents / 100).toFixed(0)}`}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
             {/* All programs enrolled message */}
             {availablePrograms.length === 0 && programs.length > 0 && onAddToProgram && (
-              <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+              <div className="p-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
                 <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190] text-center">
                   Enrolled in all available programs
                 </p>

@@ -14,6 +14,8 @@ interface VideoPlayerProps {
   onProgress?: (progress: number) => void;
   onEnded?: () => void;
   aspectRatio?: '16:9' | '4:3' | '1:1';
+  /** Compact mode for narrow containers like popups */
+  compact?: boolean;
 }
 
 export function VideoPlayer({
@@ -24,6 +26,7 @@ export function VideoPlayer({
   onProgress,
   onEnded,
   aspectRatio = '16:9',
+  compact = false,
 }: VideoPlayerProps) {
   const playerRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -234,8 +237,8 @@ export function VideoPlayer({
           onClick={handlePlayPause}
           className="absolute inset-0 flex items-center justify-center z-20 group/play"
         >
-          <div className="w-20 h-20 rounded-full bg-white/90 group-hover/play:bg-white group-hover/play:scale-110 flex items-center justify-center transition-all shadow-lg">
-            <Play className="w-8 h-8 text-[#1a1a1a] ml-1" />
+          <div className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-sm group-hover/play:bg-white group-hover/play:scale-105 flex items-center justify-center transition-all shadow-md">
+            <Play className="w-5 h-5 text-[#1a1a1a] ml-0.5" fill="currentColor" />
           </div>
         </button>
       )}
@@ -289,27 +292,37 @@ export function VideoPlayer({
           </div>
 
           {/* Control Buttons */}
-          <div className="flex items-center gap-3">
+          <div className={cn("flex items-center", compact ? "gap-2" : "gap-3")}>
             {/* Play/Pause */}
             <button
               onClick={handlePlayPause}
-              className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 rounded-lg transition-colors"
+              className={cn(
+                "flex items-center justify-center text-white hover:bg-white/10 rounded-lg transition-colors",
+                compact ? "w-8 h-8" : "w-10 h-10"
+              )}
               aria-label={playing ? 'Pause' : 'Play'}
             >
-              {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+              {playing ? (
+                <Pause className={compact ? "w-4 h-4" : "w-5 h-5"} />
+              ) : (
+                <Play className={cn(compact ? "w-4 h-4" : "w-5 h-5", "ml-0.5")} />
+              )}
             </button>
 
             {/* Volume */}
             <div className="flex items-center gap-1">
               <button
                 onClick={toggleMute}
-                className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 rounded-lg transition-colors"
+                className={cn(
+                  "flex items-center justify-center text-white hover:bg-white/10 rounded-lg transition-colors",
+                  compact ? "w-8 h-8" : "w-10 h-10"
+                )}
                 aria-label={muted ? 'Unmute' : 'Mute'}
               >
                 {muted || volume === 0 ? (
-                  <VolumeX className="w-5 h-5" />
+                  <VolumeX className={compact ? "w-4 h-4" : "w-5 h-5"} />
                 ) : (
-                  <Volume2 className="w-5 h-5" />
+                  <Volume2 className={compact ? "w-4 h-4" : "w-5 h-5"} />
                 )}
               </button>
               <input
@@ -319,25 +332,38 @@ export function VideoPlayer({
                 step={0.1}
                 value={muted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-16 h-1 appearance-none bg-white/30 rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0"
+                className={cn(
+                  "h-1 appearance-none bg-white/30 rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0",
+                  compact ? "w-12" : "w-16"
+                )}
               />
-            </div>
-
-            {/* Time */}
-            <div className="text-sm text-white/90 font-albert ml-2">
-              {formatTime(played * duration)} / {formatTime(duration)}
             </div>
 
             {/* Spacer */}
             <div className="flex-1" />
 
+            {/* Time */}
+            <div className={cn(
+              "text-white/90 font-albert tabular-nums",
+              compact ? "text-xs" : "text-sm"
+            )}>
+              {formatTime(played * duration)} / {formatTime(duration)}
+            </div>
+
             {/* Fullscreen */}
             <button
               onClick={toggleFullscreen}
-              className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 rounded-lg transition-colors"
+              className={cn(
+                "flex items-center justify-center text-white hover:bg-white/10 rounded-lg transition-colors",
+                compact ? "w-8 h-8" : "w-10 h-10"
+              )}
               aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             >
-              {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+              {isFullscreen ? (
+                <Minimize className={compact ? "w-4 h-4" : "w-5 h-5"} />
+              ) : (
+                <Maximize className={compact ? "w-4 h-4" : "w-5 h-5"} />
+              )}
             </button>
           </div>
         </div>

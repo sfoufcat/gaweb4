@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { DollarSign, ChevronDown, Check } from 'lucide-react';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
-import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectPrompt } from '@/components/ui/StripeConnectPrompt';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,7 +53,7 @@ export function CurrencySelector({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between h-auto py-2 font-normal text-left rounded-lg border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b]"
+          className="w-full justify-between h-[42px] font-normal text-left rounded-lg border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b]"
         >
           <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm whitespace-nowrap">
             {selectedCurrency.code} ({selectedCurrency.symbol})
@@ -104,7 +104,7 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
 
   // Check Stripe connection status - pricing requires connected Stripe account
   const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
-  const canEnablePricing = stripeConnected || stripeLoading;
+  const canEnablePricing = stripeConnected;
   const [showStripeModal, setShowStripeModal] = useState(false);
 
   // Sync isPricingEnabled when value.priceInCents changes (e.g., when editing existing content)
@@ -158,15 +158,9 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
         </div>
       </div>
 
-      {/* Stripe Connect Warning */}
-      {!stripeLoading && !stripeConnected && (
-        <StripeConnectWarning
-          variant="inline"
-          showCta={true}
-          message="Connect Stripe to enable paid content"
-          subMessage="Accept payments for articles, courses, downloads, and more."
-          onConnectClick={() => setShowStripeModal(true)}
-        />
+      {/* Stripe Connect Prompt - show immediately when not connected */}
+      {!stripeConnected && (
+        <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
       )}
 
       {/* Enable Pricing Toggle */}
@@ -195,7 +189,7 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
         <div className="space-y-4 pt-2">
           {/* Price and Currency */}
           <div className="flex gap-3">
-            <div className="flex-[2]">
+            <div className="flex-1">
               <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 font-albert">
                 Price
               </label>
@@ -209,12 +203,12 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
                   value={priceInDollars}
                   onChange={(e) => handlePriceChange(e.target.value)}
                   placeholder="0.00"
-                  className="w-full pl-7 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c]"
+                  className="w-full h-[42px] pl-7 pr-3 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c]"
                 />
               </div>
             </div>
 
-            <div className="flex-1">
+            <div className="w-[140px] flex-shrink-0">
               <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 font-albert">
                 Currency
               </label>

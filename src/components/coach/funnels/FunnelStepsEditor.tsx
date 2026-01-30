@@ -766,7 +766,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                 
                 <div className="p-4 grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
                   {/* Stripe Connect Warning for Payment Steps */}
-                  {!stripeLoading && !stripeConnected && (
+                  {!stripeConnected && (
                     <div className="col-span-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 mb-2">
                       <div className="flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />

@@ -390,7 +390,7 @@
   @keyframes stepSlideInFromRight {
     0% {
       opacity: 0;
-      transform: translateX(30px);
+      transform: translateX(20px);
     }
     100% {
       opacity: 1;
@@ -401,7 +401,7 @@
   @keyframes stepSlideInFromLeft {
     0% {
       opacity: 0;
-      transform: translateX(-30px);
+      transform: translateX(-20px);
     }
     100% {
       opacity: 1;
@@ -410,11 +410,11 @@
   }
 
   .animate-step-slide-in-right {
-    animation: stepSlideInFromRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: stepSlideInFromRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
 
   .animate-step-slide-in-left {
-    animation: stepSlideInFromLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: stepSlideInFromLeft 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
 
   /* AI Loading Animations */

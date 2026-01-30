@@ -297,10 +297,35 @@ function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, on
                 </button>
               )}
             </div>
-            {event.locationLabel && (
+            {/* Location - smart detection like EventDetailPopup */}
+            {(event.locationLabel || event.meetingLink) && (
               <div className="flex items-center gap-2 font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                 <MapPin className="w-3.5 h-3.5" />
-                <span>{event.locationLabel}</span>
+                <span>
+                  {event.locationType === 'chat' ? (
+                    'In-App Call'
+                  ) : event.meetingProvider === 'zoom' ? (
+                    'Zoom'
+                  ) : event.meetingProvider === 'google_meet' ? (
+                    'Google Meet'
+                  ) : event.meetingProvider === 'stream' ? (
+                    'In-App Call'
+                  ) : event.meetingLink ? (
+                    // Extract platform from URL or show domain for custom links
+                    event.meetingLink.includes('zoom') ? 'Zoom' :
+                    event.meetingLink.includes('meet.google') ? 'Google Meet' :
+                    event.meetingLink.includes('teams') ? 'Microsoft Teams' :
+                    (() => {
+                      try {
+                        return new URL(event.meetingLink).hostname.replace('www.', '');
+                      } catch {
+                        return 'External Link';
+                      }
+                    })()
+                  ) : (
+                    event.locationLabel
+                  )}
+                </span>
               </div>
             )}
           </div>

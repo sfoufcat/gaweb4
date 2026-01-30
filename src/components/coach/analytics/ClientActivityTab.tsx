@@ -433,7 +433,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
                   <th className="text-left px-4 py-3 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">Last Active</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">Primary Signal</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">Program</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">Squad</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">Community</th>
                   {!isDemoMode && (
                     <th className="text-right px-4 py-3 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">Actions</th>
                   )}

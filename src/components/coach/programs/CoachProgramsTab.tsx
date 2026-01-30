@@ -4012,7 +4012,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     placeholder="Search programs..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
+                    className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-0 font-albert"
                   />
                 </div>
 
@@ -4130,102 +4130,95 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         <ChevronDown className="w-4 h-4" />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-48 p-1" align="end">
+                    <PopoverContent className="w-48 p-1.5 rounded-2xl" align="end">
                       <button
                         type="button"
                         onClick={() => { handleViewModeChange('overview'); setIsPageDropdownOpen(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-xl transition-colors ${
                           viewMode === 'overview'
-                            ? 'bg-brand-accent/10 text-brand-accent'
-                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                            ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                         }`}
                       >
                         <Settings2 className="w-4 h-4" />
                         Overview
-                        {viewMode === 'overview' && <Check className="w-4 h-4 ml-auto" />}
                       </button>
                       <button
                         type="button"
                         onClick={() => { handleViewModeChange('days'); setIsPageDropdownOpen(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-xl transition-colors ${
                           viewMode === 'days'
-                            ? 'bg-brand-accent/10 text-brand-accent'
-                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                            ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                         }`}
                       >
                         <LayoutTemplate className="w-4 h-4" />
                         Content
-                        {viewMode === 'days' && <Check className="w-4 h-4 ml-auto" />}
                       </button>
                       <button
                         type="button"
                         onClick={() => { handleViewModeChange('community'); setIsPageDropdownOpen(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-xl transition-colors ${
                           viewMode === 'community'
-                            ? 'bg-brand-accent/10 text-brand-accent'
-                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                            ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                         }`}
                       >
                         <Users className="w-4 h-4" />
                         Community
-                        {viewMode === 'community' && <Check className="w-4 h-4 ml-auto" />}
                       </button>
                       {/* For group programs: Combined Cohorts & Members view */}
                       {selectedProgram?.type === 'group' ? (
                         <button
                           type="button"
                           onClick={() => { handleViewModeChange('members'); setIsPageDropdownOpen(false); }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                          className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-xl transition-colors ${
                             viewMode === 'members' || viewMode === 'cohorts'
-                              ? 'bg-brand-accent/10 text-brand-accent'
-                              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                              ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                           }`}
                         >
                           <Users className="w-4 h-4" />
                           Cohorts/Members
-                          {(viewMode === 'members' || viewMode === 'cohorts') && <Check className="w-4 h-4 ml-auto" />}
                         </button>
                       ) : (
                         /* For individual programs: Enrollments view */
                         <button
                           type="button"
                           onClick={() => { handleViewModeChange('enrollments'); setIsPageDropdownOpen(false); }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                          className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-xl transition-colors ${
                             viewMode === 'enrollments'
-                              ? 'bg-brand-accent/10 text-brand-accent'
-                              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                              ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                           }`}
                         >
                           <Users className="w-4 h-4" />
                           Enrollments
-                          {viewMode === 'enrollments' && <Check className="w-4 h-4 ml-auto" />}
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => { handleViewModeChange('landing'); setIsPageDropdownOpen(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-xl transition-colors ${
                           viewMode === 'landing'
-                            ? 'bg-brand-accent/10 text-brand-accent'
-                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                            ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                         }`}
                       >
                         <FileText className="w-4 h-4" />
                         Landing Page
-                        {viewMode === 'landing' && <Check className="w-4 h-4 ml-auto" />}
                       </button>
                       <button
                         type="button"
                         onClick={() => { handleViewModeChange('referrals'); setIsPageDropdownOpen(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-md transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-xl transition-colors ${
                           viewMode === 'referrals'
-                            ? 'bg-brand-accent/10 text-brand-accent'
-                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                            ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
+                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
                         }`}
                       >
                         <Gift className="w-4 h-4" />
                         Referrals
-                        {viewMode === 'referrals' && <Check className="w-4 h-4 ml-auto" />}
                       </button>
                     </PopoverContent>
                   </Popover>

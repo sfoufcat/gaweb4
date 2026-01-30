@@ -258,7 +258,7 @@ export function AdminQuestionnairesSection({
                 placeholder="Search questionnaires..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
+                className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-0 font-albert"
               />
             </div>
 
@@ -440,7 +440,8 @@ export function AdminQuestionnairesSection({
               {filteredQuestionnaires.map(questionnaire => (
                 <TableRow
                   key={questionnaire.id}
-                  className="border-b border-[#e1ddd8] dark:border-[#262b35]/50 hover:bg-[#f3f1ef]/50 dark:hover:bg-[#262b35]/30"
+                  onClick={() => handleEdit(questionnaire)}
+                  className="border-b border-[#e1ddd8] dark:border-[#262b35]/50 hover:bg-[#f3f1ef]/50 dark:hover:bg-[#262b35]/30 cursor-pointer"
                 >
                   <TableCell>
                     <div>
@@ -459,7 +460,10 @@ export function AdminQuestionnairesSection({
                   </TableCell>
                   <TableCell className="font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
                     <button
-                      onClick={() => handleViewResponses(questionnaire)}
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleViewResponses(questionnaire);
+                      }}
                       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] text-sm hover:bg-[#e1ddd8] dark:hover:bg-[#363b45] transition-colors"
                     >
                       {questionnaire.responseCount || 0}
@@ -483,7 +487,10 @@ export function AdminQuestionnairesSection({
                     <div className="flex items-center justify-end gap-1">
                       {/* Copy Link */}
                       <button
-                        onClick={() => handleCopyLink(questionnaire)}
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleCopyLink(questionnaire);
+                        }}
                         className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
                         title="Copy link"
                       >
@@ -512,7 +519,10 @@ export function AdminQuestionnairesSection({
 
                       {/* View Responses */}
                       <button
-                        onClick={() => handleViewResponses(questionnaire)}
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleViewResponses(questionnaire);
+                        }}
                         className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
                         title="View responses"
                       >
@@ -521,7 +531,10 @@ export function AdminQuestionnairesSection({
 
                       {/* Edit */}
                       <button
-                        onClick={() => handleEdit(questionnaire)}
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleEdit(questionnaire);
+                        }}
                         className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
                         title="Edit"
                       >
@@ -530,7 +543,10 @@ export function AdminQuestionnairesSection({
 
                       {/* Delete */}
                       <button
-                        onClick={() => setDeleteConfirm(questionnaire)}
+                        onClick={e => {
+                          e.stopPropagation();
+                          setDeleteConfirm(questionnaire);
+                        }}
                         className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         title="Delete"
                       >

@@ -31,7 +31,9 @@ export async function GET() {
     const videosSnapshot = await query.get();
 
     const videos = await Promise.all(
-      videosSnapshot.docs.map(async (doc) => {
+      videosSnapshot.docs
+        .filter(doc => doc.data().title) // Skip placeholder docs without title
+        .map(async (doc) => {
         const data = doc.data();
 
         // Use custom thumbnail if available, otherwise get Bunny auto-generated
