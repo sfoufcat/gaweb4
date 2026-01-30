@@ -8,7 +8,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { mutate } from 'swr';
 import { DeleteConfirmationModal } from './ConfirmationModal';
 import { InlineComments } from './InlineComments';
-import { SIDEBAR_BOOKMARKS_KEY } from './FeedSidebar';
+import { SIDEBAR_BOOKMARKS_KEY, optimisticallyAddBookmark, optimisticallyRemoveBookmark } from './FeedSidebar';
 import { RichTextPreview } from '@/components/editor';
 import { PollMessageCard } from '@/components/chat/PollMessageCard';
 import type { FeedPost } from '@/hooks/useFeed';
@@ -116,37 +116,77 @@ export function PostCard({
   // Handle bookmark
   const handleBookmark = useCallback(async () => {
     if (isBookmarking) return;
-    
+
     setIsBookmarking(true);
     const newBookmarkState = !post.hasBookmarked;
-    
+
     // Trigger animation
     if (newBookmarkState) {
       setBookmarkAnimating(true);
       setTimeout(() => setBookmarkAnimating(false), 500);
     }
-    
-    // Optimistic update
+
+    // Optimistic update for main feed
     onBookmark?.(post.id, newBookmarkState);
+
+    // Optimistic update for sidebar - instant appear/disappear
+    if (newBookmarkState) {
+      optimisticallyAddBookmark({
+        id: post.id,
+        authorId: post.authorId,
+        text: post.text,
+        images: post.images,
+        likeCount: post.likeCount,
+        author: post.author,
+      });
+    } else {
+      optimisticallyRemoveBookmark(post.id);
+    }
 
     try {
       const method = newBookmarkState ? 'POST' : 'DELETE';
       const response = await fetch(`/api/feed/${post.id}/bookmark`, { method });
-      
+
       if (!response.ok) {
         // Revert on error
         onBookmark?.(post.id, !newBookmarkState);
+        // Revert sidebar
+        if (newBookmarkState) {
+          optimisticallyRemoveBookmark(post.id);
+        } else {
+          optimisticallyAddBookmark({
+            id: post.id,
+            authorId: post.authorId,
+            text: post.text,
+            images: post.images,
+            likeCount: post.likeCount,
+            author: post.author,
+          });
+        }
       } else {
-        // Revalidate sidebar bookmarks to show updated list
+        // Revalidate sidebar to ensure sync with server
         mutate(SIDEBAR_BOOKMARKS_KEY);
       }
     } catch {
       // Revert on error
       onBookmark?.(post.id, !newBookmarkState);
+      // Revert sidebar
+      if (newBookmarkState) {
+        optimisticallyRemoveBookmark(post.id);
+      } else {
+        optimisticallyAddBookmark({
+          id: post.id,
+          authorId: post.authorId,
+          text: post.text,
+          images: post.images,
+          likeCount: post.likeCount,
+          author: post.author,
+        });
+      }
     } finally {
       setIsBookmarking(false);
     }
-  }, [post.id, post.hasBookmarked, isBookmarking, onBookmark]);
+  }, [post.id, post.authorId, post.text, post.images, post.likeCount, post.author, post.hasBookmarked, isBookmarking, onBookmark]);
 
   // Handle edit
   const handleEditClick = useCallback(() => {

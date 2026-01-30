@@ -31,6 +31,8 @@ export interface DatePickerProps {
   displayFormat?: string
   /** z-index class for the dialog (use when inside other modals) */
   zIndex?: string
+  /** Position of the calendar icon */
+  iconPosition?: 'left' | 'right' | 'none'
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -49,6 +51,7 @@ export function DatePicker({
   className,
   displayFormat = "MMMM d, yyyy",
   zIndex,
+  iconPosition = 'right',
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
   const [currentMonth, setCurrentMonth] = React.useState(() => {
@@ -136,13 +139,16 @@ export function DatePicker({
           !selectedDate && "text-[#a7a39e] dark:text-[#5f6470]",
           selectedDate && "text-[#1a1a1a] dark:text-[#f5f5f8]",
           disabled && "opacity-50 cursor-not-allowed",
+          iconPosition === 'left' && "flex-row-reverse justify-end gap-2",
           className
         )}
       >
         <span className="font-albert text-sm">
           {selectedDate ? format(selectedDate, displayFormat) : placeholder}
         </span>
-        <CalendarIcon className="h-4 w-4 text-[#5f5a55] dark:text-[#b2b6c2] flex-shrink-0" />
+        {iconPosition !== 'none' && (
+          <CalendarIcon className="h-4 w-4 text-current flex-shrink-0" />
+        )}
       </Button>
 
       {/* Calendar Modal */}

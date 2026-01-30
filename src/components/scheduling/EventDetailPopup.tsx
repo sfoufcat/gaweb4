@@ -34,6 +34,7 @@ import { MediaPlayer } from '@/components/video/MediaPlayer';
 import { normalizeUrl } from '@/lib/url-utils';
 import { isWithinOneHourBefore } from '@/lib/utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 interface EventDetailPopupProps {
   event: UnifiedEvent;
@@ -227,29 +228,21 @@ export function EventDetailPopup({
 
   // Calculate optimal position after popup renders (so we know its size)
   useLayoutEffect(() => {
-    if (!isOpen || !position || !popupRef.current) {
+    if (!isOpen || !position || !isDesktop) {
       setComputedPosition(null);
       return;
     }
 
-    const popup = popupRef.current;
-    const popupRect = popup.getBoundingClientRect();
-    const popupWidth = popupRect.width || 384; // sm:w-96 = 384px fallback
-    const popupHeight = popupRect.height || 400; // estimated height
-
+    const popupWidth = 384; // w-96 = 384px
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const padding = 16; // Minimum distance from viewport edges
+    const padding = 20; // Minimum distance from viewport edges
 
-    // Start with position below and aligned with click point
-    let top = position.y;
-    let left = position.x;
+    // Calculate max available height (70% of viewport, but leave padding)
+    const maxPopupHeight = Math.min(viewportHeight * 0.7, viewportHeight - padding * 2);
 
-    // Adjust horizontal position to keep popup in viewport
-    // Try to center the popup horizontally on the click point
-    left = position.x - (popupWidth / 2);
-
-    // Keep within horizontal bounds
+    // Horizontal positioning - center on click point
+    let left = position.x - (popupWidth / 2);
     if (left + popupWidth > viewportWidth - padding) {
       left = viewportWidth - popupWidth - padding;
     }
@@ -257,20 +250,31 @@ export function EventDetailPopup({
       left = padding;
     }
 
-    // Adjust vertical position
-    // If popup would go below viewport, position it above the click point
-    if (top + popupHeight > viewportHeight - padding) {
-      // Position above - subtract estimated event height (40px) and popup height
-      top = position.y - popupHeight - 50;
+    // Vertical positioning - prefer below click, but flip above if no space
+    const spaceBelow = viewportHeight - position.y - padding;
+    const spaceAbove = position.y - padding;
+
+    let top: number;
+    if (spaceBelow >= maxPopupHeight) {
+      // Enough space below
+      top = position.y;
+    } else if (spaceAbove >= maxPopupHeight) {
+      // Flip to above - position so bottom of popup is at click point
+      top = position.y - maxPopupHeight;
+    } else {
+      // Not enough space either way - use whichever has more space
+      if (spaceBelow >= spaceAbove) {
+        top = viewportHeight - maxPopupHeight - padding;
+      } else {
+        top = padding;
+      }
     }
 
-    // If still outside top of viewport, just position at top with padding
-    if (top < padding) {
-      top = padding;
-    }
+    // Final bounds check
+    top = Math.max(padding, Math.min(top, viewportHeight - maxPopupHeight - padding));
 
     setComputedPosition({ top, left });
-  }, [isOpen, position]);
+  }, [isOpen, position, isDesktop]);
 
   // Close on escape key
   useEffect(() => {
@@ -346,47 +350,17 @@ export function EventDetailPopup({
     }
   }, [event.id, onCounterPropose]);
 
-  if (!isOpen) return null;
-
-  // Use portal to render outside any backdrop-blur containers that break fixed positioning
-  if (typeof document === 'undefined') return null;
-
   // Safety check for required event properties
   if (!event || !event.startDateTime) {
     console.error('[EventDetailPopup] Invalid event data:', event);
     return null;
   }
 
-  return createPortal(
+  // Content component shared between desktop popup and mobile drawer
+  const PopupContent = (
     <>
-      {/* Backdrop - only visible on mobile */}
-      <div
-        className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm sm:hidden animate-backdrop-fade-in"
-        onClick={onClose}
-      />
-
-      {/* Desktop: Positioned popup / Mobile: Bottom sheet */}
-      <div
-        ref={popupRef}
-        className={`
-          fixed z-[60] bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl overflow-hidden
-          sm:w-96 sm:max-h-[70vh]
-          w-full max-h-[85vh] bottom-0 left-0 right-0 rounded-b-none
-          sm:bottom-auto sm:left-auto sm:right-auto sm:rounded-2xl
-          animate-modal-slide-up sm:animate-modal-zoom-in
-        `}
-        style={isDesktop ? (computedPosition ? {
-          top: `${computedPosition.top}px`,
-          left: `${computedPosition.left}px`,
-        } : position ? {
-          // Fallback: center on desktop until position is computed
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-        } : undefined) : undefined}
-      >
-        {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+      {/* Header */}
+      <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               {isPending && (
@@ -414,7 +388,7 @@ export function EventDetailPopup({
                 <Edit2 className="w-5 h-5" />
               </button>
             )}
-{/* X button - desktop only */}
+{/* X button - only shown on desktop, drawer has handle on mobile */}
             {isDesktop && (
               <button
                 onClick={onClose}
@@ -427,7 +401,7 @@ export function EventDetailPopup({
         </div>
 
         {/* Content */}
-        <div className="p-5 space-y-4 overflow-y-auto max-h-[calc(85vh-130px)] sm:max-h-[calc(70vh-130px)]">
+        <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
           {/* Event Type Badge */}
           <div className="flex items-center gap-2">
             {event.eventType === 'coaching_1on1' ? (
@@ -532,35 +506,35 @@ export function EventDetailPopup({
                         'Google Meet'
                       ) : event.meetingProvider === 'stream' ? (
                         'In-App Call'
-                      ) : event.locationLabel ? (
-                        event.locationLabel
                       ) : event.meetingLink ? (
-                        // Extract platform from URL
+                        // Extract platform from URL or show External Link
                         event.meetingLink.includes('zoom') ? 'Zoom' :
                         event.meetingLink.includes('meet.google') ? 'Google Meet' :
                         event.meetingLink.includes('teams') ? 'Microsoft Teams' :
-                        'External Meeting'
+                        'External Link'
+                      ) : event.locationLabel ? (
+                        event.locationLabel
                       ) : (
                         'Location not set'
                       )}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 -my-1">
                     {event.meetingLink && (
                       <a
                         href={event.meetingLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 text-[#5f5a55] hover:text-brand-accent dark:text-[#b2b6c2] dark:hover:text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                        className="p-1.5 text-[#5f5a55] hover:text-brand-accent dark:text-[#b2b6c2] dark:hover:text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-md transition-colors"
                         title="Open meeting link"
                       >
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
-                    {isHost && (
+                    {isHost && !isPastEvent && (
                       <button
                         onClick={() => setIsEditingLink(true)}
-                        className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                        className="p-1.5 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-md transition-colors"
                         title={event.meetingLink ? "Edit meeting link" : "Add meeting link"}
                       >
                         <Edit2 className="w-4 h-4" />
@@ -569,8 +543,6 @@ export function EventDetailPopup({
                   </div>
                 </div>
               )}
-
-
 
               {/* No link placeholder for non-hosts */}
               {!isEditingLink && !event.meetingLink && !isHost && event.locationType !== 'chat' && event.meetingProvider !== 'stream' && (
@@ -684,7 +656,18 @@ export function EventDetailPopup({
 
           {/* Past Event Actions */}
           {isPastEvent && !isPending && (
-            <div className="pt-3 mt-3 border-t border-[#e1ddd8] dark:border-[#262b35] space-y-2">
+            <div className="pt-3 border-t border-[#e1ddd8] dark:border-[#262b35] space-y-2">
+              {/* Recording Player (audio or video) - shown first */}
+              {hasRecording && event.recordingUrl && (
+                <MediaPlayer
+                  src={event.recordingUrl}
+                  className="w-full"
+                  isAudioOnly={event.isAudioOnly}
+                  compact
+                  externalLink={{ url: event.recordingUrl, label: "View Full Recording" }}
+                />
+              )}
+
               {/* Inline Summary Preview (if summary exists and pre-fetched) */}
               {hasSummary && inlineSummary && onViewSummary && (
                 <InlineSummaryPreview
@@ -704,25 +687,14 @@ export function EventDetailPopup({
                 </button>
               )}
 
-              {/* Recording Player (audio or video) */}
-              {hasRecording && event.recordingUrl && (
-                <div className="space-y-2">
-                  <MediaPlayer
-                    src={event.recordingUrl}
-                    className="w-full"
-                    isAudioOnly={event.isAudioOnly}
-                    compact
-                  />
-                  <a
-                    href={event.recordingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    View Full Recording
-                  </a>
-                </div>
+              {/* Fill Week from Summary Button (has summary, program context, host only) */}
+              {hasSummary && event.programId && event.instanceId && isHost && (
+                <FillWeekFromSummaryButton
+                  eventId={event.id}
+                  onFilled={() => {
+                    onEventUpdated?.();
+                  }}
+                />
               )}
 
               {/* Generate Summary Button (recording exists but no summary, host only) */}
@@ -732,16 +704,6 @@ export function EventDetailPopup({
                   durationMinutes={event.durationMinutes || 60}
                   onGenerated={(summaryId) => {
                     onRecordingUploaded?.(event.id, summaryId);
-                  }}
-                />
-              )}
-
-              {/* Fill Week from Summary Button (has summary, program context, host only) */}
-              {hasSummary && event.programId && event.instanceId && isHost && (
-                <FillWeekFromSummaryButton
-                  eventId={event.id}
-                  onFilled={() => {
-                    onEventUpdated?.();
                   }}
                 />
               )}
@@ -868,6 +830,46 @@ export function EventDetailPopup({
 
           return null;
         })()}
+    </>
+  );
+
+  // Mobile: Use Vaul Drawer with drag-to-close
+  if (!isDesktop) {
+    return (
+      <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DrawerContent className="max-h-[85vh]" zIndex="z-[60]">
+          {PopupContent}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Desktop: Use positioned popup with portal
+  if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-[60] bg-black/30 animate-backdrop-fade-in"
+        onClick={onClose}
+      />
+
+      {/* Positioned popup */}
+      <div
+        ref={popupRef}
+        className="fixed z-[60] bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl w-96 max-h-[70vh] flex flex-col overflow-hidden animate-modal-zoom-in"
+        style={computedPosition ? {
+          top: `${computedPosition.top}px`,
+          left: `${computedPosition.left}px`,
+        } : position ? {
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+        } : undefined}
+      >
+        {PopupContent}
       </div>
     </>,
     document.body

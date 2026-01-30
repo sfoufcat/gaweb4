@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, RefreshCw, FileText } from 'lucide-react';
 
 interface GenerateSummaryButtonProps {
   eventId: string;
@@ -114,10 +114,14 @@ export function GenerateSummaryButton({
   return (
     <button
       onClick={handleGenerate}
-      className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium text-sm hover:bg-brand-accent/90 transition-colors ${className}`}
+      className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand-accent hover:opacity-90 text-white rounded-xl font-albert font-medium text-sm transition-opacity ${className}`}
     >
-      <Sparkles className="w-4 h-4" />
-      Get Summary ({credits} credit{credits !== 1 ? 's' : ''})
+      <span className="relative">
+        <FileText className="w-4 h-4" />
+        <Sparkles className="w-2.5 h-2.5 absolute -top-1 -right-1.5" />
+      </span>
+      <span>Get Summary</span>
+      <span className="text-xs opacity-60">· {credits} credit</span>
     </button>
   );
 }

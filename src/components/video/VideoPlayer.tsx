@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, SyntheticEvent } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ReactPlayer = require('react-player').default as any;
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2, AlertCircle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VideoPlayerProps {
@@ -16,6 +16,8 @@ interface VideoPlayerProps {
   aspectRatio?: '16:9' | '4:3' | '1:1';
   /** Compact mode for narrow containers like popups */
   compact?: boolean;
+  /** External link to show in controls bar */
+  externalLink?: { url: string; label?: string };
 }
 
 export function VideoPlayer({
@@ -27,6 +29,7 @@ export function VideoPlayer({
   onEnded,
   aspectRatio = '16:9',
   compact = false,
+  externalLink,
 }: VideoPlayerProps) {
   const playerRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -349,6 +352,23 @@ export function VideoPlayer({
             )}>
               {formatTime(played * duration)} / {formatTime(duration)}
             </div>
+
+            {/* External Link */}
+            {externalLink && (
+              <a
+                href={externalLink.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "flex items-center justify-center text-white hover:bg-white/10 rounded-lg transition-colors",
+                  compact ? "w-8 h-8" : "w-10 h-10"
+                )}
+                title={externalLink.label || "Open in new tab"}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className={compact ? "w-4 h-4" : "w-5 h-5"} />
+              </a>
+            )}
 
             {/* Fullscreen */}
             <button

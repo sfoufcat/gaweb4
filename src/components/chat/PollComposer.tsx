@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
+import { TimePicker } from '@/components/ui/time-picker';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 /**
@@ -69,7 +70,7 @@ function PollFormContent({
   options,
   updateOption,
   removeOption,
-  onAddOptionClick,
+  addOption,
   dateValue,
   setDateValue,
   timeValue,
@@ -90,7 +91,7 @@ function PollFormContent({
   options: { id: string; text: string }[];
   updateOption: (id: string, text: string) => void;
   removeOption: (id: string) => void;
-  onAddOptionClick: () => void;
+  addOption: () => void;
   dateValue: string;
   setDateValue: (v: string) => void;
   timeValue: string;
@@ -126,7 +127,7 @@ function PollFormContent({
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
         {/* Question Section */}
         <div className="py-3">
           <h2 className="font-albert font-medium text-[24px] text-[#1a1a1a] tracking-[-1.5px] leading-[1.3] mb-3">
@@ -177,11 +178,11 @@ function PollFormContent({
 
             {/* Add an option button */}
             <button
-              onClick={onAddOptionClick}
-              className="bg-[#f3f1ef] rounded-[20px] px-4 py-3 flex items-center justify-center"
+              onClick={addOption}
+              className="bg-[#f3f1ef] rounded-[20px] px-4 py-3 flex items-center justify-center hover:bg-[#eae7e3] transition-colors"
             >
               <span className="font-albert font-semibold text-[18px] text-[#a7a39e] tracking-[-1px] leading-[1.3]">
-                Add an option
+                + Add option
               </span>
             </button>
           </div>
@@ -194,32 +195,29 @@ function PollFormContent({
           </h2>
           <div className="flex flex-col">
             {/* Active Till */}
-            <div className="flex items-center justify-between h-[52px] px-4 border-t border-[#e6e6e6]">
-              <span className="font-geist text-[16px] text-[#000000] tracking-[-0.3px] leading-[1.2]">
+            <div className="flex items-center justify-between py-4 px-4 border-t border-[#e6e6e6]">
+              <span className="font-albert text-[16px] text-[#1a1a1a] dark:text-[#f5f5f8]">
                 Active Till
               </span>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-5">
                 <DatePicker
                   value={dateValue}
                   onChange={(d) => setDateValue(d)}
                   minDate={new Date()}
                   placeholder="Date"
                   displayFormat="MMM d"
-                  className="bg-[rgba(118,118,128,0.12)] rounded-[6px] border-0"
+                  iconPosition="left"
+                  className="w-auto h-auto px-0 py-0 bg-transparent border-0 shadow-none hover:bg-transparent hover:opacity-80 focus:ring-0 text-brand-accent font-medium"
                   zIndex="z-[10003]"
                 />
-                <div className="relative flex items-center">
-                  <input
-                    type="time"
-                    value={timeValue}
-                    onChange={(e) => setTimeValue(e.target.value)}
-                    className="bg-[rgba(118,118,128,0.12)] rounded-[6px] pl-3 pr-8 py-1.5 font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent transition-all [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                  />
-                  <svg className="absolute right-2.5 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12,6 12,12 16,14" />
-                  </svg>
-                </div>
+                <TimePicker
+                  value={timeValue}
+                  onChange={(t) => setTimeValue(t)}
+                  placeholder="Time"
+                  iconPosition="left"
+                  className="w-auto h-auto px-0 py-0 bg-transparent border-0 shadow-none hover:bg-transparent hover:opacity-80 focus:ring-0 text-brand-accent font-medium"
+                  zIndex="z-[10003]"
+                />
               </div>
             </div>
 
@@ -378,8 +376,6 @@ function AddOptionContent({
 export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAddOptionSheet, setShowAddOptionSheet] = useState(false);
-  const [newOptionText, setNewOptionText] = useState('');
 
   // Form state
   const [question, setQuestion] = useState('');
@@ -423,8 +419,6 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
       setParticipantsCanAddOptions(false);
       setDateValue(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
       setTimeValue(format(new Date(), 'HH:mm'));
-      setShowAddOptionSheet(false);
-      setNewOptionText('');
     }
   }, [isOpen]);
 
@@ -438,14 +432,10 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
     setOptions(prev => prev.filter(opt => opt.id !== id));
   }, []);
 
-  // Add new option (from mini sheet)
-  const handleAddOption = useCallback(() => {
-    if (newOptionText.trim()) {
-      setOptions(prev => [...prev, { id: generateId(), text: newOptionText.trim() }]);
-      setNewOptionText('');
-      setShowAddOptionSheet(false);
-    }
-  }, [newOptionText]);
+  // Add new empty option inline
+  const addOption = useCallback(() => {
+    setOptions(prev => [...prev, { id: generateId(), text: '' }]);
+  }, []);
 
   // Submit poll
   const handleSubmit = async () => {
@@ -480,7 +470,7 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
           <DialogContent
             hideCloseButton
             zIndex="z-[10002]"
-            className="max-w-[500px] max-h-[85vh] p-0 bg-[#faf8f6] flex flex-col overflow-hidden"
+            className="max-w-[500px] max-h-[85vh] p-0 bg-[#faf8f6] flex flex-col overflow-hidden overscroll-contain"
             aria-describedby={undefined}
           >
             <VisuallyHidden.Root>
@@ -492,7 +482,7 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
               options={options}
               updateOption={updateOption}
               removeOption={removeOption}
-              onAddOptionClick={() => setShowAddOptionSheet(true)}
+              addOption={addOption}
               dateValue={dateValue}
               setDateValue={setDateValue}
               timeValue={timeValue}
@@ -511,26 +501,6 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
           </DialogContent>
         </Dialog>
 
-        {/* Add Option Dialog (desktop) */}
-        <Dialog open={showAddOptionSheet} onOpenChange={(open) => !open && setShowAddOptionSheet(false)}>
-          <DialogContent
-            hideCloseButton
-            zIndex="z-[10003]"
-            className="max-w-[400px] p-0 bg-white"
-            aria-describedby={undefined}
-          >
-            <VisuallyHidden.Root>
-              <DialogTitle>Add a poll option</DialogTitle>
-            </VisuallyHidden.Root>
-            <AddOptionContent
-              newOptionText={newOptionText}
-              setNewOptionText={setNewOptionText}
-              onAdd={handleAddOption}
-              onClose={() => setShowAddOptionSheet(false)}
-              showCloseButton
-            />
-          </DialogContent>
-        </Dialog>
       </>
     );
   }
@@ -543,7 +513,7 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
       shouldScaleBackground={false}
     >
       <DrawerContent
-        className="max-h-[90dvh] flex flex-col overflow-hidden bg-[#faf8f6]"
+        className="max-h-[90dvh] flex flex-col overflow-hidden overscroll-contain bg-[#faf8f6]"
         zIndex="z-[10002]"
       >
         <PollFormContent
@@ -552,7 +522,7 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
           options={options}
           updateOption={updateOption}
           removeOption={removeOption}
-          onAddOptionClick={() => setShowAddOptionSheet(true)}
+          addOption={addOption}
           dateValue={dateValue}
           setDateValue={setDateValue}
           timeValue={timeValue}
@@ -569,22 +539,6 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
           onClose={onClose}
         />
       </DrawerContent>
-
-      {/* Add Option Mini Sheet (mobile) */}
-      <Drawer
-        open={showAddOptionSheet}
-        onOpenChange={(open) => !open && setShowAddOptionSheet(false)}
-        shouldScaleBackground={false}
-      >
-        <DrawerContent className="bg-white" zIndex="z-[10003]">
-          <AddOptionContent
-            newOptionText={newOptionText}
-            setNewOptionText={setNewOptionText}
-            onAdd={handleAddOption}
-            onClose={() => setShowAddOptionSheet(false)}
-          />
-        </DrawerContent>
-      </Drawer>
     </Drawer>
   );
 }

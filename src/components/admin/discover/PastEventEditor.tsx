@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { DiscoverEvent } from '@/types/discover';
 import { Button } from '@/components/ui/button';
 import { InlineRecordingUpload } from '@/components/scheduling/InlineRecordingUpload';
@@ -233,7 +234,7 @@ export function PastEventEditor({
       case 'google_meet':
         return 'Google Meet';
       case 'stream':
-        return 'in-app call';
+        return 'app call';
       default:
         return 'video call';
     }
@@ -313,10 +314,17 @@ export function PastEventEditor({
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <AnimatePresence mode="wait">
                   {/* State 1: Has Recording - Show preview */}
                   {hasRecording && (
-                    <div className="space-y-3">
+                    <motion.div
+                      key="has-recording"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-3"
+                    >
                       <div className="flex items-center gap-3 p-3 bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
                         <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/30">
                           <Play className="w-5 h-5 text-violet-600 dark:text-violet-400" />
@@ -352,12 +360,19 @@ export function PastEventEditor({
                       >
                         Remove recording
                       </button>
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* State 2: Encoding - Show processing state */}
                   {isEncoding && (
-                    <div className="flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                    <motion.div
+                      key="encoding"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]"
+                    >
                       <Loader2 className="w-5 h-5 animate-spin text-violet-600 dark:text-violet-400" />
                       <div>
                         <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">
@@ -367,12 +382,19 @@ export function PastEventEditor({
                           This may take a few minutes
                         </p>
                       </div>
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* State 3: Waiting for recording (recent call) */}
                   {showWaitingState && !showLinkInput && (
-                    <div className="space-y-4">
+                    <motion.div
+                      key="waiting"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-4"
+                    >
                       <div className="flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-amber-200/50 dark:border-amber-800/30">
                         <div className="relative">
                           <ProviderIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
@@ -391,60 +413,67 @@ export function PastEventEditor({
                       </div>
 
                       {/* Manual options while waiting */}
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                           Can&apos;t wait? Add manually:
                         </p>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1">
-                            <InlineRecordingUpload
-                              eventId={event.id}
-                              onUploadComplete={handleUploadComplete}
-                              onRecordingUploaded={handleRecordingUploaded}
-                              variant="compact"
-                            />
-                          </div>
+                        <InlineRecordingUpload
+                          eventId={event.id}
+                          onUploadComplete={handleUploadComplete}
+                          onRecordingUploaded={handleRecordingUploaded}
+                          variant="default"
+                        />
+                        <div className="flex justify-center">
                           <button
                             onClick={() => setShowLinkInput(true)}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-xl font-albert font-medium text-sm hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
+                            className="inline-flex items-center gap-1.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
                           >
                             <LinkIcon className="w-4 h-4" />
                             Add from link
                           </button>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   )}
 
-                  {/* State 4: No recording, not waiting - Show upload + link options side by side */}
+                  {/* State 4: No recording, not waiting - Show upload + link below */}
                   {showUploadOptions && !showLinkInput && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <InlineRecordingUpload
-                            eventId={event.id}
-                            onUploadComplete={handleUploadComplete}
-                            onRecordingUploaded={handleRecordingUploaded}
-                            variant="compact"
-                          />
-                        </div>
+                    <motion.div
+                      key="upload-options"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-3"
+                    >
+                      <InlineRecordingUpload
+                        eventId={event.id}
+                        onUploadComplete={handleUploadComplete}
+                        onRecordingUploaded={handleRecordingUploaded}
+                        variant="default"
+                      />
+                      <div className="flex justify-center">
                         <button
                           onClick={() => setShowLinkInput(true)}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-xl font-albert font-medium text-sm hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
+                          className="inline-flex items-center gap-1.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
                         >
                           <LinkIcon className="w-4 h-4" />
                           Add from link
                         </button>
                       </div>
-                      <p className="text-xs text-center text-[#5f5a55] dark:text-[#b2b6c2]">
-                        Audio or video up to 500MB
-                      </p>
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* Link input expanded (for both waiting and non-waiting states) */}
                   {(showUploadOptions || showWaitingState) && showLinkInput && (
-                    <div className="space-y-3">
+                    <motion.div
+                      key="link-input"
+                      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                      className="space-y-3"
+                    >
                       <div className="relative">
                         <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a958f] dark:text-[#6b7280]" />
                         <input
@@ -504,16 +533,20 @@ export function PastEventEditor({
                           )}
                         </div>
                       )}
-                    </div>
+                    </motion.div>
                   )}
+                </AnimatePresence>
 
-                  {/* Error message */}
-                  {fetchError && (
-                    <p className="text-sm text-red-600 dark:text-red-400">
-                      {fetchError}
-                    </p>
-                  )}
-                </div>
+                {/* Error message */}
+                {fetchError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-sm text-red-600 dark:text-red-400 mt-3"
+                  >
+                    {fetchError}
+                  </motion.p>
+                )}
               </div>
 
               {/* Event Details */}

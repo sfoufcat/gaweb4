@@ -342,9 +342,9 @@ export function InlineRecordingUpload({
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:border-violet-300 dark:hover:border-violet-700 transition-all"
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="w-4 h-4 text-violet-500" />
             Upload Recording
           </button>
         </>
@@ -363,12 +363,12 @@ export function InlineRecordingUpload({
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:border-violet-300 dark:hover:border-violet-700 transition-all"
         >
-          <Upload className="w-4 h-4" />
+          <Upload className="w-4 h-4 text-violet-500" />
           Upload Recording
         </button>
-        <p className="text-xs text-center text-[#5f5a55] dark:text-[#b2b6c2]">
+        <p className="text-xs text-center text-[#9a958f] dark:text-[#6b7280]">
           Audio or video (max 500MB)
         </p>
       </div>

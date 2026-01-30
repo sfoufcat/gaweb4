@@ -257,6 +257,19 @@ async function fetchStreamRecording(
       });
     }
 
+    // Calculate time since event ended
+    const eventEndTime = event?.endDateTime
+      ? new Date(event.endDateTime).getTime()
+      : new Date(event?.startDateTime).getTime() + (event?.durationMinutes || 60) * 60 * 1000;
+    const timeSinceEnd = Math.round((Date.now() - eventEndTime) / 60000);
+
+    if (timeSinceEnd > 30) {
+      return NextResponse.json({
+        success: false,
+        message: 'No matching call found.'
+      });
+    }
+
     return NextResponse.json({
       success: false,
       message: 'No matching call found. Recording may not be ready yet - try again in a few minutes.'

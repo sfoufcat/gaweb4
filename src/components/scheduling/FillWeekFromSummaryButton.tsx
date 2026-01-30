@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Wand2, Loader2, AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react';
 
 type FillTarget = 'current' | 'next' | 'until_call';
@@ -11,7 +11,7 @@ interface FillWeekFromSummaryButtonProps {
   className?: string;
 }
 
-const FILL_OPTIONS: { value: FillTarget; label: string; description: string }[] = [
+const ALL_FILL_OPTIONS: { value: FillTarget; label: string; description: string }[] = [
   { value: 'until_call', label: 'Until next call', description: 'Fill days until the next scheduled call' },
   { value: 'current', label: 'Current week', description: 'Fill remaining days of this week' },
   { value: 'next', label: 'Next week', description: 'Fill all days of next week' },
@@ -31,7 +31,42 @@ export function FillWeekFromSummaryButton({
   const [state, setState] = useState<'idle' | 'selecting' | 'loading' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<{ daysUpdated: number; weeksUpdated: number }>();
+  const [hasNextCall, setHasNextCall] = useState<boolean | null>(null);
+
+  // Check if there's a next call for this program
+  useEffect(() => {
+    async function checkNextCall() {
+      try {
+        const response = await fetch(`/api/events/${eventId}/has-next-call`);
+        if (response.ok) {
+          const data = await response.json();
+          setHasNextCall(data.hasNextCall);
+        }
+      } catch {
+        // On error, assume no next call to be safe
+        setHasNextCall(false);
+      }
+    }
+    checkNextCall();
+  }, [eventId]);
+
+  // Filter options based on whether there's a next call
+  const fillOptions = useMemo(() => {
+    if (hasNextCall === false) {
+      return ALL_FILL_OPTIONS.filter(opt => opt.value !== 'until_call');
+    }
+    return ALL_FILL_OPTIONS;
+  }, [hasNextCall]);
+
+  // Default selection: until_call if available, otherwise current
   const [selectedTarget, setSelectedTarget] = useState<FillTarget>('until_call');
+
+  // Update default when options change
+  useEffect(() => {
+    if (hasNextCall === false && selectedTarget === 'until_call') {
+      setSelectedTarget('current');
+    }
+  }, [hasNextCall, selectedTarget]);
 
   const handleFill = async (target: FillTarget) => {
     setState('loading');
@@ -129,7 +164,7 @@ export function FillWeekFromSummaryButton({
           Fill tasks to:
         </p>
         <div className="space-y-2">
-          {FILL_OPTIONS.map((option) => (
+          {fillOptions.map((option) => (
             <button
               key={option.value}
               onClick={() => {
@@ -174,7 +209,7 @@ export function FillWeekFromSummaryButton({
   return (
     <button
       onClick={() => setState('selecting')}
-      className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors ${className}`}
+      className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand-accent/10 text-brand-accent rounded-xl font-albert font-medium text-sm hover:bg-brand-accent/20 transition-colors ${className}`}
     >
       <Wand2 className="w-4 h-4" />
       Fill Week from Summary

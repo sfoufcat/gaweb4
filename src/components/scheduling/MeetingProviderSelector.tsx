@@ -51,7 +51,7 @@ interface ProviderConfig {
 }
 
 const PROVIDERS: ProviderConfig[] = [
-  { id: 'in_app', label: 'In-App', icon: Phone },
+  { id: 'in_app', label: 'App', icon: Phone },
   { id: 'zoom', label: 'Zoom', logoUrl: ZOOM_LOGO_URL, requiresConnection: true },
   { id: 'google_meet', label: 'Meet', logoUrl: GOOGLE_MEET_LOGO_URL, requiresConnection: true },
   { id: 'manual', label: 'Link', icon: Link2 },
@@ -204,7 +204,7 @@ export function MeetingProviderSelector({
         <div className="p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-xl">
           <p className="text-sm text-blue-700 dark:text-blue-400 flex items-center gap-2">
             <Phone className="w-4 h-4" />
-            Audio call via Coachful app
+            Call via Coachful app
           </p>
         </div>
       );

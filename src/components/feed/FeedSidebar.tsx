@@ -2,9 +2,9 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 
-interface CompactPostPreview {
+export interface CompactPostPreview {
   id: string;
   authorId: string;
   text?: string;
@@ -33,6 +33,31 @@ const fetcher = async (url: string) => {
 export const SIDEBAR_BOOKMARKS_KEY = '/api/feed/bookmarks?limit=5';
 export const SIDEBAR_TRENDING_KEY = '/api/feed/trending?limit=5';
 export const SIDEBAR_PINNED_KEY = '/api/feed/pinned?limit=5';
+
+// Optimistic update helpers for instant sidebar updates
+export function optimisticallyAddBookmark(post: CompactPostPreview) {
+  console.log('[Sidebar] Adding bookmark optimistically:', post.id);
+  mutate(SIDEBAR_BOOKMARKS_KEY, (data: { posts: CompactPostPreview[] } | undefined) => {
+    console.log('[Sidebar] Current data:', data);
+    if (!data) return { posts: [post] };
+    // Avoid duplicates, add to front, limit to 5
+    const filtered = data.posts.filter(p => p.id !== post.id);
+    const newData = { posts: [post, ...filtered].slice(0, 5) };
+    console.log('[Sidebar] New data:', newData);
+    return newData;
+  }, { revalidate: false });
+}
+
+export function optimisticallyRemoveBookmark(postId: string) {
+  console.log('[Sidebar] Removing bookmark optimistically:', postId);
+  mutate(SIDEBAR_BOOKMARKS_KEY, (data: { posts: CompactPostPreview[] } | undefined) => {
+    console.log('[Sidebar] Current data:', data);
+    if (!data) return data;
+    const newData = { posts: data.posts.filter(p => p.id !== postId) };
+    console.log('[Sidebar] New data:', newData);
+    return newData;
+  }, { revalidate: false });
+}
 
 /**
  * FeedSidebar - Desktop right sidebar showing pinned, bookmarks and trending posts
