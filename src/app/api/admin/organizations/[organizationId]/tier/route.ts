@@ -70,21 +70,20 @@ export async function PATCH(
     let creditsAdded = 0;
     if (creditsToAdd && creditsToAdd > 0) {
       const { adminDb } = await import('@/lib/firebase-admin');
-      const minutesToAdd = creditsToAdd * 60; // 60 minutes per credit/call
 
       const orgRef = adminDb.collection('organizations').doc(organizationId);
       await adminDb.runTransaction(async (transaction) => {
         const orgDoc = await transaction.get(orgRef);
         const orgData = orgDoc.data() || {};
-        const currentPurchasedMinutes = orgData?.summaryCredits?.purchasedMinutes || 0;
+        const currentPurchasedCredits = orgData?.summaryCredits?.purchasedCredits || 0;
 
         transaction.set(orgRef, {
-          'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
+          'summaryCredits.purchasedCredits': currentPurchasedCredits + creditsToAdd,
         }, { merge: true });
       });
 
       creditsAdded = creditsToAdd;
-      console.log(`[ADMIN_ORG_TIER] Added ${creditsToAdd} credits (${minutesToAdd} minutes) to org ${organizationId}`);
+      console.log(`[ADMIN_ORG_TIER] Added ${creditsToAdd} credits to org ${organizationId}`);
     }
 
     return NextResponse.json({

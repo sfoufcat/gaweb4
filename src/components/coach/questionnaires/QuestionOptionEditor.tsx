@@ -139,7 +139,7 @@ function OptionItem({
           onUpdate({ label, value: value || option.value });
         }}
         placeholder="Option label"
-        className="flex-1 min-w-0 py-0.5 text-sm bg-transparent border-none outline-none font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+        className="flex-1 min-w-0 py-0.5 text-sm bg-transparent border-none outline-none font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
       />
 
       {/* Delete Button - X icon, always visible on mobile */}

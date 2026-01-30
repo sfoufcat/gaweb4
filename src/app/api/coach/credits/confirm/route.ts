@@ -87,7 +87,6 @@ export async function POST(request: NextRequest) {
     }
 
     const creditsToAdd = parseInt(credits, 10);
-    const minutesToAdd = creditsToAdd * 60; // 60 minutes per credit/call
 
     // Check if credits were already added (idempotency)
     // We'll use a simple check: store processedPaymentIntentIds in the org doc
@@ -110,22 +109,22 @@ export async function POST(request: NextRequest) {
 
       // Add credits
       const existingSummaryCredits = orgData?.summaryCredits;
-      const currentPurchasedMinutes = existingSummaryCredits?.purchasedMinutes || 0;
+      const currentPurchasedCredits = existingSummaryCredits?.purchasedCredits || 0;
 
       if (existingSummaryCredits) {
         // summaryCredits exists as nested object, use dot notation
         transaction.update(orgRef, {
-          'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
+          'summaryCredits.purchasedCredits': currentPurchasedCredits + creditsToAdd,
           processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntentId],
         });
       } else {
         // summaryCredits doesn't exist, create full nested object
         transaction.update(orgRef, {
           summaryCredits: {
-            allocatedMinutes: 0,
-            usedMinutes: 0,
-            purchasedMinutes: minutesToAdd,
-            usedPurchasedMinutes: 0,
+            allocatedCredits: 0,
+            usedCredits: 0,
+            purchasedCredits: creditsToAdd,
+            usedPurchasedCredits: 0,
           },
           processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntentId],
         });
@@ -143,7 +142,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`[CREDITS_CONFIRM_API] Added ${creditsToAdd} credits (${minutesToAdd} minutes) to org ${organizationId}`);
+    console.log(`[CREDITS_CONFIRM_API] Added ${creditsToAdd} credits to org ${organizationId}`);
 
     return NextResponse.json({
       success: true,

@@ -37,16 +37,69 @@ export interface QuestionnaireOption {
 }
 
 /**
- * Skip logic rule - conditionally skip to a question based on answer
+ * A single condition within a skip logic rule
  */
-export interface SkipLogicRule {
+export interface SkipLogicCondition {
   id: string;
+  /** Which question's answer to check (current question if omitted for backwards compat) */
+  questionId?: string;
   /** The condition to evaluate */
   conditionType: 'equals' | 'contains' | 'not_equals';
   /** The value to match against the answer */
   conditionValue: string;
+}
+
+/**
+ * Skip logic rule - conditionally skip to a question based on answer(s)
+ * Supports multiple conditions with AND/OR logic
+ */
+export interface SkipLogicRule {
+  id: string;
+  /** Multiple conditions to evaluate */
+  conditions: SkipLogicCondition[];
+  /** How to combine conditions: 'and' = all must match, 'or' = any must match */
+  operator: 'and' | 'or';
   /** Question ID to skip to, or null to skip to end/submit */
   skipToQuestionId: string | null;
+
+  // Legacy fields for backwards compatibility (pre-migration rules)
+  /** @deprecated Use conditions[0].conditionType */
+  conditionType?: 'equals' | 'contains' | 'not_equals';
+  /** @deprecated Use conditions[0].conditionValue */
+  conditionValue?: string;
+}
+
+/**
+ * Normalize a skip logic rule to ensure it has the new structure
+ * Converts legacy single-condition rules to the new multi-condition format
+ */
+export function normalizeSkipLogicRule(rule: SkipLogicRule, currentQuestionId: string): SkipLogicRule {
+  // Already has conditions array - return as-is
+  if (rule.conditions && rule.conditions.length > 0) {
+    return rule;
+  }
+
+  // Convert legacy format to new format
+  if (rule.conditionType && rule.conditionValue !== undefined) {
+    return {
+      id: rule.id,
+      conditions: [{
+        id: crypto.randomUUID(),
+        questionId: currentQuestionId,
+        conditionType: rule.conditionType,
+        conditionValue: rule.conditionValue,
+      }],
+      operator: 'and',
+      skipToQuestionId: rule.skipToQuestionId,
+    };
+  }
+
+  // Fallback: empty conditions
+  return {
+    ...rule,
+    conditions: [],
+    operator: rule.operator || 'and',
+  };
 }
 
 /**

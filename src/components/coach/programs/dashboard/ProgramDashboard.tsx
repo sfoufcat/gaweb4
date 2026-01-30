@@ -16,6 +16,7 @@ import { type DashboardViewContext } from './ClientCohortSelector';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { EventDetailPopup } from '@/components/scheduling/EventDetailPopup';
 import { FillWeekPreviewModal } from '@/components/scheduling/FillWeekPreviewModal';
+import { CallSummaryViewModal } from '../CallSummaryViewModal';
 import type { Program, ProgramEnrollment, ProgramCohort, ProgramHabitTemplate, TaskDistribution, UnifiedEvent, CallSummary } from '@/types';
 
 // API response types
@@ -157,12 +158,17 @@ export function ProgramDashboard({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [showEventDetailPopup, setShowEventDetailPopup] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
+  const [selectedEventHasSummary, setSelectedEventHasSummary] = useState<boolean | undefined>(undefined);
   const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | undefined>(undefined);
 
   // Fill week modal state
   const [fillWeekEventId, setFillWeekEventId] = useState<string | null>(null);
   const [fillWeekSummary, setFillWeekSummary] = useState<CallSummary | null>(null);
   const [isFetchingSummary, setIsFetchingSummary] = useState(false);
+
+  // Summary view modal state
+  const [viewingSummary, setViewingSummary] = useState<CallSummary | null>(null);
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
   // Sync viewContext when props change (header selector updates)
   React.useEffect(() => {
@@ -290,6 +296,8 @@ export function ProgramDashboard({
   const handlePastSessionClick = useCallback(async (item: PastSessionItem, clickPosition?: { x: number; y: number }) => {
     setSelectedEventId(item.eventId);
     setPopupPosition(clickPosition);
+    // Store hasSummary from the item (already verified by API)
+    setSelectedEventHasSummary(item.hasSummary);
 
     // Create minimal event from item data to show popup immediately
     const minimalEvent: UnifiedEvent = {
@@ -341,7 +349,25 @@ export function ProgramDashboard({
     }
   }, []);
 
-  // Enrich pastSessions with onClick, onSummaryGenerated, and onFillWeek handlers
+  // Handle view summary - fetch summary and open CallSummaryViewModal directly
+  const handleViewSummary = useCallback(async (eventId: string) => {
+    try {
+      const response = await fetch(`/api/coach/call-summaries/${eventId}`);
+      if (!response.ok) {
+        console.error('Failed to fetch summary');
+        return;
+      }
+      const data = await response.json();
+      if (data.summary) {
+        setViewingSummary(data.summary);
+        setIsSummaryModalOpen(true);
+      }
+    } catch (error) {
+      console.error('Failed to fetch summary:', error);
+    }
+  }, []);
+
+  // Enrich pastSessions with onClick, onSummaryGenerated, onFillWeek, and onViewSummary handlers
   const enrichPastSessions = useCallback((sessions?: PastSessionItem[]): PastSessionItem[] | undefined => {
     if (!sessions) return undefined;
     return sessions.map(item => ({
@@ -349,8 +375,9 @@ export function ProgramDashboard({
       onClick: (e: React.MouseEvent) => handlePastSessionClick(item, { x: e.clientX, y: e.clientY }),
       onSummaryGenerated: handleSummaryGenerated,
       onFillWeek: item.hasSummary ? () => handleFillWeek(item.eventId) : undefined,
+      onViewSummary: item.hasSummary ? () => handleViewSummary(item.eventId) : undefined,
     }));
-  }, [handlePastSessionClick, handleSummaryGenerated, handleFillWeek]);
+  }, [handlePastSessionClick, handleSummaryGenerated, handleFillWeek, handleViewSummary]);
 
   return (
     <div className={cn('space-y-6', className)}>
@@ -574,10 +601,12 @@ export function ProgramDashboard({
             setShowEventDetailPopup(false);
             setSelectedEvent(null);
             setSelectedEventId(null);
+            setSelectedEventHasSummary(undefined);
             setPopupPosition(undefined);
           }}
           isHost={true}
           position={popupPosition}
+          hasSummaryOverride={selectedEventHasSummary}
         />
       )}
 
@@ -600,6 +629,17 @@ export function ProgramDashboard({
           }}
         />
       )}
+
+      {/* Call Summary View Modal */}
+      <CallSummaryViewModal
+        summary={viewingSummary}
+        isOpen={isSummaryModalOpen}
+        onClose={() => {
+          setIsSummaryModalOpen(false);
+          setViewingSummary(null);
+        }}
+        entityName={viewContext.mode === 'client' ? viewContext.clientName : viewContext.mode === 'cohort' ? viewContext.cohortName : undefined}
+      />
     </div>
   );
 }

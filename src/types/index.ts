@@ -6151,10 +6151,10 @@ export interface SummarySettings {
  * SummaryCredits - Credits tracking for AI summaries
  */
 export interface SummaryCredits {
-  allocatedMinutes: number;          // From plan tier (1200, 3000, 6000) = calls × 60
-  usedMinutes: number;               // Minutes used this billing period
-  purchasedMinutes: number;          // Purchased credit packs (in minutes, never expire)
-  usedPurchasedMinutes: number;      // Purchased minutes used
+  allocatedCredits: number;          // From plan tier (20, 60, 150 per month)
+  usedCredits: number;               // Credits used this billing period
+  purchasedCredits: number;          // Purchased credit packs (never expire)
+  usedPurchasedCredits: number;      // Purchased credits used
   periodStart: string;               // ISO date
   periodEnd: string;                 // ISO date
 }
@@ -6180,12 +6180,12 @@ export const CREDIT_PACK_PRICING: Record<CreditPackType, number> = {
 
 /**
  * TIER_CALL_CREDITS - Monthly call credits per coach tier
- * Credits are in calls (1 call = 60 minutes)
+ * 1 credit = 1 AI summary generation
  */
 export const TIER_CALL_CREDITS: Record<CoachTier, number> = {
-  starter: 20,  // 20 calls/month = 1200 minutes
-  pro: 60,      // 60 calls/month = 3600 minutes
-  scale: 150,   // 150 calls/month = 9000 minutes
+  starter: 20,  // 20 credits/month
+  pro: 60,      // 60 credits/month
+  scale: 150,   // 150 credits/month
 };
 
 // ============================================================================

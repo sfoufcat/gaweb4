@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogScrollArea,
   DialogDescription,
 } from '@/components/ui/dialog';
 import {
@@ -18,6 +19,7 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
+  DrawerScrollArea,
 } from '@/components/ui/drawer';
 import { Switch } from '@/components/ui/switch';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -255,7 +257,7 @@ export function EnrollmentSettingsModal({
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[480px] bg-white dark:bg-[#171b22] border border-[#e8e5e1] dark:border-[#262b35]">
+        <DialogContent className="sm:max-w-[480px] max-h-[85vh] flex flex-col bg-white dark:bg-[#171b22] border border-[#e8e5e1] dark:border-[#262b35]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
               <Settings2 className="w-5 h-5" />
@@ -266,11 +268,11 @@ export function EnrollmentSettingsModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-2">
+          <DialogScrollArea className="py-2">
             {content}
-          </div>
+          </DialogScrollArea>
 
-          <DialogFooter className="flex-col gap-2 sm:flex-col">
+          <DialogFooter>
             {footer}
           </DialogFooter>
         </DialogContent>
@@ -281,7 +283,7 @@ export function EnrollmentSettingsModal({
   // Mobile: Drawer (slide up)
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh]">
+      <DrawerContent className="max-h-[90vh] flex flex-col">
         <DrawerHeader className="px-6 pt-2 pb-4 border-b border-[#e8e5e1] dark:border-[#262b35]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center">
@@ -297,10 +299,10 @@ export function EnrollmentSettingsModal({
             </div>
           </div>
         </DrawerHeader>
-        <div className="px-6 py-4 overflow-y-auto">
+        <DrawerScrollArea className="px-6 py-4">
           {content}
-        </div>
-        <DrawerFooter className="px-6 pb-6">
+        </DrawerScrollArea>
+        <DrawerFooter>
           {footer}
         </DrawerFooter>
       </DrawerContent>

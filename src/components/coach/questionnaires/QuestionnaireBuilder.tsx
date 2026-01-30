@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls, motion, AnimatePresence } from 'framer-motion';
-import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Send, X, CheckCircle2, BarChart3 } from 'lucide-react';
+import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Send, X, CheckCircle2, BarChart3, ImagePlus, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -43,6 +43,8 @@ export function QuestionnaireBuilder({
     questionnaire.allowMultipleResponses
   );
   const [programIds, setProgramIds] = useState<string[]>(questionnaire.programIds || []);
+  const [coverImageUrl, setCoverImageUrl] = useState(questionnaire.coverImageUrl || '');
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -75,9 +77,10 @@ export function QuestionnaireBuilder({
       JSON.stringify(questions) !== JSON.stringify(questionnaire.questions) ||
       isActive !== questionnaire.isActive ||
       allowMultipleResponses !== questionnaire.allowMultipleResponses ||
-      JSON.stringify(programIds) !== JSON.stringify(questionnaire.programIds || []);
+      JSON.stringify(programIds) !== JSON.stringify(questionnaire.programIds || []) ||
+      coverImageUrl !== (questionnaire.coverImageUrl || '');
     setHasUnsavedChanges(hasChanges);
-  }, [title, description, questions, isActive, allowMultipleResponses, programIds, questionnaire]);
+  }, [title, description, questions, isActive, allowMultipleResponses, programIds, coverImageUrl, questionnaire]);
 
   // Determine if this is a draft (not yet published)
   const isDraft = !isActive && !wasActiveOnLoad;
@@ -95,6 +98,7 @@ export function QuestionnaireBuilder({
         isActive: isPublishing ? true : isActive,
         allowMultipleResponses,
         programIds,
+        coverImageUrl: coverImageUrl || undefined,
       });
       if (isPublishing) {
         setIsActive(true);
@@ -158,6 +162,53 @@ export function QuestionnaireBuilder({
     } catch (error) {
       console.error('Failed to copy:', error);
     }
+  };
+
+  // Handle cover image upload
+  const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be less than 5MB');
+      return;
+    }
+
+    setUploadingCover(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'questionnaire-cover');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      setCoverImageUrl(data.url);
+    } catch (error) {
+      console.error('Failed to upload cover image:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  // Remove cover image
+  const handleRemoveCoverImage = () => {
+    setCoverImageUrl('');
   };
 
   return (
@@ -312,6 +363,10 @@ export function QuestionnaireBuilder({
           programIds={programIds}
           setProgramIds={setProgramIds}
           shareableLink={typeof window !== 'undefined' ? `${window.location.origin}/q/${questionnaire.slug}` : `/q/${questionnaire.slug}`}
+          coverImageUrl={coverImageUrl}
+          onCoverImageUpload={handleCoverImageUpload}
+          onRemoveCoverImage={handleRemoveCoverImage}
+          uploadingCover={uploadingCover}
         />
       )}
 
@@ -382,6 +437,61 @@ export function QuestionnaireBuilder({
         {isDesktop && (
           <div className="w-80 flex-shrink-0 sticky top-24 self-start bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
             <div className="p-5 space-y-5">
+              {/* Cover Image */}
+              <div>
+                <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+                  Cover Image
+                </h4>
+                {coverImageUrl ? (
+                  <div className="relative group rounded-xl overflow-hidden">
+                    <img
+                      src={coverImageUrl}
+                      alt="Cover"
+                      className="w-full h-32 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <label className="p-2 bg-white/90 rounded-lg cursor-pointer hover:bg-white transition-colors">
+                        <ImagePlus className="w-4 h-4 text-[#1a1a1a]" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCoverImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        onClick={handleRemoveCoverImage}
+                        className="p-2 bg-white/90 rounded-lg hover:bg-white transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl cursor-pointer hover:border-brand-accent hover:bg-brand-accent/5 transition-colors">
+                    {uploadingCover ? (
+                      <div className="w-6 h-6 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <ImagePlus className="w-6 h-6 text-[#5f5a55] dark:text-[#b2b6c2] mb-2" />
+                        <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          Add cover image
+                        </span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCoverImageUpload}
+                      className="hidden"
+                      disabled={uploadingCover}
+                    />
+                  </label>
+                )}
+              </div>
+
+              <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
+
               {/* Published toggle */}
               <div className="flex items-center justify-between">
                 <div>
@@ -487,6 +597,10 @@ function SettingsModal({
   programIds,
   setProgramIds,
   shareableLink,
+  coverImageUrl,
+  onCoverImageUpload,
+  onRemoveCoverImage,
+  uploadingCover,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -498,11 +612,15 @@ function SettingsModal({
   programIds: string[];
   setProgramIds: (value: string[]) => void;
   shareableLink: string;
+  coverImageUrl: string;
+  onCoverImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveCoverImage: () => void;
+  uploadingCover: boolean;
 }) {
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()} shouldScaleBackground={false}>
       <DrawerContent className="max-h-[85dvh]">
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
               Settings
@@ -516,6 +634,61 @@ function SettingsModal({
           </div>
 
           <div className="space-y-5">
+            {/* Cover Image */}
+            <div>
+              <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+                Cover Image
+              </h4>
+              {coverImageUrl ? (
+                <div className="relative group rounded-xl overflow-hidden">
+                  <img
+                    src={coverImageUrl}
+                    alt="Cover"
+                    className="w-full h-32 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <label className="p-2 bg-white/90 rounded-lg cursor-pointer hover:bg-white transition-colors">
+                      <ImagePlus className="w-4 h-4 text-[#1a1a1a]" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={onCoverImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      onClick={onRemoveCoverImage}
+                      className="p-2 bg-white/90 rounded-lg hover:bg-white transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl cursor-pointer hover:border-brand-accent hover:bg-brand-accent/5 transition-colors">
+                  {uploadingCover ? (
+                    <div className="w-6 h-6 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <ImagePlus className="w-6 h-6 text-[#5f5a55] dark:text-[#b2b6c2] mb-2" />
+                      <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        Add cover image
+                      </span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={onCoverImageUpload}
+                    className="hidden"
+                    disabled={uploadingCover}
+                  />
+                </label>
+              )}
+            </div>
+
+            <hr className="border-[#e1ddd8] dark:border-[#262b35]/50" />
+
             {/* Published toggle */}
             <div className="flex items-center justify-between">
               <div>
@@ -646,7 +819,7 @@ function QuestionItem({
         value={question}
         dragListener={false}
         dragControls={dragControls}
-        layout={enableLayoutAnimation}
+        layout={enableLayoutAnimation ? true : undefined}
         initial={enableLayoutAnimation ? { opacity: 0 } : false}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -694,14 +867,14 @@ function QuestionItem({
       value={question}
       dragListener={false}
       dragControls={dragControls}
-      layout={enableLayoutAnimation}
+      layout={enableLayoutAnimation ? true : undefined}
       initial={enableLayoutAnimation ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15, layout: { duration: 0.2 } }}
       className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40 shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
     >
-      <div className="p-4">
+      <div className="p-5">
         {/* Header with drag handle */}
         <div className="flex items-start gap-3">
           {/* Drag Handle */}

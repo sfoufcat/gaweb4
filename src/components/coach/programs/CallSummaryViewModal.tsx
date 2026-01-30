@@ -6,12 +6,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
+  DrawerFooter,
 } from '@/components/ui/drawer';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -270,22 +272,22 @@ export function CallSummaryViewModal({
                 </ul>
               </div>
             )}
-
-            {/* Fill Week from Summary Button */}
-            {summary.eventId && (
-              <FillWeekFromSummaryButton
-                eventId={summary.eventId}
-                summary={summary}
-                className="mt-2"
-              />
-            )}
           </div>
         );
+
+  // Fill Week button - rendered in footer
+  const fillWeekButton = summary?.eventId && (
+    <FillWeekFromSummaryButton
+      eventId={summary.eventId}
+      summary={summary}
+      className="w-full"
+    />
+  );
 
   if (isDesktop) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-brand-accent" />
@@ -293,7 +295,14 @@ export function CallSummaryViewModal({
             </DialogTitle>
             {headerMeta}
           </DialogHeader>
-          {summaryContent}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {summaryContent}
+          </div>
+          {fillWeekButton && (
+            <DialogFooter>
+              {fillWeekButton}
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     );
@@ -301,7 +310,7 @@ export function CallSummaryViewModal({
 
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="max-h-[85vh]">
+      <DrawerContent className="max-h-[85vh] flex flex-col">
         <DrawerHeader className="text-left">
           <DrawerTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-brand-accent" />
@@ -309,9 +318,14 @@ export function CallSummaryViewModal({
           </DrawerTitle>
           {headerMeta}
         </DrawerHeader>
-        <div className="px-4 pb-6 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4">
           {summaryContent}
         </div>
+        {fillWeekButton && (
+          <DrawerFooter>
+            {fillWeekButton}
+          </DrawerFooter>
+        )}
       </DrawerContent>
     </Drawer>
   );

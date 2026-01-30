@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
 
       if (paymentIntent.status === 'succeeded') {
         // Add credits immediately (don't rely solely on webhook)
-        const minutesToAdd = pack.credits * 60; // 60 minutes per credit/call
+        const creditsToAdd = pack.credits;
         try {
           const orgRef = adminDb.collection('organizations').doc(organizationId);
           await adminDb.runTransaction(async (transaction) => {
@@ -171,28 +171,28 @@ export async function POST(request: NextRequest) {
             }
 
             const existingSummaryCredits = orgData?.summaryCredits;
-            const currentPurchasedMinutes = existingSummaryCredits?.purchasedMinutes || 0;
+            const currentPurchasedCredits = existingSummaryCredits?.purchasedCredits || 0;
 
             if (existingSummaryCredits) {
               // summaryCredits exists as nested object, use dot notation
               transaction.update(orgRef, {
-                'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
+                'summaryCredits.purchasedCredits': currentPurchasedCredits + creditsToAdd,
                 processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntent.id],
               });
             } else {
               // summaryCredits doesn't exist, create full nested object
               transaction.update(orgRef, {
                 summaryCredits: {
-                  allocatedMinutes: 0,
-                  usedMinutes: 0,
-                  purchasedMinutes: minutesToAdd,
-                  usedPurchasedMinutes: 0,
+                  allocatedCredits: 0,
+                  usedCredits: 0,
+                  purchasedCredits: creditsToAdd,
+                  usedPurchasedCredits: 0,
                 },
                 processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntent.id],
               });
             }
           });
-          console.log(`[CREDITS_PURCHASE_API] Added ${pack.credits} credits (${minutesToAdd} minutes) to org ${organizationId}`);
+          console.log(`[CREDITS_PURCHASE_API] Added ${pack.credits} credits to org ${organizationId}`);
         } catch (creditError) {
           console.error('[CREDITS_PURCHASE_API] Error adding credits:', creditError);
           // Payment succeeded but credit addition failed - this is a critical error
@@ -287,32 +287,26 @@ export async function GET() {
     // Destructure with defaults for each field to handle partial objects
     const rawSummaryCredits = orgData?.summaryCredits || {};
     const summaryCredits = {
-      allocatedMinutes: rawSummaryCredits.allocatedMinutes ?? 0,
-      usedMinutes: rawSummaryCredits.usedMinutes ?? 0,
-      purchasedMinutes: rawSummaryCredits.purchasedMinutes ?? 0,
-      usedPurchasedMinutes: rawSummaryCredits.usedPurchasedMinutes ?? 0,
+      allocatedCredits: rawSummaryCredits.allocatedCredits ?? 0,
+      usedCredits: rawSummaryCredits.usedCredits ?? 0,
+      purchasedCredits: rawSummaryCredits.purchasedCredits ?? 0,
+      usedPurchasedCredits: rawSummaryCredits.usedPurchasedCredits ?? 0,
       periodStart: rawSummaryCredits.periodStart ?? null,
       periodEnd: rawSummaryCredits.periodEnd ?? null,
     };
 
-    // Calculate remaining credits (in calls, assuming 60 min per call)
-    const planRemainingMinutes = Math.max(0, summaryCredits.allocatedMinutes - summaryCredits.usedMinutes);
-    const purchasedRemainingMinutes = Math.max(0, summaryCredits.purchasedMinutes - summaryCredits.usedPurchasedMinutes);
-    const totalRemainingMinutes = planRemainingMinutes + purchasedRemainingMinutes;
-
-    // Convert to calls (60 min per call)
-    const planRemainingCalls = Math.floor(planRemainingMinutes / 60);
-    const purchasedRemainingCalls = Math.floor(purchasedRemainingMinutes / 60);
-    const totalRemainingCalls = Math.floor(totalRemainingMinutes / 60);
-    const planAllocatedCalls = Math.floor(summaryCredits.allocatedMinutes / 60);
+    // Calculate remaining credits
+    const planRemaining = Math.max(0, summaryCredits.allocatedCredits - summaryCredits.usedCredits);
+    const purchasedRemaining = Math.max(0, summaryCredits.purchasedCredits - summaryCredits.usedPurchasedCredits);
+    const totalRemaining = planRemaining + purchasedRemaining;
 
     return NextResponse.json({
       credits: {
-        planAllocated: planAllocatedCalls,
-        planUsed: Math.floor(summaryCredits.usedMinutes / 60),
-        planRemaining: planRemainingCalls,
-        purchasedRemaining: purchasedRemainingCalls,
-        totalRemaining: totalRemainingCalls,
+        planAllocated: summaryCredits.allocatedCredits,
+        planUsed: summaryCredits.usedCredits,
+        planRemaining: planRemaining,
+        purchasedRemaining: purchasedRemaining,
+        totalRemaining: totalRemaining,
         periodStart: summaryCredits.periodStart,
         periodEnd: summaryCredits.periodEnd,
       },

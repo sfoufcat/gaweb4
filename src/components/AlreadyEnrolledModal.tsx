@@ -149,7 +149,7 @@ export function AlreadyEnrolledModal({
           </p>
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-2 border-t-0">
+        <DialogFooter className="flex-col sm:flex-row gap-3">
           <Button
             variant="outline"
             onClick={onClose}

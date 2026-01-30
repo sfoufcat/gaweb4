@@ -562,26 +562,28 @@ function PreviewContent({
   const totalPrice = Math.max(0, subtotal - discountAmount);
   
   return (
-    <div className="flex flex-col">
-      {/* Preview Video - For video content with trailer */}
-      {content.type === 'video' && content.previewVideoUrl && (
-        <div className="px-5 sm:px-6 pb-4">
-          <div className="rounded-xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-            <VideoPlayer
-              src={content.previewVideoUrl}
-              poster={content.coverImageUrl}
-              autoPlay={false}
-              className="aspect-video"
-            />
+    <div className="flex flex-col h-full">
+      {/* Scrollable content area */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {/* Preview Video - For video content with trailer */}
+        {content.type === 'video' && content.previewVideoUrl && (
+          <div className="px-5 sm:px-6 pb-4">
+            <div className="rounded-xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+              <VideoPlayer
+                src={content.previewVideoUrl}
+                poster={content.coverImageUrl}
+                autoPlay={false}
+                className="aspect-video"
+              />
+            </div>
+            <p className="text-xs text-center text-text-muted mt-2">
+              Preview trailer
+            </p>
           </div>
-          <p className="text-xs text-center text-text-muted mt-2">
-            Preview trailer
-          </p>
-        </div>
-      )}
+        )}
 
-      {/* Content Preview */}
-      <div className="px-5 sm:px-6 pb-6">
+        {/* Content Preview */}
+        <div className="px-5 sm:px-6 pb-6">
         <div className="flex gap-5">
           {/* Cover Image or Icon */}
           <div className="flex-shrink-0">
@@ -678,9 +680,10 @@ function PreviewContent({
             <DiscountCodeInput discount={discount} />
           </div>
         )}
+        </div>
       </div>
 
-      {/* Price & CTA */}
+      {/* Price & CTA - Sticky footer */}
       <div className="border-t border-[#e8e4df] dark:border-[#262b35] bg-[#faf9f7] dark:bg-[#11141b] px-5 sm:px-6 py-5">
         {/* Show itemized pricing if bumps or discount are applied */}
         {(selectedBumpIds.length > 0 || discountAmount > 0) ? (
@@ -1024,7 +1027,7 @@ function SheetContent({
   const direction = step === 'preview' ? -1 : 1;
 
   return (
-    <div className="flex flex-col min-h-0">
+    <div className="flex flex-col min-h-0 flex-1">
       <AnimatePresence mode="wait" custom={direction}>
         {step === 'preview' && (
           <motion.div
@@ -1035,6 +1038,7 @@ function SheetContent({
             animate="center"
             exit="exit"
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            className="flex flex-col flex-1 min-h-0"
           >
             <PreviewContent
               content={content}
@@ -1391,24 +1395,24 @@ export function ContentPurchaseSheet({
               <DialogTitle>{content.title}</DialogTitle>
               <DialogDescription>Purchase this content</DialogDescription>
             </DialogHeader>
-            
-            <div className="pt-6 pb-2 flex-1 overflow-y-auto">
+
+            <div className="pt-6 pb-2 flex-1 flex flex-col min-h-0">
               {sheetContent}
             </div>
           </DialogContent>
         </Dialog>
     );
   }
-  
+
   // Mobile: Drawer
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[90vh]">
+        <DrawerContent className="max-h-[90vh] flex flex-col">
           <DrawerHeader className="sr-only">
             <DrawerTitle>{content.title}</DrawerTitle>
             <DrawerDescription>Purchase this content</DrawerDescription>
           </DrawerHeader>
-          <div className="pt-2 pb-6">
+          <div className="pt-2 pb-safe flex-1 flex flex-col min-h-0">
             {sheetContent}
           </div>
         </DrawerContent>

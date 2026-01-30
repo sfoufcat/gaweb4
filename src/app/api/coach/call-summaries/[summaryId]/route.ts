@@ -202,6 +202,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Summary not found' }, { status: 404 });
     }
 
+    // Get eventId from summary to clear reference on event
+    const summaryData = doc.data() as CallSummary;
+    const eventId = summaryData?.eventId;
+
     // Delete associated suggested tasks
     const suggestedTasksSnapshot = await adminDb
       .collection('organizations')
@@ -215,6 +219,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       batch.delete(taskDoc.ref);
     });
     batch.delete(summaryRef);
+
+    // Clear callSummaryId from event so dashboard/calendar don't show stale hasSummary
+    if (eventId) {
+      const eventRef = adminDb.collection('events').doc(eventId);
+      batch.update(eventRef, { callSummaryId: FieldValue.delete() });
+    }
 
     await batch.commit();
 

@@ -549,16 +549,6 @@ export function ProgramDetailView({
                   </div>
                 )}
                 
-                {/* Show call credits if available */}
-                {callCredits && callCredits.monthlyAllowance > 0 && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4 text-brand-accent" />
-                    <span className="text-text-secondary dark:text-[#b2b6c2]">
-                      {callCredits.creditsRemaining} of {callCredits.monthlyAllowance} calls remaining this month
-                    </span>
-                  </div>
-                )}
-                
                 {/* Request call button */}
                 <button
                   onClick={() => {

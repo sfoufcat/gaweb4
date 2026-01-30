@@ -588,8 +588,7 @@ async function handleCoachCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   // Allocate AI call summary credits based on tier
   const effectiveTier = (tier as CoachTier) || 'starter';
-  const callCredits = TIER_CALL_CREDITS[effectiveTier] || 20;
-  const allocatedMinutes = callCredits * 60; // Convert calls to minutes
+  const allocatedCredits = TIER_CALL_CREDITS[effectiveTier] || 20;
 
   // Set initial credits, preserving purchased credits
   const orgRef = adminDb.collection('organizations').doc(organizationId);
@@ -598,16 +597,16 @@ async function handleCoachCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   await orgRef.set({
     summaryCredits: {
-      allocatedMinutes,
-      usedMinutes: 0, // Reset plan usage at start of billing period
-      purchasedMinutes: existingCredits?.purchasedMinutes || 0, // Preserve purchased
-      usedPurchasedMinutes: existingCredits?.usedPurchasedMinutes || 0, // Preserve purchased usage
+      allocatedCredits,
+      usedCredits: 0, // Reset plan usage at start of billing period
+      purchasedCredits: existingCredits?.purchasedCredits || 0, // Preserve purchased
+      usedPurchasedCredits: existingCredits?.usedPurchasedCredits || 0, // Preserve purchased usage
       periodStart: now,
       periodEnd: currentPeriodEnd || null,
     },
   }, { merge: true });
 
-  console.log(`[STRIPE_WEBHOOK] Allocated ${callCredits} call credits (${allocatedMinutes} min) for org ${organizationId}`);
+  console.log(`[STRIPE_WEBHOOK] Allocated ${allocatedCredits} credits for org ${organizationId}`);
 
   // Update coach_onboarding status to 'active'
   const onboardingRef = adminDb.collection('coach_onboarding').doc(organizationId);
@@ -946,8 +945,7 @@ async function updateCoachPlatformSubscriptionStatus(subscription: Stripe.Subscr
   // Recalculate credits if tier changed
   const previousTier = existingData?.tier as CoachTier | undefined;
   if (tier && tier !== previousTier) {
-    const callCredits = TIER_CALL_CREDITS[tier] || 20;
-    const newAllocatedMinutes = callCredits * 60;
+    const newAllocatedCredits = TIER_CALL_CREDITS[tier] || 20;
 
     const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
     const existingCredits = orgDoc.data()?.summaryCredits;
@@ -955,11 +953,11 @@ async function updateCoachPlatformSubscriptionStatus(subscription: Stripe.Subscr
     await adminDb.collection('organizations').doc(organizationId).set({
       summaryCredits: {
         ...existingCredits,
-        allocatedMinutes: newAllocatedMinutes,
+        allocatedCredits: newAllocatedCredits,
       }
     }, { merge: true });
 
-    console.log(`[STRIPE_WEBHOOK] Updated credits for org ${organizationId}: tier changed ${previousTier} -> ${tier}, allocatedMinutes=${newAllocatedMinutes}`);
+    console.log(`[STRIPE_WEBHOOK] Updated credits for org ${organizationId}: tier changed ${previousTier} -> ${tier}, allocatedCredits=${newAllocatedCredits}`);
   }
 
   console.log(`[STRIPE_WEBHOOK] Updated coach platform subscription for org ${organizationId}: tier=${tier}, status=${status}, graceEndsAt=${graceEndsAt || 'none'}`);
@@ -1368,8 +1366,7 @@ async function handleSubscriptionRenewal(invoice: Stripe.Invoice) {
  */
 async function resetCreditsForOrg(orgId: string, tier: CoachTier, invoice: Stripe.Invoice) {
   const now = new Date().toISOString();
-  const callCredits = TIER_CALL_CREDITS[tier] || 20;
-  const allocatedMinutes = callCredits * 60;
+  const allocatedCredits = TIER_CALL_CREDITS[tier] || 20;
 
   // Calculate new period end
   const periodEnd = invoice.lines.data[0]?.period?.end
@@ -1384,16 +1381,16 @@ async function resetCreditsForOrg(orgId: string, tier: CoachTier, invoice: Strip
   // Reset plan credits, preserve purchased credits
   await orgRef.set({
     summaryCredits: {
-      allocatedMinutes,
-      usedMinutes: 0, // Reset plan usage
-      purchasedMinutes: existingCredits?.purchasedMinutes || 0,
-      usedPurchasedMinutes: existingCredits?.usedPurchasedMinutes || 0,
+      allocatedCredits,
+      usedCredits: 0, // Reset plan usage
+      purchasedCredits: existingCredits?.purchasedCredits || 0,
+      usedPurchasedCredits: existingCredits?.usedPurchasedCredits || 0,
       periodStart: now,
       periodEnd,
     },
   }, { merge: true });
 
-  console.log(`[STRIPE_WEBHOOK] Reset credits for org ${orgId}: ${callCredits} calls (${allocatedMinutes} min), tier: ${tier}`);
+  console.log(`[STRIPE_WEBHOOK] Reset credits for org ${orgId}: ${allocatedCredits} credits, tier: ${tier}`);
 }
 
 /**
@@ -2484,21 +2481,21 @@ async function handleCreditPurchaseCompleted(session: Stripe.Checkout.Session) {
 
       const orgData = orgDoc.data();
       const currentCredits = orgData?.summaryCredits || {
-        allocatedMinutes: 0,
-        usedMinutes: 0,
-        purchasedMinutes: 0,
-        usedPurchasedMinutes: 0,
+        allocatedCredits: 0,
+        usedCredits: 0,
+        purchasedCredits: 0,
+        usedPurchasedCredits: 0,
         periodStart: null,
         periodEnd: null,
       };
 
-      // Add to purchased minutes (never expire)
+      // Add to purchased credits (never expire)
       transaction.update(orgRef, {
-        'summaryCredits.purchasedMinutes': (currentCredits.purchasedMinutes || 0) + minutesToAdd,
+        'summaryCredits.purchasedCredits': (currentCredits.purchasedCredits || 0) + creditsToAdd,
       });
     });
 
-    console.log(`[STRIPE_WEBHOOK] Added ${creditsToAdd} credits (${minutesToAdd} minutes) to org ${organizationId}`);
+    console.log(`[STRIPE_WEBHOOK] Added ${creditsToAdd} credits to org ${organizationId}`);
   } catch (error) {
     console.error('[STRIPE_WEBHOOK] Error adding credits:', error);
   }
@@ -2525,8 +2522,6 @@ async function handleCreditPurchasePaymentSucceeded(paymentIntent: Stripe.Paymen
   }
 
   const creditsToAdd = parseInt(credits, 10);
-  // Convert credits (calls) to minutes (60 min per call)
-  const minutesToAdd = creditsToAdd * 60;
 
   console.log(`[STRIPE_WEBHOOK] Credit purchase PaymentIntent succeeded - org: ${organizationId}, pack: ${packSize}, credits: ${creditsToAdd}`);
 
@@ -2549,16 +2544,16 @@ async function handleCreditPurchasePaymentSucceeded(paymentIntent: Stripe.Paymen
         return;
       }
 
-      const currentPurchasedMinutes = orgData?.summaryCredits?.purchasedMinutes || 0;
+      const currentPurchasedCredits = orgData?.summaryCredits?.purchasedCredits || 0;
 
-      // Add to purchased minutes (never expire)
+      // Add to purchased credits (never expire)
       transaction.update(orgRef, {
-        'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
+        'summaryCredits.purchasedCredits': currentPurchasedCredits + creditsToAdd,
         processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntent.id], // Keep last 100
       });
     });
 
-    console.log(`[STRIPE_WEBHOOK] Added ${creditsToAdd} credits (${minutesToAdd} minutes) to org ${organizationId} via PaymentIntent`);
+    console.log(`[STRIPE_WEBHOOK] Added ${creditsToAdd} credits to org ${organizationId} via PaymentIntent`);
   } catch (error) {
     console.error('[STRIPE_WEBHOOK] Error adding credits from PaymentIntent:', error);
   }

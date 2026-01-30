@@ -60,6 +60,8 @@ interface EventDetailPopupProps {
   onEdit?: (event: UnifiedEvent) => void;
   /** Pre-fetched inline summary for display */
   inlineSummary?: CallSummary | null;
+  /** Override for hasSummary check (from parent that already verified) */
+  hasSummaryOverride?: boolean;
   /** Callback when recording is uploaded and summary is generated */
   onRecordingUploaded?: (eventId: string, summaryId: string) => void;
   /** Whether the org has video call credits (for showing warning on in-app calls) */
@@ -89,6 +91,7 @@ export function EventDetailPopup({
   isCancelling = false,
   onEdit,
   inlineSummary,
+  hasSummaryOverride,
   onRecordingUploaded,
   hasOrgCredits = true,
 }: EventDetailPopupProps) {
@@ -132,6 +135,32 @@ export function EventDetailPopup({
     return endTime < new Date();
   }, [event.startDateTime, event.endDateTime, event.durationMinutes]);
 
+  // Track verified summary existence: true = exists, false = deleted/missing, null = checking
+  const [summaryVerified, setSummaryVerified] = useState<boolean | null>(
+    hasSummaryOverride !== undefined ? hasSummaryOverride : null
+  );
+
+  useEffect(() => {
+    // If parent provided override, use it directly
+    if (hasSummaryOverride !== undefined) {
+      setSummaryVerified(hasSummaryOverride);
+      return;
+    }
+    // No callSummaryId = definitely no summary
+    if (!event.callSummaryId) {
+      setSummaryVerified(false);
+      return;
+    }
+    // Need to verify - reset to null (checking state)
+    if (!isOpen) return;
+    setSummaryVerified(null);
+
+    // Verify summary exists
+    fetch(`/api/coach/call-summaries/${event.callSummaryId}`)
+      .then(res => setSummaryVerified(res.ok))
+      .catch(() => setSummaryVerified(false));
+  }, [event.callSummaryId, isOpen, hasSummaryOverride]);
+
   // Computed states for action visibility
   // isConfirmed: true for scheduled events with schedulingStatus=confirmed OR regular events with status=confirmed (no schedulingStatus)
   const isConfirmed = event.schedulingStatus === 'confirmed' ||
@@ -139,7 +168,9 @@ export function EventDetailPopup({
   const isCanceled = event.status === 'canceled' || event.schedulingStatus === 'cancelled';
   const canReschedule = !isPastEvent && isConfirmed && !isCanceled && isHost;
   const canCancel = !isPastEvent && !isCanceled;
-  const hasSummary = !!event.callSummaryId;
+  // hasSummary: true only when verified, null while checking, false when confirmed missing
+  const hasSummary = summaryVerified === true;
+  const summaryCheckPending = summaryVerified === null && !!event.callSummaryId;
   const hasRecording = !!event.recordingUrl;
 
   // Save meeting link/provider
@@ -232,49 +263,53 @@ export function EventDetailPopup({
       return;
     }
 
-    const popupWidth = 384; // w-96 = 384px
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const padding = 20; // Minimum distance from viewport edges
+    const calculatePosition = () => {
+      const popupWidth = 384; // w-96 = 384px
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const padding = 20; // Minimum distance from viewport edges
 
-    // Use actual popup height if available, otherwise estimate
-    const actualHeight = popupRef.current?.offsetHeight || 400;
-    const maxPopupHeight = viewportHeight * 0.7;
-    const popupHeight = Math.min(actualHeight, maxPopupHeight);
+      // Use actual popup height if available, otherwise estimate
+      const actualHeight = popupRef.current?.offsetHeight || 400;
+      const maxPopupHeight = viewportHeight * 0.7;
+      const popupHeight = Math.min(actualHeight, maxPopupHeight);
 
-    // Horizontal positioning - center on click point
-    let left = position.x - (popupWidth / 2);
-    if (left + popupWidth > viewportWidth - padding) {
-      left = viewportWidth - popupWidth - padding;
-    }
-    if (left < padding) {
-      left = padding;
-    }
-
-    // Vertical positioning - prefer below click, but flip above if no space
-    const spaceBelow = viewportHeight - position.y - padding;
-    const spaceAbove = position.y - padding;
-
-    let top: number;
-    if (spaceBelow >= popupHeight) {
-      // Enough space below - position at click point
-      top = position.y;
-    } else if (spaceAbove >= popupHeight) {
-      // Flip to above - position so bottom of popup is at click point
-      top = position.y - popupHeight;
-    } else {
-      // Not enough space either way - use whichever has more space
-      if (spaceBelow >= spaceAbove) {
-        top = viewportHeight - popupHeight - padding;
-      } else {
-        top = padding;
+      // Horizontal positioning - center on click point
+      let left = position.x - (popupWidth / 2);
+      if (left + popupWidth > viewportWidth - padding) {
+        left = viewportWidth - popupWidth - padding;
       }
-    }
+      if (left < padding) {
+        left = padding;
+      }
 
-    // Final bounds check
-    top = Math.max(padding, Math.min(top, viewportHeight - popupHeight - padding));
+      // Vertical positioning - prefer below click, but flip above if no space
+      const spaceBelow = viewportHeight - position.y - padding;
+      const spaceAbove = position.y - padding;
 
-    setComputedPosition({ top, left });
+      let top: number;
+      if (spaceBelow >= popupHeight) {
+        // Enough space below - position at click point
+        top = position.y;
+      } else if (spaceAbove >= popupHeight) {
+        // Flip to above - position so bottom of popup is at click point
+        top = position.y - popupHeight;
+      } else {
+        // Not enough space either way - center popup vertically on screen
+        top = (viewportHeight - popupHeight) / 2;
+      }
+
+      // Final bounds check - ensure popup stays within viewport
+      top = Math.max(padding, Math.min(top, viewportHeight - popupHeight - padding));
+
+      setComputedPosition({ top, left });
+    };
+
+    // Calculate immediately and again after a frame to handle async content
+    calculatePosition();
+    const rafId = requestAnimationFrame(calculatePosition);
+
+    return () => cancelAnimationFrame(rafId);
   }, [isOpen, position, isDesktop]);
 
   // Close on escape key
@@ -655,6 +690,11 @@ export function EventDetailPopup({
                 />
               )}
 
+              {/* Skeleton while checking summary existence */}
+              {summaryCheckPending && isHost && (
+                <div className="w-full h-11 rounded-xl animate-skeleton-shimmer" />
+              )}
+
               {/* View Summary Button */}
               {hasSummary && onViewSummary && (
                 <button
@@ -678,7 +718,7 @@ export function EventDetailPopup({
               )}
 
               {/* Generate Summary Button (recording exists but no summary, host only) */}
-              {hasRecording && !hasSummary && isHost && (
+              {hasRecording && !hasSummary && !summaryCheckPending && isHost && (
                 <GenerateSummaryButton
                   eventId={event.id}
                   durationMinutes={event.durationMinutes || 60}
@@ -689,7 +729,7 @@ export function EventDetailPopup({
               )}
 
               {/* Upload Recording Option (host only, no recording and no summary) */}
-              {!hasRecording && !hasSummary && isHost && (
+              {!hasRecording && !hasSummary && !summaryCheckPending && isHost && (
                 <div className="space-y-2">
                   <InlineRecordingUpload
                     eventId={event.id}
@@ -720,7 +760,7 @@ export function EventDetailPopup({
               )}
 
               {/* No summary message (non-host only, no recording) */}
-              {!hasSummary && !hasRecording && !isHost && (
+              {!hasSummary && !summaryCheckPending && !hasRecording && !isHost && (
                 <div className="flex items-center justify-center gap-2 px-4 py-3 text-[#5f5a55] dark:text-[#b2b6c2] text-sm">
                   <FileText className="w-4 h-4" />
                   No summary available
@@ -728,7 +768,7 @@ export function EventDetailPopup({
               )}
 
               {/* Recording available message (non-host, has recording but no summary) */}
-              {hasRecording && !hasSummary && !isHost && (
+              {hasRecording && !hasSummary && !summaryCheckPending && !isHost && (
                 <div className="flex items-center justify-center gap-2 px-4 py-3 text-[#5f5a55] dark:text-[#b2b6c2] text-sm">
                   <FileText className="w-4 h-4" />
                   No summary available yet

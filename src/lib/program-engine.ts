@@ -1347,12 +1347,28 @@ export async function getInstanceDayTasks(
       );
 
       if (dayWithinWeek) {
-        // Return tasks from the instance day
-        const tasks = dayWithinWeek.tasks || [];
-        console.log(`[PROGRAM_ENGINE] Got ${tasks.length} tasks from program_instances for day ${dayIndex}`);
-        return { tasks: tasks as ProgramTaskTemplate[], found: true };
+        // Combine day-specific tasks + weeklyTasks (which apply to all days in the week)
+        const dayTasks = dayWithinWeek.tasks || [];
+        const weeklyTasks = week.weeklyTasks || [];
+        // Mark weeklyTasks as coming from week level
+        const weeklyTasksWithSource = weeklyTasks.map((t: ProgramTaskTemplate) => ({
+          ...t,
+          source: 'week' as const,
+        }));
+        const allTasks = [...dayTasks, ...weeklyTasksWithSource];
+        console.log(`[PROGRAM_ENGINE] Got ${allTasks.length} tasks from program_instances for day ${dayIndex} (${dayTasks.length} day + ${weeklyTasks.length} weekly)`);
+        return { tasks: allTasks as ProgramTaskTemplate[], found: true };
       } else {
-        // Week exists but day not found - return empty (no tasks for this day)
+        // Week exists but day not found - still return weeklyTasks if they exist
+        const weeklyTasks = week.weeklyTasks || [];
+        if (weeklyTasks.length > 0) {
+          const weeklyTasksWithSource = weeklyTasks.map((t: ProgramTaskTemplate) => ({
+            ...t,
+            source: 'week' as const,
+          }));
+          console.log(`[PROGRAM_ENGINE] Day ${dayIndex} not found, but returning ${weeklyTasks.length} weekly tasks`);
+          return { tasks: weeklyTasksWithSource as ProgramTaskTemplate[], found: true };
+        }
         console.log(`[PROGRAM_ENGINE] Day ${dayIndex} not found in week ${week.weekNumber}, returning empty tasks`);
         return { tasks: [], found: true };
       }

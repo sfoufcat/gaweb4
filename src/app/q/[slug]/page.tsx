@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import { QuestionnaireForm } from '@/components/questionnaire/QuestionnaireForm';
-import { Loader2, AlertCircle, CheckCircle2, Lock, Sparkles } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
 import type { Questionnaire, QuestionnaireAnswer } from '@/types/questionnaire';
 
 type PageState = 'loading' | 'form' | 'submitted' | 'error' | 'already_submitted' | 'auth_required';
@@ -165,7 +165,7 @@ export default function QuestionnairePage() {
             You have already submitted a response to this questionnaire. Thank you for your participation!
           </p>
           <motion.button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/')}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full h-14 bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-semibold text-base rounded-2xl border border-[#e8e4df] dark:border-[#262b35] hover:border-[#d1cdc8] dark:hover:border-[#363c48] shadow-sm transition-all"
@@ -229,7 +229,7 @@ export default function QuestionnairePage() {
               animate={{ scale: 1 }}
               transition={{ delay: 0.4, type: "spring", stiffness: 300 }}
             >
-              <Sparkles className="w-9 h-9 text-green-500" />
+              <CheckCircle2 className="w-9 h-9 text-green-500" />
             </motion.div>
           </motion.div>
           <motion.h1
@@ -252,7 +252,7 @@ export default function QuestionnairePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/')}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full h-14 bg-brand-accent hover:bg-brand-accent/90 text-white font-albert font-semibold text-base rounded-2xl shadow-lg shadow-brand-accent/20 transition-all"

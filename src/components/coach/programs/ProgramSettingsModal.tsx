@@ -9,6 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogScrollArea,
 } from '@/components/ui/dialog';
 import {
   Drawer,
@@ -16,6 +18,8 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerDescription,
+  DrawerFooter,
+  DrawerScrollArea,
 } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { TaskDistribution } from '@/types';
@@ -219,11 +223,21 @@ export function ProgramSettingsModal({
     return null;
   }
 
+  // Close button for footer
+  const closeButton = (
+    <button
+      onClick={onClose}
+      className="w-full py-3 rounded-xl bg-[#f3f1ef] dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-medium text-sm hover:bg-[#e8e4e0] dark:hover:bg-[#262b35] transition-colors"
+    >
+      Done
+    </button>
+  );
+
   // Desktop: Dialog
   if (isDesktop) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-2xl">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -241,9 +255,12 @@ export function ProgramSettingsModal({
               </div>
             </div>
           </DialogHeader>
-          <div className="p-6">
+          <DialogScrollArea className="p-6">
             {content}
-          </div>
+          </DialogScrollArea>
+          <DialogFooter>
+            {closeButton}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     );
@@ -252,7 +269,7 @@ export function ProgramSettingsModal({
   // Mobile: Drawer (slide up)
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="max-h-[85vh]">
+      <DrawerContent className="max-h-[90vh] flex flex-col">
         <DrawerHeader className="px-6 pt-2 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center">
@@ -268,9 +285,12 @@ export function ProgramSettingsModal({
             </div>
           </div>
         </DrawerHeader>
-        <div className="p-6 overflow-y-auto">
+        <DrawerScrollArea className="p-6">
           {content}
-        </div>
+        </DrawerScrollArea>
+        <DrawerFooter>
+          {closeButton}
+        </DrawerFooter>
       </DrawerContent>
     </Drawer>
   );

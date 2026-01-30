@@ -1,8 +1,8 @@
 /**
- * API Route: Organization Transcription Credits Check
+ * API Route: Organization Credits Check
  *
  * GET /api/scheduling/org-credits
- * Returns whether the organization has transcription credits available.
+ * Returns whether the organization has credits available.
  * Used to warn users before joining non-program calls.
  */
 
@@ -12,7 +12,7 @@ import { adminDb } from '@/lib/firebase-admin';
 
 interface OrgCreditsResponse {
   hasCredits: boolean;
-  remainingMinutes: number;
+  remainingCredits: number;
   purchaseUrl?: string;
 }
 
@@ -45,26 +45,26 @@ export async function GET() {
       // No credits configured
       return NextResponse.json({
         hasCredits: false,
-        remainingMinutes: 0,
+        remainingCredits: 0,
       } as OrgCreditsResponse);
     }
 
-    // Calculate remaining minutes
-    const allocatedMinutes = summaryCredits.allocatedMinutes ?? 0;
-    const usedMinutes = summaryCredits.usedMinutes ?? 0;
-    const purchasedMinutes = summaryCredits.purchasedMinutes ?? 0;
-    const usedPurchasedMinutes = summaryCredits.usedPurchasedMinutes ?? 0;
+    // Calculate remaining credits
+    const allocatedCredits = summaryCredits.allocatedCredits ?? 0;
+    const usedCredits = summaryCredits.usedCredits ?? 0;
+    const purchasedCredits = summaryCredits.purchasedCredits ?? 0;
+    const usedPurchasedCredits = summaryCredits.usedPurchasedCredits ?? 0;
 
     // Calculate remaining from plan allocation
-    const planRemaining = Math.max(0, allocatedMinutes - usedMinutes);
+    const planRemaining = Math.max(0, allocatedCredits - usedCredits);
     // Calculate remaining from purchased credits
-    const purchasedRemaining = Math.max(0, purchasedMinutes - usedPurchasedMinutes);
+    const purchasedRemaining = Math.max(0, purchasedCredits - usedPurchasedCredits);
     // Total remaining
     const totalRemaining = planRemaining + purchasedRemaining;
 
     const response: OrgCreditsResponse = {
       hasCredits: totalRemaining > 0,
-      remainingMinutes: totalRemaining,
+      remainingCredits: totalRemaining,
     };
 
     return NextResponse.json(response);

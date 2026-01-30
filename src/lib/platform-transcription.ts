@@ -295,42 +295,42 @@ export function calculateCreditsUsed(durationSeconds: number): number {
  */
 export async function checkCreditsAvailable(
   orgId: string,
-  requiredMinutes: number
-): Promise<{ available: boolean; remainingMinutes: number }> {
+  requiredCredits: number
+): Promise<{ available: boolean; remainingCredits: number }> {
   const orgDoc = await adminDb
     .collection('organizations')
     .doc(orgId)
     .get();
 
   if (!orgDoc.exists) {
-    return { available: false, remainingMinutes: 0 };
+    return { available: false, remainingCredits: 0 };
   }
 
   const data = orgDoc.data();
   const rawCredits = data?.summaryCredits;
 
   if (!rawCredits) {
-    return { available: false, remainingMinutes: 0 };
+    return { available: false, remainingCredits: 0 };
   }
 
   // Handle partial objects with defaults for each field
   const credits = {
-    allocatedMinutes: rawCredits.allocatedMinutes ?? 0,
-    usedMinutes: rawCredits.usedMinutes ?? 0,
-    purchasedMinutes: rawCredits.purchasedMinutes ?? 0,
-    usedPurchasedMinutes: rawCredits.usedPurchasedMinutes ?? 0,
+    allocatedCredits: rawCredits.allocatedCredits ?? 0,
+    usedCredits: rawCredits.usedCredits ?? 0,
+    purchasedCredits: rawCredits.purchasedCredits ?? 0,
+    usedPurchasedCredits: rawCredits.usedPurchasedCredits ?? 0,
   };
 
   // Calculate remaining from plan allocation
-  const planRemaining = credits.allocatedMinutes - credits.usedMinutes;
+  const planRemaining = credits.allocatedCredits - credits.usedCredits;
   // Calculate remaining from purchased credits
-  const purchasedRemaining = credits.purchasedMinutes - credits.usedPurchasedMinutes;
+  const purchasedRemaining = credits.purchasedCredits - credits.usedPurchasedCredits;
   // Total remaining
   const totalRemaining = planRemaining + purchasedRemaining;
 
   return {
-    available: totalRemaining >= requiredMinutes,
-    remainingMinutes: totalRemaining,
+    available: totalRemaining >= requiredCredits,
+    remainingCredits: totalRemaining,
   };
 }
 
@@ -340,7 +340,7 @@ export async function checkCreditsAvailable(
  */
 export async function deductCredits(
   orgId: string,
-  minutes: number
+  creditsToDeduct: number
 ): Promise<{ success: boolean; error?: string }> {
   const orgRef = adminDb.collection('organizations').doc(orgId);
 
@@ -360,26 +360,26 @@ export async function deductCredits(
 
       // Handle partial objects with defaults
       const credits = {
-        allocatedMinutes: rawCredits.allocatedMinutes ?? 0,
-        usedMinutes: rawCredits.usedMinutes ?? 0,
-        purchasedMinutes: rawCredits.purchasedMinutes ?? 0,
-        usedPurchasedMinutes: rawCredits.usedPurchasedMinutes ?? 0,
+        allocatedCredits: rawCredits.allocatedCredits ?? 0,
+        usedCredits: rawCredits.usedCredits ?? 0,
+        purchasedCredits: rawCredits.purchasedCredits ?? 0,
+        usedPurchasedCredits: rawCredits.usedPurchasedCredits ?? 0,
       };
 
       // Calculate how much plan credit is remaining
-      const planRemaining = Math.max(0, credits.allocatedMinutes - credits.usedMinutes);
+      const planRemaining = Math.max(0, credits.allocatedCredits - credits.usedCredits);
 
-      if (planRemaining >= minutes) {
+      if (planRemaining >= creditsToDeduct) {
         // Use plan credits only
         transaction.update(orgRef, {
-          'summaryCredits.usedMinutes': FieldValue.increment(minutes),
+          'summaryCredits.usedCredits': FieldValue.increment(creditsToDeduct),
         });
       } else {
         // Use all remaining plan credits + some purchased credits
-        const purchasedToUse = minutes - planRemaining;
+        const purchasedToUse = creditsToDeduct - planRemaining;
         transaction.update(orgRef, {
-          'summaryCredits.usedMinutes': credits.allocatedMinutes, // Max out plan
-          'summaryCredits.usedPurchasedMinutes': FieldValue.increment(purchasedToUse),
+          'summaryCredits.usedCredits': credits.allocatedCredits, // Max out plan
+          'summaryCredits.usedPurchasedCredits': FieldValue.increment(purchasedToUse),
         });
       }
     });
@@ -398,7 +398,7 @@ export async function deductCredits(
  */
 export async function refundCredits(
   orgId: string,
-  minutes: number
+  creditsToRefund: number
 ): Promise<{ success: boolean; error?: string }> {
   const orgRef = adminDb.collection('organizations').doc(orgId);
 
@@ -417,19 +417,19 @@ export async function refundCredits(
       }
 
       // Refund to purchased credits first (they were used second)
-      const usedPurchased = credits.usedPurchasedMinutes || 0;
+      const usedPurchased = credits.usedPurchasedCredits || 0;
 
-      if (usedPurchased >= minutes) {
+      if (usedPurchased >= creditsToRefund) {
         // Refund only to purchased credits
         transaction.update(orgRef, {
-          'summaryCredits.usedPurchasedMinutes': FieldValue.increment(-minutes),
+          'summaryCredits.usedPurchasedCredits': FieldValue.increment(-creditsToRefund),
         });
       } else {
         // Refund all purchased used + some plan credits
-        const planToRefund = minutes - usedPurchased;
+        const planToRefund = creditsToRefund - usedPurchased;
         transaction.update(orgRef, {
-          'summaryCredits.usedPurchasedMinutes': 0,
-          'summaryCredits.usedMinutes': FieldValue.increment(-planToRefund),
+          'summaryCredits.usedPurchasedCredits': 0,
+          'summaryCredits.usedCredits': FieldValue.increment(-planToRefund),
         });
       }
     });

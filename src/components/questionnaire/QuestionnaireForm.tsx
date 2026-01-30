@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Send, Loader2, ArrowRight } from 'lucide-react';
+import { ChevronLeft, Send, Loader2 } from 'lucide-react';
 import { QuestionRenderer } from './QuestionRenderer';
-import type { Questionnaire, QuestionnaireAnswer, QuestionnaireQuestion } from '@/types/questionnaire';
+import type { Questionnaire, QuestionnaireAnswer, QuestionnaireQuestion, SkipLogicRule, SkipLogicCondition } from '@/types/questionnaire';
+import { normalizeSkipLogicRule } from '@/types/questionnaire';
 
 interface QuestionnaireFormProps {
   questionnaire: Questionnaire;
@@ -16,8 +17,7 @@ interface QuestionnaireFormProps {
 interface Page {
   id: string;
   questions: QuestionnaireQuestion[];
-  isPageBreak: boolean; // If true, this is a page break transition screen
-  pageBreakQuestion?: QuestionnaireQuestion; // The page break question for transition screens
+  isPageBreak: boolean;
 }
 
 export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: QuestionnaireFormProps) {
@@ -30,6 +30,47 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
     return [...questionnaire.questions].sort((a, b) => a.order - b.order);
   }, [questionnaire.questions]);
 
+  // Evaluate a single condition against current answers
+  const evaluateCondition = useCallback((
+    condition: SkipLogicCondition,
+    questionId: string
+  ): boolean => {
+    const targetQuestionId = condition.questionId || questionId;
+    const answer = answers.get(targetQuestionId);
+    if (!answer) return false;
+
+    const answerValue = String(answer.value);
+
+    switch (condition.conditionType) {
+      case 'equals':
+        return answerValue === condition.conditionValue;
+      case 'not_equals':
+        return answerValue !== condition.conditionValue;
+      case 'contains':
+        return answerValue.includes(condition.conditionValue);
+      default:
+        return false;
+    }
+  }, [answers]);
+
+  // Evaluate a skip logic rule (handles both old and new formats)
+  const evaluateRule = useCallback((
+    rule: SkipLogicRule,
+    questionId: string
+  ): boolean => {
+    // Normalize rule to new format
+    const normalizedRule = normalizeSkipLogicRule(rule, questionId);
+
+    if (normalizedRule.conditions.length === 0) return false;
+
+    // Apply AND/OR logic
+    if (normalizedRule.operator === 'and') {
+      return normalizedRule.conditions.every(c => evaluateCondition(c, questionId));
+    } else {
+      return normalizedRule.conditions.some(c => evaluateCondition(c, questionId));
+    }
+  }, [evaluateCondition]);
+
   // Get visible questions based on skip logic (includes page breaks and info steps)
   const visibleQuestions = useMemo(() => {
     const visible: QuestionnaireQuestion[] = [];
@@ -40,27 +81,8 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
 
       for (const prevQuestion of visible) {
         if (prevQuestion.skipLogic && prevQuestion.skipLogic.length > 0) {
-          const answer = answers.get(prevQuestion.id);
-
           for (const rule of prevQuestion.skipLogic) {
-            // Check if rule condition is met
-            let conditionMet = false;
-
-            if (answer) {
-              const answerValue = String(answer.value);
-
-              switch (rule.conditionType) {
-                case 'equals':
-                  conditionMet = answerValue === rule.conditionValue;
-                  break;
-                case 'not_equals':
-                  conditionMet = answerValue !== rule.conditionValue;
-                  break;
-                case 'contains':
-                  conditionMet = answerValue.includes(rule.conditionValue);
-                  break;
-              }
-            }
+            const conditionMet = evaluateRule(rule, prevQuestion.id);
 
             // If condition is met and this question should be skipped
             if (conditionMet && rule.skipToQuestionId) {
@@ -85,9 +107,10 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
     }
 
     return visible;
-  }, [sortedQuestions, answers]);
+  }, [sortedQuestions, evaluateRule]);
 
   // Group questions into pages (split by page_break)
+  // Page breaks simply separate questions - no transition screens
   const pages = useMemo(() => {
     const result: Page[] = [];
     let currentQuestions: QuestionnaireQuestion[] = [];
@@ -103,13 +126,7 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
           });
           currentQuestions = [];
         }
-        // Add page break transition screen
-        result.push({
-          id: `pagebreak-${question.id}`,
-          questions: [],
-          isPageBreak: true,
-          pageBreakQuestion: question,
-        });
+        // Page breaks don't create their own page - they just separate content
       } else {
         currentQuestions.push(question);
       }
@@ -307,20 +324,54 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
   }, [actualQuestions, answers, pages, onSubmit]);
 
   // Handle keyboard navigation (only for single-question pages)
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Don't auto-advance on Enter for pages with multiple questions
-    if (currentPage && !currentPage.isPageBreak && currentPage.questions.length > 1) {
-      return;
-    }
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      goToNext();
-    }
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle if user is typing in an input/textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+      // Don't auto-advance on Enter for pages with multiple questions
+      if (currentPage && !currentPage.isPageBreak && currentPage.questions.length > 1) {
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        goToNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goToNext, currentPage]);
 
   // Check if current page is only info steps (no actual questions)
   const isPageOnlyInfoSteps = currentPage && !currentPage.isPageBreak &&
     currentPage.questions.every(q => q.type === 'info');
+
+  // Check if current page has all required questions answered
+  const canProceed = useMemo(() => {
+    if (!currentPage || currentPage.isPageBreak || isPageOnlyInfoSteps) return true;
+
+    for (const question of currentPage.questions) {
+      // Skip info steps - they don't require answers
+      if (question.type === 'info') continue;
+
+      if (question.required) {
+        const answer = answers.get(question.id);
+        if (!answer || answer.value === undefined || answer.value === null) {
+          return false;
+        }
+        if (typeof answer.value === 'string' && answer.value.trim() === '') {
+          return false;
+        }
+        if (Array.isArray(answer.value) && answer.value.length === 0) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }, [currentPage, isPageOnlyInfoSteps, answers]);
 
   // Button text logic
   const getButtonText = () => {
@@ -331,14 +382,12 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
   };
 
   return (
-    <div
-      className="min-h-[100dvh] bg-[#faf9f7] dark:bg-[#0f1218]"
-      onKeyDown={handleKeyDown}
-    >
-      {/* Segmented progress bar - Tally style */}
-      <div className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 pt-4">
-        <div className="max-w-xl mx-auto">
-          <div className="flex gap-1">
+    <div className="min-h-screen">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Progress bar and counter */}
+        <div className="pt-4 pb-2">
+          {/* Segmented progress bar */}
+          <div className="flex gap-1 mb-4">
             {pages.map((page, index) => (
               <div
                 key={page.id}
@@ -353,79 +402,65 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
               </div>
             ))}
           </div>
-        </div>
-      </div>
 
-      {/* Question counter */}
-      <div className="fixed top-8 left-0 right-0 z-40 px-4 sm:px-6">
-        <div className="max-w-xl mx-auto flex items-center justify-between">
-          <p className="text-xs font-medium text-[#8a857f] dark:text-[#6b7280] font-albert tracking-wide uppercase">
-            {actualQuestions.length > 0 ? (
-              <>Question {Math.min(currentQuestionNumber, actualQuestions.length)} of {actualQuestions.length}</>
-            ) : (
-              <>Step {currentPageIndex + 1} of {pages.length}</>
-            )}
-          </p>
-          {!isFirstPage && (
-            <button
-              onClick={goToPrevious}
-              disabled={submitting}
-              className="flex items-center gap-1 text-xs font-medium text-[#8a857f] dark:text-[#6b7280] hover:text-[#5f5a55] dark:hover:text-[#9ca3af] transition-colors font-albert"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              Back
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Main content area - centered */}
-      <main className="min-h-[100dvh] flex flex-col justify-center px-4 sm:px-6 py-24">
-        <div className="w-full max-w-xl mx-auto">
-          <AnimatePresence mode="wait">
-            {currentPage?.isPageBreak ? (
-              // Page Break Transition Screen
-              <motion.div
-                key={currentPage.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-                className="text-center py-12"
+          {/* Back button and question counter */}
+          <div className="flex items-center justify-between">
+            {!isFirstPage ? (
+              <button
+                onClick={goToPrevious}
+                disabled={submitting}
+                className="flex items-center gap-1 text-xs font-medium text-[#8a857f] dark:text-[#6b7280] hover:text-[#5f5a55] dark:hover:text-[#9ca3af] transition-colors font-albert"
               >
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.1, duration: 0.4 }}
-                  className="space-y-6"
-                >
-                  {currentPage.pageBreakQuestion?.title && (
-                    <h2 className="text-3xl sm:text-4xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert leading-tight">
-                      {currentPage.pageBreakQuestion.title}
-                    </h2>
-                  )}
-                  {currentPage.pageBreakQuestion?.description && (
-                    <p className="text-lg text-[#5f5a55] dark:text-[#9ca3af] font-albert max-w-md mx-auto leading-relaxed">
-                      {currentPage.pageBreakQuestion.description}
-                    </p>
-                  )}
-                  {!currentPage.pageBreakQuestion?.title && !currentPage.pageBreakQuestion?.description && (
-                    <div className="space-y-4">
-                      <motion.div
-                        className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex items-center justify-center"
-                        animate={{ scale: [1, 1.05, 1] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                      >
-                        <ArrowRight className="w-7 h-7 text-brand-accent" />
-                      </motion.div>
-                      <p className="text-lg text-[#5f5a55] dark:text-[#9ca3af] font-albert">
-                        Ready for the next section?
-                      </p>
-                    </div>
-                  )}
-                </motion.div>
-              </motion.div>
-            ) : currentPage && currentPage.questions.length > 0 ? (
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Back
+              </button>
+            ) : (
+              <div />
+            )}
+            <p className="text-xs font-medium text-[#8a857f] dark:text-[#6b7280] font-albert tracking-wide uppercase">
+              {actualQuestions.length > 0 ? (
+                <>Question {Math.min(currentQuestionNumber, actualQuestions.length)} of {actualQuestions.length}</>
+              ) : (
+                <>Step {currentPageIndex + 1} of {pages.length}</>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* Main content area */}
+        <div className="py-8">
+          {/* Title, description, and cover image - shown on first page */}
+          {isFirstPage && (questionnaire.title || questionnaire.description || questionnaire.coverImageUrl) && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="mb-8 text-center"
+            >
+              {questionnaire.coverImageUrl && (
+                <div className="mb-6 rounded-2xl overflow-hidden">
+                  <img
+                    src={questionnaire.coverImageUrl}
+                    alt=""
+                    className="w-full h-40 sm:h-48 object-cover"
+                  />
+                </div>
+              )}
+              {questionnaire.title && (
+                <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  {questionnaire.title}
+                </h1>
+              )}
+              {questionnaire.description && (
+                <p className="mt-3 text-sm sm:text-base text-[#6b6560] dark:text-[#9ca3af] font-albert leading-relaxed">
+                  {questionnaire.description}
+                </p>
+              )}
+            </motion.div>
+          )}
+
+          <AnimatePresence mode="wait">
+            {currentPage && currentPage.questions.length > 0 ? (
               // Page with questions
               <motion.div
                 key={currentPage.id}
@@ -449,17 +484,15 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
             ) : null}
           </AnimatePresence>
         </div>
-      </main>
 
-      {/* Footer with action button - fixed at bottom, centered */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 sm:px-6 pb-6 pt-4 bg-gradient-to-t from-[#faf9f7] via-[#faf9f7] to-transparent dark:from-[#0f1218] dark:via-[#0f1218]">
-        <div className="max-w-xl mx-auto">
+        {/* Footer with action button */}
+        <div className="pt-4 pb-8">
           <motion.button
             onClick={goToNext}
-            disabled={submitting}
-            whileHover={{ scale: submitting ? 1 : 1.01 }}
-            whileTap={{ scale: submitting ? 1 : 0.98 }}
-            className="w-full h-14 bg-brand-accent hover:bg-brand-accent/90 disabled:opacity-70 disabled:cursor-not-allowed text-white font-albert font-semibold text-base rounded-2xl shadow-lg shadow-brand-accent/20 hover:shadow-xl hover:shadow-brand-accent/25 transition-all flex items-center justify-center gap-2"
+            disabled={submitting || !canProceed}
+            whileHover={{ scale: submitting || !canProceed ? 1 : 1.01 }}
+            whileTap={{ scale: submitting || !canProceed ? 1 : 0.98 }}
+            className="w-full h-14 bg-brand-accent hover:bg-brand-accent/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-albert font-semibold text-base rounded-2xl shadow-lg shadow-brand-accent/20 hover:shadow-xl hover:shadow-brand-accent/25 transition-all flex items-center justify-center gap-2"
           >
             {submitting ? (
               <>
@@ -477,7 +510,7 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
           </motion.button>
 
           {/* Keyboard hint on desktop */}
-          {!currentPage?.isPageBreak && currentPage?.questions.length === 1 && (
+          {canProceed && !currentPage?.isPageBreak && currentPage?.questions.length === 1 && (
             <p className="hidden sm:block text-center text-xs text-[#a3a09b] dark:text-[#4b5563] font-albert mt-3">
               Press <kbd className="px-1.5 py-0.5 bg-[#e8e4df] dark:bg-[#1e232d] rounded text-[#5f5a55] dark:text-[#9ca3af]">Enter</kbd> to continue
             </p>

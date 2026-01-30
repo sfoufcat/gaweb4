@@ -24,19 +24,36 @@ export async function POST(
     const body = await request.json();
     const { fillTarget = 'until_call' } = body as { fillTarget?: 'current' | 'next' | 'until_call' };
 
-    // Get the event
-    const eventDoc = await adminDb
-      .collection('organizations')
-      .doc(orgId)
-      .collection('events')
-      .doc(eventId)
-      .get();
+    // Try org-scoped events first, then global events
+    let event: UnifiedEvent | null = null;
 
-    if (!eventDoc.exists) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    if (orgId) {
+      const orgEventDoc = await adminDb
+        .collection('organizations')
+        .doc(orgId)
+        .collection('events')
+        .doc(eventId)
+        .get();
+
+      if (orgEventDoc.exists) {
+        event = { id: orgEventDoc.id, ...orgEventDoc.data() } as UnifiedEvent;
+      }
     }
 
-    const event = { id: eventDoc.id, ...eventDoc.data() } as UnifiedEvent;
+    if (!event) {
+      const globalEventDoc = await adminDb
+        .collection('events')
+        .doc(eventId)
+        .get();
+
+      if (globalEventDoc.exists) {
+        event = { id: globalEventDoc.id, ...globalEventDoc.data() } as UnifiedEvent;
+      }
+    }
+
+    if (!event) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
 
     // Validate event has summary
     if (!event.callSummaryId) {

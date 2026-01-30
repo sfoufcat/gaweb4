@@ -291,7 +291,7 @@ export function SessionCard({
                 "flex items-center justify-center w-8 h-8 rounded-lg transition-all",
                 "bg-brand-accent/10 dark:bg-brand-accent/20 hover:bg-brand-accent/20 dark:hover:bg-brand-accent/30",
                 "md:w-auto md:px-3 md:py-1.5 md:gap-1.5",
-                "border border-brand-accent/20 dark:border-brand-accent/30",
+                "md:border md:border-brand-accent/20 md:dark:border-brand-accent/30",
                 isGeneratingSummary && "opacity-70"
               )}
               title="Generate summary (1 credit)"
@@ -299,7 +299,13 @@ export function SessionCard({
               {isGeneratingSummary ? (
                 <Loader2 className="w-4 h-4 text-brand-accent animate-spin" />
               ) : (
-                <Sparkles className="w-4 h-4 text-brand-accent" />
+                <>
+                  <span className="relative md:hidden">
+                    <FileText className="w-4 h-4 text-brand-accent" />
+                    <Sparkles className="w-2.5 h-2.5 text-brand-accent absolute -top-1 -right-1.5" />
+                  </span>
+                  <Sparkles className="w-4 h-4 text-brand-accent hidden md:block" />
+                </>
               )}
               <span className="hidden md:inline text-xs font-medium text-brand-accent whitespace-nowrap">
                 Get Summary
@@ -497,11 +503,10 @@ export function SessionCard({
       <SummaryConfirmationModal
         isOpen={showSummaryConfirm}
         onClose={() => setShowSummaryConfirm(false)}
-        onConfirm={async () => {
-          await handleGenerateSummary();
+        onConfirm={() => {
           setShowSummaryConfirm(false);
+          handleGenerateSummary();
         }}
-        isLoading={isGeneratingSummary}
       />
     </div>
   );

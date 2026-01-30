@@ -78,11 +78,28 @@ const DrawerFooter = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn('mt-auto flex flex-col gap-2 p-4', className)}
+    className={cn(
+      'relative flex-shrink-0 flex flex-col gap-2 px-4 pt-4 pb-7 border-t border-[#b8b3ad] dark:border-[#4a5060]',
+      // Blur gradient starting from divider going up
+      'before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-gradient-to-t before:from-white before:to-transparent before:dark:from-[#171b22] before:pointer-events-none',
+      className
+    )}
     {...props}
   />
 );
 DrawerFooter.displayName = 'DrawerFooter';
+
+// Scroll area with bottom padding for blur leeway
+const DrawerScrollArea = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn('flex-1 min-h-0 overflow-y-auto pb-8', className)}
+    {...props}
+  />
+);
+DrawerScrollArea.displayName = 'DrawerScrollArea';
 
 const DrawerTitle = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Title>,
@@ -120,6 +137,7 @@ export {
   DrawerContent,
   DrawerHeader,
   DrawerFooter,
+  DrawerScrollArea,
   DrawerTitle,
   DrawerDescription,
 };

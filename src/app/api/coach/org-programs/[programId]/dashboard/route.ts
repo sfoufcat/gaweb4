@@ -944,6 +944,10 @@ export async function GET(
 
       const pastEventsSnapshot = await pastEventsQuery.get();
 
+      // Collect all callSummaryIds to verify they exist
+      const summaryIdsToCheck: string[] = [];
+      const eventsWithSummaryId: Array<{ doc: FirebaseFirestore.QueryDocumentSnapshot; data: FirebaseFirestore.DocumentData }> = [];
+
       for (const doc of pastEventsSnapshot.docs) {
         const data = doc.data();
         // Skip cancelled events
@@ -955,13 +959,34 @@ export async function GET(
         if (cohortId && data.cohortId && data.cohortId !== cohortId) {
           continue;
         }
+        eventsWithSummaryId.push({ doc, data });
+        if (data.callSummaryId) {
+          summaryIdsToCheck.push(data.callSummaryId);
+        }
+      }
+
+      // Batch verify which summaries actually exist (stored under organizations/{orgId}/call_summaries)
+      const existingSummaryIds = new Set<string>();
+      if (summaryIdsToCheck.length > 0) {
+        const summaryRefs = summaryIdsToCheck.map(id =>
+          adminDb.collection('organizations').doc(organizationId).collection('call_summaries').doc(id)
+        );
+        const summaryDocs = await adminDb.getAll(...summaryRefs);
+        summaryDocs.forEach((doc, idx) => {
+          if (doc.exists) {
+            existingSummaryIds.add(summaryIdsToCheck[idx]);
+          }
+        });
+      }
+
+      for (const { doc, data } of eventsWithSummaryId) {
         pastSessions.push({
           id: doc.id,
           title: data.title || 'Program Session',
           date: data.startDateTime,
           coverImageUrl: data.coverImageUrl,
           hasRecording: !!data.recordingUrl,
-          hasSummary: !!data.callSummaryId,
+          hasSummary: !!(data.callSummaryId && existingSummaryIds.has(data.callSummaryId)),
           eventId: doc.id,
           eventType: data.eventType || 'community_event',
         });

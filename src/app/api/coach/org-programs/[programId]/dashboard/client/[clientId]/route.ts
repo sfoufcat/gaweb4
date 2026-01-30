@@ -482,18 +482,6 @@ export async function GET(
     // Get upcoming items (simplified)
     const upcoming: UpcomingItem[] = [];
 
-    // Add week unlock if not at last week
-    if (currentWeek < totalWeeks) {
-      const nextWeekStart = new Date(startedAt);
-      nextWeekStart.setDate(nextWeekStart.getDate() + currentWeek * 7);
-
-      upcoming.push({
-        type: 'week_unlock',
-        title: `Week ${currentWeek + 1} unlocks`,
-        date: nextWeekStart.toISOString(),
-      });
-    }
-
     // Get past sessions for this client
     const pastSessions: PastSessionItem[] = [];
     try {
@@ -521,6 +509,10 @@ export async function GET(
       const seenIds = new Set<string>();
       const allDocs = [...attendeeEventsSnapshot.docs, ...clientEventsSnapshot.docs];
 
+      // Collect events and their callSummaryIds
+      const eventsToProcess: Array<{ doc: FirebaseFirestore.QueryDocumentSnapshot; data: FirebaseFirestore.DocumentData }> = [];
+      const summaryIdsToCheck: string[] = [];
+
       for (const doc of allDocs) {
         if (seenIds.has(doc.id)) continue;
         seenIds.add(doc.id);
@@ -528,17 +520,38 @@ export async function GET(
         const data = doc.data();
         // Filter to only include events related to this program (coaching calls)
         if (data.eventType === 'coaching_1on1' || data.programId === programId || (data.programIds && data.programIds.includes(programId))) {
-          pastSessions.push({
-            id: doc.id,
-            title: data.title || 'Coaching Call',
-            date: data.startDateTime,
-            coverImageUrl: data.coverImageUrl,
-            hasRecording: !!data.recordingUrl,
-            hasSummary: !!data.callSummaryId,
-            eventId: doc.id,
-            eventType: data.eventType || 'coaching_1on1',
-          });
+          eventsToProcess.push({ doc, data });
+          if (data.callSummaryId) {
+            summaryIdsToCheck.push(data.callSummaryId);
+          }
         }
+      }
+
+      // Batch verify which summaries actually exist (stored under organizations/{orgId}/call_summaries)
+      const existingSummaryIds = new Set<string>();
+      if (summaryIdsToCheck.length > 0) {
+        const summaryRefs = summaryIdsToCheck.map(id =>
+          adminDb.collection('organizations').doc(organizationId).collection('call_summaries').doc(id)
+        );
+        const summaryDocs = await adminDb.getAll(...summaryRefs);
+        summaryDocs.forEach((docSnap, idx) => {
+          if (docSnap.exists) {
+            existingSummaryIds.add(summaryIdsToCheck[idx]);
+          }
+        });
+      }
+
+      for (const { doc, data } of eventsToProcess) {
+        pastSessions.push({
+          id: doc.id,
+          title: data.title || 'Coaching Call',
+          date: data.startDateTime,
+          coverImageUrl: data.coverImageUrl,
+          hasRecording: !!data.recordingUrl,
+          hasSummary: !!(data.callSummaryId && existingSummaryIds.has(data.callSummaryId)),
+          eventId: doc.id,
+          eventType: data.eventType || 'coaching_1on1',
+        });
       }
 
       // Sort by date descending

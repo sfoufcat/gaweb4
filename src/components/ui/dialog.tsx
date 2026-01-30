@@ -80,13 +80,27 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 pt-4",
+      "relative flex flex-col gap-2 px-6 pt-4 pb-6 border-t border-[#b8b3ad] dark:border-[#4a5060]",
+      // Blur gradient starting from divider going up
+      "before:absolute before:inset-x-0 before:bottom-full before:h-8 before:bg-gradient-to-t before:from-white before:to-transparent before:dark:from-[#171b22] before:pointer-events-none",
       className
     )}
     {...props}
   />
 )
 DialogFooter.displayName = "DialogFooter"
+
+// Scroll area with bottom padding for blur leeway
+const DialogScrollArea = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn("flex-1 min-h-0 overflow-y-auto pb-8", className)}
+    {...props}
+  />
+)
+DialogScrollArea.displayName = "DialogScrollArea"
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
@@ -124,6 +138,7 @@ export {
   DialogContent,
   DialogHeader,
   DialogFooter,
+  DialogScrollArea,
   DialogTitle,
   DialogDescription,
 }

@@ -1080,6 +1080,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     pathname.startsWith('/website') ||  // Public website - full-screen, no sidebar
     pathname.startsWith('/book') ||  // Public booking pages - full-screen, no sidebar
     pathname.startsWith('/intake-call') ||  // Intake call guest pages - full-screen, no sidebar
+    pathname.startsWith('/q/') ||  // Questionnaire fill pages - full-screen, no sidebar
     pathname === '/upgrade-premium/form' ||
     pathname === '/get-coach/form' ||
     pathname.startsWith('/invite') ||

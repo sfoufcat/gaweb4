@@ -4397,7 +4397,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
                   {/* Right side controls */}
                   <div className="flex-shrink-0 flex items-center gap-2 ml-auto">
-                    {/* Today / Enrollment Status - only for individual programs with client selected */}
+                    {/* TEMPORARILY DISABLED - Jump to Today / Enrollment Status
                     {viewMode === 'days' && selectedProgram?.type === 'individual' && clientViewContext.mode === 'client' && currentEnrollment && (
                       currentEnrollment.status === 'active' && currentEnrollment.currentDayIndex && currentEnrollment.currentDayIndex > 0 ? (
                         <button
@@ -4420,6 +4420,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         </span>
                       )
                     )}
+                    */}
 
                     {/* Refresh Button - for client/cohort views */}
                     {viewMode === 'days' && (
@@ -5127,7 +5128,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               onDeleteModule={handleDeleteModule}
               onAutoDistributeWeeks={handleAutoDistributeWeeks}
               currentDayIndex={currentEnrollment?.currentDayIndex || cohortCurrentDayIndex}
-              onJumpToToday={handleJumpToToday}
+              // onJumpToToday={handleJumpToToday}  // TEMPORARILY DISABLED
               cohortViewContext={cohortViewContext}
               enrollmentId={clientViewContext.mode === 'client' ? clientViewContext.enrollmentId : undefined}
               cohortId={cohortViewContext.mode === 'cohort' ? cohortViewContext.cohortId : undefined}
@@ -5473,6 +5474,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       instanceId={instanceId}
                       clientWeeklyTaskCompletion={isClientMode ? clientTaskCompletion : undefined}
                       onSummaryGenerated={refetchCallSummaries}
+                      onSummaryDeleted={refetchCallSummaries}
                       onCallScheduled={refetchEvents}
                       includeWeekends={selectedProgram?.includeWeekends !== false}
                       onDaysChange={async (updatedDays) => {

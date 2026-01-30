@@ -1,5 +1,5 @@
 /**
- * Hook to check organization transcription credits availability
+ * Hook to check organization credits availability
  *
  * Used to warn users before joining non-program calls when
  * the organization has no credits for summary generation.
@@ -9,7 +9,7 @@ import useSWR from 'swr';
 
 interface OrgCreditsData {
   hasCredits: boolean;
-  remainingMinutes: number;
+  remainingCredits: number;
 }
 
 interface UseOrgCreditsResult {
@@ -29,7 +29,7 @@ const fetcher = async (url: string): Promise<OrgCreditsData> => {
 };
 
 /**
- * Fetch organization transcription credits status
+ * Fetch organization credits status
  *
  * @param enabled - Whether to fetch (default: true)
  * @returns Organization credits data and loading state

@@ -282,7 +282,7 @@ export function WeekFillModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] shadow-2xl transition-all">
+              <Dialog.Panel className="w-full max-w-2xl max-h-[85vh] transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] shadow-2xl transition-all flex flex-col">
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
                   <button
@@ -307,7 +307,7 @@ export function WeekFillModal({
                 </div>
 
                 {/* Content */}
-                <div className="p-6 max-h-[calc(100vh-300px)] overflow-y-auto">
+                <div className="p-6 flex-1 min-h-0 overflow-y-auto">
                   <AnimatePresence mode="wait">
                     {!result ? (
                       <motion.div

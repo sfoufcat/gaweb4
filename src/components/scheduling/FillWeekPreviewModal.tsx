@@ -6,12 +6,16 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogScrollArea,
 } from '@/components/ui/dialog';
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
+  DrawerFooter,
+  DrawerScrollArea,
 } from '@/components/ui/drawer';
 import {
   Wand2,
@@ -237,7 +241,8 @@ export function FillWeekPreviewModal({
 
       {/* Preview State */}
       {state === 'preview' && (
-        <div className="max-h-[520px] overflow-y-auto space-y-3">
+        <>
+          <div className="space-y-3">
             {/* Client Tasks */}
             {clientItems.length > 0 && (
               <div>
@@ -278,145 +283,155 @@ export function FillWeekPreviewModal({
               </div>
             )}
 
-          {/* Week Content Preview (Theme, Description, Notes, Goals) */}
-          {summary?.weekContent && (summary.weekContent.theme || summary.weekContent.description || summary.weekContent.notes?.length || summary.weekContent.currentFocus?.length) && (
-            <div className="space-y-2 p-3 rounded-xl bg-amber-50/40 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-700/30">
-              {/* Weekly Theme */}
-              {summary.weekContent.theme && (
-                <div>
-                  <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-0.5">
-                    Weekly Theme
-                  </h4>
-                  <p className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] italic">
-                    {summary.weekContent.theme}
-                  </p>
-                </div>
-              )}
-
-              {/* Description */}
-              {summary.weekContent.description && (
-                <div>
-                  <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-0.5">
-                    Description
-                  </h4>
-                  <p className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] line-clamp-2">
-                    {summary.weekContent.description}
-                  </p>
-                </div>
-              )}
-
-              {/* Week Notes */}
-              {summary.weekContent.notes && summary.weekContent.notes.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 flex items-center gap-1.5">
-                    <StickyNote className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    Week Notes
-                  </h4>
-                  <ul className="space-y-1">
-                    {summary.weekContent.notes.map((note, idx) => (
-                      <li key={idx} className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] pl-2.5 border-l-2 border-amber-400/60 dark:border-amber-500/40">
-                        {note}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Goals */}
-              {(summary.weekContent.goals?.length || summary.weekContent.currentFocus?.length) ? (
-                <div>
-                  <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 flex items-center gap-1.5">
-                    <Target className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    Goals
-                  </h4>
-                  <div className="flex flex-wrap gap-1">
-                    {(summary.weekContent.goals || summary.weekContent.currentFocus || []).map((goal, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-0.5 text-xs font-medium font-albert bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md"
-                      >
-                        {goal}
-                      </span>
-                    ))}
+            {/* Week Content Preview (Theme, Description, Notes, Goals) */}
+            {summary?.weekContent && (summary.weekContent.theme || summary.weekContent.description || summary.weekContent.notes?.length || summary.weekContent.currentFocus?.length) && (
+              <div className="space-y-2 p-3 rounded-xl bg-amber-50/40 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-700/30">
+                {/* Weekly Theme */}
+                {summary.weekContent.theme && (
+                  <div>
+                    <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-0.5">
+                      Weekly Theme
+                    </h4>
+                    <p className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] italic">
+                      {summary.weekContent.theme}
+                    </p>
                   </div>
+                )}
+
+                {/* Description */}
+                {summary.weekContent.description && (
+                  <div>
+                    <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-0.5">
+                      Description
+                    </h4>
+                    <p className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] line-clamp-2">
+                      {summary.weekContent.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Week Notes */}
+                {summary.weekContent.notes && summary.weekContent.notes.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 flex items-center gap-1.5">
+                      <StickyNote className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      Week Notes
+                    </h4>
+                    <ul className="space-y-1">
+                      {summary.weekContent.notes.map((note, idx) => (
+                        <li key={idx} className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] pl-2.5 border-l-2 border-amber-400/60 dark:border-amber-500/40">
+                          {note}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Goals */}
+                {(summary.weekContent.goals?.length || summary.weekContent.currentFocus?.length) ? (
+                  <div>
+                    <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      Goals
+                    </h4>
+                    <div className="flex flex-wrap gap-1">
+                      {(summary.weekContent.goals || summary.weekContent.currentFocus || []).map((goal, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 text-xs font-medium font-albert bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md"
+                        >
+                          {goal}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* Fill Target Selection */}
+            {(clientItems.length > 0 || coachItems.length > 0 || summary?.weekContent) && (
+              <div className="pt-4 border-t border-[#e8e4df] dark:border-[#2a2f3a]">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="w-4 h-4 text-[#8a857f] dark:text-[#9a969f]" />
+                  <h4 className="text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
+                    Add tasks to:
+                  </h4>
                 </div>
-              ) : null}
-            </div>
-          )}
-
-          {/* Fill Target Selection */}
-          {(clientItems.length > 0 || coachItems.length > 0 || summary?.weekContent) && (
-            <div className="pt-4 border-t border-[#e8e4df] dark:border-[#2a2f3a]">
-              <div className="flex items-center gap-2 mb-3">
-                <Calendar className="w-4 h-4 text-[#8a857f] dark:text-[#9a969f]" />
-                <h4 className="text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Add tasks to:
-                </h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {fillOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setSelectedTarget(option.value)}
+                      className={cn(
+                        "flex items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all",
+                        selectedTarget === option.value
+                          ? "border-brand-accent bg-brand-accent/5"
+                          : "border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50"
+                      )}
+                    >
+                      <span className={cn(
+                        "text-sm font-semibold font-albert",
+                        selectedTarget === option.value
+                          ? "text-brand-accent"
+                          : "text-[#5f5a55] dark:text-[#b2b6c2]"
+                      )}>
+                        {option.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {fillOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setSelectedTarget(option.value)}
-                    className={cn(
-                      "flex items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all",
-                      selectedTarget === option.value
-                        ? "border-brand-accent bg-brand-accent/5"
-                        : "border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50"
-                    )}
-                  >
-                    <span className={cn(
-                      "text-sm font-semibold font-albert",
-                      selectedTarget === option.value
-                        ? "text-brand-accent"
-                        : "text-[#5f5a55] dark:text-[#b2b6c2]"
-                    )}>
-                      {option.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={onClose}
-              className="flex-1 py-3 rounded-xl text-sm font-semibold font-albert text-[#5f5a55] dark:text-[#b2b6c2] bg-white dark:bg-[#1d222b] border-2 border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleFill}
-              disabled={clientItems.length === 0 && coachItems.length === 0 && !summary?.weekContent}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold font-albert transition-colors",
-                clientItems.length === 0 && coachItems.length === 0 && !summary?.weekContent
-                  ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border-2 border-slate-200 dark:border-slate-700"
-                  : "bg-brand-accent text-white hover:bg-brand-accent/90 border-2 border-brand-accent"
-              )}
-            >
-              Create Tasks
-              <Wand2 className="w-4 h-4" />
-            </button>
+            )}
           </div>
-        </div>
+        </>
       )}
+    </div>
+  );
+
+  // Action buttons for preview state - rendered in footer
+  const actionButtons = state === 'preview' && (
+    <div className="flex gap-3">
+      <button
+        onClick={onClose}
+        className="flex-1 py-3 rounded-xl text-sm font-semibold font-albert text-[#5f5a55] dark:text-[#b2b6c2] bg-white dark:bg-[#1d222b] border-2 border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50 transition-colors"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={handleFill}
+        disabled={clientItems.length === 0 && coachItems.length === 0 && !summary?.weekContent}
+        className={cn(
+          "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold font-albert transition-colors",
+          clientItems.length === 0 && coachItems.length === 0 && !summary?.weekContent
+            ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border-2 border-slate-200 dark:border-slate-700"
+            : "bg-brand-accent text-white hover:bg-brand-accent/90 border-2 border-brand-accent"
+        )}
+      >
+        Create Tasks
+        <Wand2 className="w-4 h-4" />
+      </button>
     </div>
   );
 
   if (isDesktop) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wand2 className="h-5 w-5 text-brand-accent" />
               Fill Week from Summary
             </DialogTitle>
           </DialogHeader>
-          {content}
+          <DialogScrollArea>
+            {content}
+          </DialogScrollArea>
+          {actionButtons && (
+            <DialogFooter>
+              {actionButtons}
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     );
@@ -424,16 +439,21 @@ export function FillWeekPreviewModal({
 
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="max-h-[90vh]">
+      <DrawerContent className="max-h-[90vh] flex flex-col">
         <DrawerHeader className="text-left">
           <DrawerTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-brand-accent" />
             Fill Week from Summary
           </DrawerTitle>
         </DrawerHeader>
-        <div className="px-4 pb-6 overflow-y-auto">
+        <DrawerScrollArea className="px-4">
           {content}
-        </div>
+        </DrawerScrollArea>
+        {actionButtons && (
+          <DrawerFooter>
+            {actionButtons}
+          </DrawerFooter>
+        )}
       </DrawerContent>
     </Drawer>
   );

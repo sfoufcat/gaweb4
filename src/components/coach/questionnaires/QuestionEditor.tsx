@@ -47,9 +47,7 @@ export function QuestionEditor({
   onDuplicate,
   allQuestions,
 }: QuestionEditorProps) {
-  const [showSkipLogic, setShowSkipLogic] = useState(
-    (question.skipLogic?.length || 0) > 0
-  );
+  const [showSkipLogic, setShowSkipLogic] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const hasSkipLogic = question.type === 'single_choice' || question.type === 'multi_choice';
 
@@ -90,7 +88,7 @@ export function QuestionEditor({
                 value={question.placeholder || ''}
                 onChange={e => onUpdate({ placeholder: e.target.value })}
                 placeholder="Enter placeholder text..."
-                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
               />
             </div>
             <div className="flex gap-4">
@@ -106,7 +104,7 @@ export function QuestionEditor({
                   }
                   placeholder="0"
                   min={0}
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
                 />
               </div>
               <div className="flex-1">
@@ -121,7 +119,7 @@ export function QuestionEditor({
                   }
                   placeholder={question.type === 'short_text' ? '500' : '5000'}
                   min={1}
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
                 />
               </div>
             </div>
@@ -140,7 +138,7 @@ export function QuestionEditor({
                 value={question.placeholder || ''}
                 onChange={e => onUpdate({ placeholder: e.target.value })}
                 placeholder="Enter a number"
-                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
               />
             </div>
             <div className="flex gap-4">
@@ -155,7 +153,7 @@ export function QuestionEditor({
                     onUpdate({ minValue: e.target.value ? parseFloat(e.target.value) : undefined })
                   }
                   placeholder="No min"
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
                 />
               </div>
               <div className="flex-1">
@@ -169,7 +167,7 @@ export function QuestionEditor({
                     onUpdate({ maxValue: e.target.value ? parseFloat(e.target.value) : undefined })
                   }
                   placeholder="No max"
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
                 />
               </div>
             </div>
@@ -190,7 +188,7 @@ export function QuestionEditor({
                   onChange={e => onUpdate({ minValue: parseInt(e.target.value) || 1 })}
                   min={0}
                   max={9}
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
                 />
               </div>
               <div className="flex-1">
@@ -203,7 +201,7 @@ export function QuestionEditor({
                   onChange={e => onUpdate({ maxValue: parseInt(e.target.value) || 5 })}
                   min={2}
                   max={10}
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
                 />
               </div>
             </div>
@@ -221,7 +219,7 @@ export function QuestionEditor({
                     })
                   }
                   placeholder="e.g., Not satisfied"
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
                 />
               </div>
               <div className="flex-1">
@@ -237,7 +235,7 @@ export function QuestionEditor({
                     })
                   }
                   placeholder="e.g., Very satisfied"
-                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                  className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
                 />
               </div>
             </div>
@@ -319,7 +317,7 @@ export function QuestionEditor({
                 onChange={e => onUpdate({ maxFileSizeMB: parseInt(e.target.value) || 10 })}
                 min={1}
                 max={100}
-                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#b2b6c2]"
+                className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
               />
             </div>
           </div>
@@ -361,7 +359,7 @@ export function QuestionEditor({
   const skipLogicModal = hasSkipLogic && (
     isDesktop ? (
       <Dialog open={showSkipLogic} onOpenChange={setShowSkipLogic}>
-        <DialogContent className="sm:max-w-xl bg-white dark:bg-[#171b22] border border-[#e1ddd8]/30 dark:border-white/10 rounded-2xl shadow-2xl">
+        <DialogContent className="sm:max-w-2xl bg-white dark:bg-[#171b22] border border-[#e1ddd8]/30 dark:border-white/10 rounded-2xl shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-albert text-lg">Skip Logic</DialogTitle>
           </DialogHeader>
@@ -406,7 +404,7 @@ export function QuestionEditor({
             value={question.title}
             onChange={e => onUpdate({ title: e.target.value })}
             placeholder={question.type === 'info' ? 'Add a title (optional)...' : question.type === 'page_break' ? 'Section title (optional)...' : 'Type your question here...'}
-            className="w-full text-base font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-none outline-none placeholder-[#b2b6c2]"
+            className="w-full text-base font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-none outline-none placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
           />
 
           {/* Description */}
@@ -415,7 +413,7 @@ export function QuestionEditor({
             value={question.description || ''}
             onChange={e => onUpdate({ description: e.target.value })}
             placeholder="Add description (optional)"
-            className="w-full text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert bg-transparent border-none outline-none placeholder-[#b2b6c2]/60"
+            className="w-full text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert bg-transparent border-none outline-none placeholder-[#c9cdd4] dark:placeholder-[#4b5563]/60"
           />
 
           {/* Type-specific configuration */}
@@ -484,7 +482,7 @@ export function QuestionEditor({
             value={question.title}
             onChange={e => onUpdate({ title: e.target.value })}
             placeholder={question.type === 'info' ? 'Add a title (optional)...' : question.type === 'page_break' ? 'Section title (optional)...' : 'Type your question here...'}
-            className="w-full text-base font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-none outline-none placeholder-[#b2b6c2]"
+            className="w-full text-base font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert bg-transparent border-none outline-none placeholder-[#c9cdd4] dark:placeholder-[#4b5563]"
           />
 
           {/* Description */}
@@ -493,7 +491,7 @@ export function QuestionEditor({
             value={question.description || ''}
             onChange={e => onUpdate({ description: e.target.value })}
             placeholder="Add description (optional)"
-            className="w-full mt-1 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert bg-transparent border-none outline-none placeholder-[#b2b6c2]/60"
+            className="w-full mt-1 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert bg-transparent border-none outline-none placeholder-[#c9cdd4] dark:placeholder-[#4b5563]/60"
           />
         </div>
 

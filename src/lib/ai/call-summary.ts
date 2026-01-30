@@ -76,9 +76,18 @@ Guidelines:
 - Keep the tone professional and supportive
 
 IMPORTANT: Extract timing/frequency information for action items:
-- If coach says "do this every day" or "daily" → frequency: "daily"
+- If coach says "do this every day", "daily", "each day", "every morning", "nightly" → frequency: "daily"
 - If coach says "do this once" or mentions no frequency → frequency: "once"
-- If coach says "by Thursday", "on Friday", "before Monday" → frequency: "specific_day", targetDayName: "Thursday"
+- If coach says "by Thursday", "on Friday", "before Monday", "next Wednesday" → frequency: "specific_day", targetDayName: "Thursday"
+
+ACTION ITEM DESCRIPTIONS - CRITICAL:
+- Keep descriptions SHORT and ACTIONABLE (under 60 characters ideal, max 80)
+- Start with a verb: "Write", "Call", "Review", "Practice", "Send", "Complete"
+- NO explanations or context - just the task itself
+- BAD: "Remember to call your mother this week to check in on her health" (too long)
+- GOOD: "Call mom to check in"
+- BAD: "Practice the breathing exercises we discussed for managing stress" (too long)
+- GOOD: "Practice breathing exercises"
 
 Output must be valid JSON matching this structure:
 {
@@ -93,7 +102,7 @@ Output must be valid JSON matching this structure:
   "actionItems": [
     {
       "id": "unique-id-1",
-      "description": "What needs to be done",
+      "description": "Short actionable task (under 60 chars)",
       "assignedTo": "client" | "coach" | "both",
       "priority": "high" | "medium" | "low",
       "category": "optional category",
@@ -1192,8 +1201,9 @@ export async function autoFillWeekFromSummary(
     // --- END AI-BASED FILL ---
 
     // 10. Apply to instance - update each week
+    // Add tasks to weeklyTasks (visible in "Weekly Tasks" section) instead of individual days
     const weeks = [...(instance.weeks || [])];
-    let totalDaysUpdated = 0;
+    let totalTasksAdded = 0;
     let weeksUpdated = 0;
 
     for (const weekPlan of fillConfig.weeks) {
@@ -1205,45 +1215,54 @@ export async function autoFillWeekFromSummary(
       }
 
       const week = { ...weeks[weekPlan.weekIndex] };
-      const days = [...(week.days || [])];
 
-      // Update each day in this week
-      for (const [dayIndexStr, dayData] of Object.entries(weekData.days || {})) {
-        const targetDayIndex = parseInt(dayIndexStr, 10); // 1-7 (day of week)
-
-        // Find the day by its dayIndex property (1-7), not array position
-        const dayArrayIndex = days.findIndex(d => d.dayIndex === targetDayIndex);
-
-        if (dayArrayIndex !== -1 && days[dayArrayIndex]) {
-          const rawTasks = dayData.tasks || [];
-
-          // Only process if there are actual tasks to add
-          if (rawTasks.length === 0) {
-            console.log(`[Auto-Fill] Skipping week ${weekPlan.weekNumber} day ${targetDayIndex} - no tasks generated`);
-            continue;
-          }
-
-          const newTasks = rawTasks.map((t: { label: string; type?: string; isPrimary?: boolean; estimatedMinutes?: number; notes?: string }) => ({
-            id: generateTaskId(),
-            label: t.label,
-            type: (t.type === 'learning' || t.type === 'admin' || t.type === 'habit' ? t.type : 'task') as 'task' | 'habit' | 'learning' | 'admin',
-            isPrimary: t.isPrimary || false,
-            estimatedMinutes: t.estimatedMinutes,
-            notes: t.notes,
-          }));
-
-          // APPEND new tasks to existing ones instead of replacing
-          const existingTasks = days[dayArrayIndex].tasks || [];
-          days[dayArrayIndex] = {
-            ...days[dayArrayIndex],
-            tasks: [...existingTasks, ...newTasks],
-          };
-          totalDaysUpdated++;
-          console.log(`[Auto-Fill] Added ${newTasks.length} tasks to week ${weekPlan.weekNumber} day ${targetDayIndex} (now ${existingTasks.length + newTasks.length} total)`);
+      // Collect all tasks from all days in this week and add to weeklyTasks
+      const allWeekTasks: Array<{ label: string; type?: string; isPrimary?: boolean; estimatedMinutes?: number; notes?: string }> = [];
+      for (const dayData of Object.values(weekData.days || {})) {
+        if (dayData.tasks?.length) {
+          allWeekTasks.push(...dayData.tasks);
         }
       }
 
-      week.days = days;
+      if (allWeekTasks.length > 0) {
+        // Get existing task labels to prevent duplicates
+        const existingWeeklyTasks = week.weeklyTasks || [];
+        const existingLabels = new Set(existingWeeklyTasks.map(t => t.label.toLowerCase().trim()));
+
+        // Deduplicate tasks by label (both within new tasks AND against existing)
+        const seenLabels = new Set<string>();
+        const uniqueNewTasks = allWeekTasks.filter(t => {
+          const normalizedLabel = t.label.toLowerCase().trim();
+          // Skip if already exists in week OR already seen in this batch
+          if (existingLabels.has(normalizedLabel) || seenLabels.has(normalizedLabel)) {
+            console.log(`[Auto-Fill] Skipping duplicate task: "${t.label}"`);
+            return false;
+          }
+          seenLabels.add(normalizedLabel);
+          return true;
+        });
+
+        if (uniqueNewTasks.length === 0) {
+          console.log(`[Auto-Fill] All tasks already exist in week ${weekPlan.weekNumber}, skipping`);
+          continue;
+        }
+
+        const newWeeklyTasks = uniqueNewTasks.map((t) => ({
+          id: generateTaskId(),
+          label: t.label,
+          type: (t.type === 'learning' || t.type === 'admin' || t.type === 'habit' ? t.type : 'task') as 'task' | 'habit' | 'learning' | 'admin',
+          isPrimary: t.isPrimary || false,
+          estimatedMinutes: t.estimatedMinutes,
+          notes: t.notes,
+          dayTag: 'auto' as const,  // Mark as auto-distributed
+        }));
+
+        // APPEND only truly new tasks
+        week.weeklyTasks = [...existingWeeklyTasks, ...newWeeklyTasks];
+        totalTasksAdded += newWeeklyTasks.length;
+        console.log(`[Auto-Fill] Added ${newWeeklyTasks.length} NEW tasks to week ${weekPlan.weekNumber} weeklyTasks (now ${week.weeklyTasks.length} total)`);
+      }
+
       if (weekData.theme) week.theme = weekData.theme;
       if (weekData.description) week.description = weekData.description;
       // Use goals if available, fall back to currentFocus for backwards compat
@@ -1304,11 +1323,34 @@ export async function autoFillWeekFromSummary(
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    console.log(`[Auto-Fill] Filled ${totalDaysUpdated} days across ${weeksUpdated} weeks from summary ${summaryId}`);
+    console.log(`[Auto-Fill] Filled ${totalTasksAdded} tasks across ${weeksUpdated} weeks from summary ${summaryId}`);
+
+    // 12. Sync tasks to user's tasks collection for 1:1 enrollments
+    if (context.enrollment && totalTasksAdded > 0) {
+      try {
+        const { syncProgramTasksFromCurrentDay } = await import('@/lib/program-engine');
+        console.log(`[Auto-Fill] Syncing tasks to user ${context.enrollment.userId} for enrollment ${context.enrollment.id}`);
+
+        const syncResult = await syncProgramTasksFromCurrentDay({
+          userId: context.enrollment.userId,
+          enrollmentId: context.enrollment.id,
+          mode: 'fill-empty',
+        });
+
+        if (syncResult.success) {
+          console.log(`[Auto-Fill] Synced ${syncResult.tasksCreated} tasks to user's Daily Focus`);
+        } else {
+          console.error(`[Auto-Fill] Task sync failed:`, syncResult.errors);
+        }
+      } catch (syncError) {
+        console.error('[Auto-Fill] Error syncing tasks to user:', syncError);
+        // Don't fail the whole operation if sync fails
+      }
+    }
 
     return {
       success: true,
-      daysUpdated: totalDaysUpdated,
+      daysUpdated: totalTasksAdded,  // Now represents tasks added, not days
       weeksUpdated,
       notesApplied: weeksWithNotes.length > 0,
       weeksWithNotes,

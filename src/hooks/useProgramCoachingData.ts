@@ -141,18 +141,6 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
           }
         }
 
-        // Process credits
-        if (creditsRes?.ok) {
-          const creditsResult = await creditsRes.json();
-          if (creditsResult.credits) {
-            setCallCredits({
-              creditsRemaining: creditsResult.credits.creditsRemaining,
-              monthlyAllowance: creditsResult.credits.monthlyAllowance,
-              creditsUsedThisMonth: creditsResult.credits.creditsUsedThisMonth,
-            });
-          }
-        }
-
         // Process settings
         if (settingsRes?.ok) {
           const settingsResult = await settingsRes.json();
@@ -161,10 +149,23 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
           }
         }
 
-        // Process events (primary source for nextCall)
+        // Process events (primary source for nextCall and call count)
+        let scheduledCallsThisMonth = 0;
         if (eventsRes?.ok) {
           const eventsResult = await eventsRes.json();
           const upcomingEvents = eventsResult.events || [];
+
+          // Count scheduled calls in current calendar month
+          const now = new Date();
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+          scheduledCallsThisMonth = upcomingEvents.filter((event: { startDateTime?: string }) => {
+            if (!event.startDateTime) return false;
+            const eventDate = new Date(event.startDateTime);
+            return eventDate >= monthStart && eventDate <= monthEnd;
+          }).length;
+
           if (upcomingEvents.length > 0) {
             const nextEvent = upcomingEvents[0];
             setNextCall({
@@ -174,6 +175,20 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
               title: nextEvent.title,
               eventId: nextEvent.id,
               locationType: nextEvent.locationType,
+            });
+          }
+        }
+
+        // Process credits - calculate remaining based on scheduled calls
+        if (creditsRes?.ok) {
+          const creditsResult = await creditsRes.json();
+          if (creditsResult.credits) {
+            const monthlyAllowance = creditsResult.credits.monthlyAllowance;
+            const creditsRemaining = Math.max(0, monthlyAllowance - scheduledCallsThisMonth);
+            setCallCredits({
+              creditsRemaining,
+              monthlyAllowance,
+              creditsUsedThisMonth: scheduledCallsThisMonth,
             });
           }
         }

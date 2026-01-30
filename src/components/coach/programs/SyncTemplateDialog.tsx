@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogScrollArea,
   DialogDescription,
 } from '@/components/ui/dialog';
 import {
@@ -19,6 +20,7 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
+  DrawerScrollArea,
 } from '@/components/ui/drawer';
 import { BrandedCheckbox, BrandedRadio } from '@/components/ui/checkbox';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -722,17 +724,17 @@ export function SyncTemplateDialog({
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden rounded-2xl">
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl">
           <DialogHeader className="sr-only">
             <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription>{dialogDesc}</DialogDescription>
           </DialogHeader>
 
-          <div className="p-6 max-h-[80vh] overflow-y-auto">
+          <DialogScrollArea className="p-6">
             <SyncContent {...contentProps} />
-          </div>
+          </DialogScrollArea>
 
-          <DialogFooter className="p-4 pt-0 gap-2 sm:gap-2">
+          <DialogFooter className="flex-row justify-end gap-2">
             {footerButtons}
           </DialogFooter>
         </DialogContent>
@@ -743,17 +745,17 @@ export function SyncTemplateDialog({
   // Mobile: Drawer
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh]">
+      <DrawerContent className="max-h-[90vh] flex flex-col">
         <DrawerHeader className="sr-only">
           <DrawerTitle>{dialogTitle}</DrawerTitle>
           <DrawerDescription>{dialogDesc}</DrawerDescription>
         </DrawerHeader>
 
-        <div className="px-4 pb-2 max-h-[70vh] overflow-y-auto">
+        <DrawerScrollArea className="px-4">
           <SyncContent {...contentProps} />
-        </div>
+        </DrawerScrollArea>
 
-        <DrawerFooter className="flex-row gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+        <DrawerFooter className="flex-row gap-3">
           {footerButtons}
         </DrawerFooter>
       </DrawerContent>

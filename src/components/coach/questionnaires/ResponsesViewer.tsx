@@ -140,33 +140,33 @@ export function ResponsesViewer({
     answer: QuestionnaireAnswer | undefined,
     question: QuestionnaireQuestion
   ): React.ReactNode => {
-    if (!answer) return <span className="text-[#b2b6c2]">—</span>;
+    if (!answer) return <span className="text-[#c9cdd4] dark:text-[#4b5563]">—</span>;
 
     if (answer.value === null || answer.value === undefined) {
       // File upload
       if (answer.fileUrls?.length) {
         return (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             {answer.fileUrls.map((url, i) => (
               <a
                 key={i}
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-brand-accent hover:underline"
+                className="flex items-center gap-1.5 text-brand-accent hover:underline font-medium"
               >
                 {question.type === 'media_upload' ? (
                   <ImageIcon className="w-4 h-4" />
                 ) : (
                   <File className="w-4 h-4" />
                 )}
-                <ExternalLink className="w-3 h-3" />
+                <ExternalLink className="w-3.5 h-3.5" />
               </a>
             ))}
           </div>
         );
       }
-      return <span className="text-[#b2b6c2]">—</span>;
+      return <span className="text-[#c9cdd4] dark:text-[#4b5563]">—</span>;
     }
 
     if (Array.isArray(answer.value)) {
@@ -174,11 +174,11 @@ export function ResponsesViewer({
       const options = question.options || [];
       const labels = answer.value.map(v => options.find(o => o.value === v)?.label || v);
       return (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5">
           {labels.map((label, i) => (
             <span
               key={i}
-              className="inline-block px-2 py-0.5 text-xs bg-[#f3f1ef] dark:bg-[#262b35] rounded"
+              className="inline-block px-2.5 py-1 text-sm bg-brand-accent/10 text-brand-accent rounded-lg font-medium"
             >
               {label}
             </span>
@@ -194,37 +194,41 @@ export function ResponsesViewer({
         const max = question.maxValue ?? 5;
         const percentage = ((answer.value - min) / (max - min)) * 100;
         return (
-          <div className="flex items-center gap-2">
-            <div className="w-16 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="w-20 h-2.5 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
               <div
                 className="h-full bg-brand-accent rounded-full"
                 style={{ width: `${percentage}%` }}
               />
             </div>
-            <span className="text-sm">{answer.value}</span>
+            <span className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{answer.value}</span>
           </div>
         );
       }
-      return <span>{answer.value}</span>;
+      return <span className="font-medium">{answer.value}</span>;
     }
 
     // Single choice
     if (question.type === 'single_choice') {
       const option = question.options?.find(o => o.value === answer.value);
-      return <span>{option?.label || answer.value}</span>;
+      return (
+        <span className="inline-block px-2.5 py-1 text-sm bg-brand-accent/10 text-brand-accent rounded-lg font-medium">
+          {option?.label || answer.value}
+        </span>
+      );
     }
 
     // Text - truncate long responses
     const text = String(answer.value);
     if (text.length > 100) {
       return (
-        <span title={text} className="cursor-help">
+        <span title={text} className="cursor-help text-[#1a1a1a] dark:text-[#f5f5f8]">
           {text.substring(0, 100)}...
         </span>
       );
     }
 
-    return <span>{text}</span>;
+    return <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{text}</span>;
   };
 
   // Format date
@@ -240,12 +244,70 @@ export function ResponsesViewer({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f9f8f6] dark:bg-[#11141b] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-brand-accent border-t-transparent rounded-full mx-auto" />
-          <p className="mt-4 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            Loading responses...
-          </p>
+      <div className="min-h-screen bg-[#f9f8f6] dark:bg-[#11141b]">
+        {/* Skeleton Header */}
+        <div className="sticky top-0 z-10 bg-[#f9f8f6]/80 dark:bg-[#11141b]/80 backdrop-blur-xl border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg bg-[#e1ddd8] dark:bg-[#262b35] animate-pulse" />
+              <div className="min-w-0 flex-1">
+                <div className="h-5 w-48 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                <div className="h-4 w-24 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mt-1" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-9 w-full sm:w-64 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
+              <div className="h-9 w-24 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse flex-shrink-0" />
+            </div>
+          </div>
+        </div>
+
+        {/* Skeleton Table */}
+        <div className="p-4 sm:p-6">
+          <div className="rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#e1ddd8] dark:border-[#262b35]/50 bg-[#f9f8f6] dark:bg-[#11141b]">
+                    <th className="px-4 py-3 text-left">
+                      <div className="h-4 w-24 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                    </th>
+                    {[1, 2, 3].map(i => (
+                      <th key={i} className="px-4 py-3 text-left">
+                        <div className="h-4 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                      </th>
+                    ))}
+                    <th className="px-4 py-3 text-left">
+                      <div className="h-4 w-20 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1, 2, 3, 4, 5].map(row => (
+                    <tr key={row} className="border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#e1ddd8] dark:bg-[#262b35] animate-pulse" />
+                          <div>
+                            <div className="h-4 w-28 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                            <div className="h-3 w-36 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mt-1" />
+                          </div>
+                        </div>
+                      </td>
+                      {[1, 2, 3].map(col => (
+                        <td key={col} className="px-4 py-3">
+                          <div className="h-4 w-24 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                        </td>
+                      ))}
+                      <td className="px-4 py-3">
+                        <div className="h-4 w-28 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -255,7 +317,7 @@ export function ResponsesViewer({
     <div className="min-h-screen bg-[#f9f8f6] dark:bg-[#11141b]">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-[#f9f8f6]/80 dark:bg-[#11141b]/80 backdrop-blur-xl border-b border-[#e1ddd8] dark:border-[#262b35]/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={onBack}
@@ -302,7 +364,7 @@ export function ResponsesViewer({
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+      <div className="p-4 sm:p-6">
         {!data?.responses.length ? (
           <div className="rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 p-8 sm:p-12 text-center">
             <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert max-w-sm mx-auto">
@@ -310,30 +372,30 @@ export function ResponsesViewer({
             </p>
           </div>
         ) : (
-          <div className="rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 overflow-hidden">
+          <div className="rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]/50 overflow-hidden bg-white dark:bg-[#171b22]">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b border-[#e1ddd8] dark:border-[#262b35]/50 bg-[#f9f8f6] dark:bg-[#11141b]">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert sticky left-0 bg-[#f9f8f6] dark:bg-[#11141b] z-10 min-w-[150px]">
+                  <tr className="border-b border-[#e1ddd8] dark:border-[#262b35]">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert sticky left-0 bg-white dark:bg-[#171b22] z-10 min-w-[220px]">
                       Respondent
                     </th>
                     {data.questionnaire.questions.map(q => (
                       <th
                         key={q.id}
-                        className="px-4 py-3 text-left text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert min-w-[200px]"
+                        className="px-6 py-4 text-left text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert min-w-[180px]"
                         title={q.title}
                       >
-                        {q.title?.length > 30 ? `${q.title.substring(0, 30)}...` : q.title || 'Untitled'}
+                        {q.title?.length > 25 ? `${q.title.substring(0, 25)}...` : q.title || 'Untitled'}
                       </th>
                     ))}
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert min-w-[150px]">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert min-w-[140px]">
                       Submitted
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredResponses.map(response => {
+                  {filteredResponses.map((response, idx) => {
                     const answerMap = new Map(
                       response.answers.map(a => [a.questionId, a])
                     );
@@ -341,29 +403,29 @@ export function ResponsesViewer({
                     return (
                       <tr
                         key={response.id}
-                        className="border-b border-[#e1ddd8] dark:border-[#262b35]/50 hover:bg-[#f9f8f6] dark:hover:bg-[#11141b]/50"
+                        className="group border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 bg-white dark:bg-[#171b22] hover:bg-[#f5f3f0] dark:hover:bg-[#1a1f28] transition-colors"
                       >
                         {/* Respondent */}
-                        <td className="px-4 py-3 sticky left-0 bg-[#f9f8f6] dark:bg-[#11141b] z-10">
-                          <div className="flex items-center gap-3">
+                        <td className="px-6 py-4 sticky left-0 z-10 bg-white dark:bg-[#171b22] group-hover:bg-[#f5f3f0] dark:group-hover:bg-[#1a1f28] transition-colors">
+                          <div className="flex items-center gap-4">
                             {response.userAvatarUrl ? (
                               <img
                                 src={response.userAvatarUrl}
                                 alt=""
-                                className="w-8 h-8 rounded-full"
+                                className="w-10 h-10 rounded-full flex-shrink-0"
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-brand-accent/20 flex items-center justify-center">
-                                <span className="text-sm font-medium text-brand-accent">
+                              <div className="w-10 h-10 rounded-full bg-brand-accent/20 flex items-center justify-center flex-shrink-0">
+                                <span className="text-base font-semibold text-brand-accent">
                                   {response.userName?.[0]?.toUpperCase() || '?'}
                                 </span>
                               </div>
                             )}
-                            <div>
-                              <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
                                 {response.userName || 'Unknown'}
                               </p>
-                              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                              <p className="text-sm text-[#6b6560] dark:text-[#9ca3af] font-albert truncate">
                                 {response.userEmail}
                               </p>
                             </div>
@@ -374,14 +436,14 @@ export function ResponsesViewer({
                         {data.questionnaire.questions.map(q => (
                           <td
                             key={q.id}
-                            className="px-4 py-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                            className="px-6 py-4 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                           >
                             {formatAnswerDisplay(answerMap.get(q.id), q)}
                           </td>
                         ))}
 
                         {/* Submitted */}
-                        <td className="px-4 py-3 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
+                        <td className="px-6 py-4 text-sm text-[#6b6560] dark:text-[#9ca3af] font-albert whitespace-nowrap">
                           {formatDate(response.submittedAt)}
                         </td>
                       </tr>

@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { CalendarDays, FileQuestion, Unlock, Clock, ChevronRight, Video, History, FileText, Wand2, Check, Calendar, Phone, Sparkles, Loader2 } from 'lucide-react';
+import { CalendarDays, FileQuestion, Clock, ChevronRight, Video, History, FileText, Wand2, Check, Calendar, Phone, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SummaryConfirmationModal } from '../SummaryConfirmationModal';
 
 export interface UpcomingItem {
-  type: 'call' | 'form' | 'week_unlock';
+  type: 'call' | 'form';
   title: string;
   date?: string;
   actionType?: 'reschedule' | 'send_reminder';
@@ -36,7 +36,7 @@ interface UpcomingSectionProps {
   className?: string;
 }
 
-const TYPE_CONFIG = {
+const TYPE_CONFIG: Record<string, { icon: typeof Phone; color: string; bg: string; label: string }> = {
   call: {
     icon: Phone,
     color: 'text-green-600 dark:text-green-400',
@@ -49,11 +49,11 @@ const TYPE_CONFIG = {
     bg: 'bg-pink-100 dark:bg-pink-900/30',
     label: 'Form Due',
   },
-  week_unlock: {
-    icon: Unlock,
-    color: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
-    label: 'Week Unlock',
+  default: {
+    icon: CalendarDays,
+    color: 'text-gray-600 dark:text-gray-400',
+    bg: 'bg-gray-100 dark:bg-gray-900/30',
+    label: 'Event',
   },
 };
 
@@ -293,7 +293,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
             className="space-y-2"
           >
             {items.map((item, index) => {
-              const config = TYPE_CONFIG[item.type];
+              const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.default;
               const TypeIcon = config.icon;
               const dateObj = item.date ? new Date(item.date) : null;
               const relativeTime = dateObj ? formatDistanceToNow(dateObj, { addSuffix: true }) : null;
