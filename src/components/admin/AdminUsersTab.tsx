@@ -1712,7 +1712,7 @@ export function AdminUsersTab({
               {isCoachContext ? (
                 <>
                   Are you sure you want to remove <strong>{userToDelete?.name || userToDelete?.email}</strong> from your organization?
-                  They will lose access to all squads and programs in this organization.
+                  They will lose access to all programs, communities, and resources.
                 </>
               ) : (
                 <>

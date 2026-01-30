@@ -43,20 +43,32 @@ export async function POST(request: NextRequest) {
 
     const programData = programDoc.data()!;
 
-    // Verify week exists and belongs to this program
-    const weekDoc = await adminDb.collection('program_weeks').doc(weekId).get();
-    if (!weekDoc.exists || weekDoc.data()?.programId !== programId) {
-      return NextResponse.json({ error: 'Week not found' }, { status: 404 });
+    // Find week in embedded weeks array (new architecture)
+    // Weeks are stored in programs.weeks[] not in a separate collection
+    const weeks = programData.weeks || [];
+    let weekData = weeks.find((w: { id: string }) => w.id === weekId);
+
+    // Fallback: try to find by weekNumber if weekId looks numeric
+    if (!weekData && /^\d+$/.test(weekId)) {
+      const weekNum = parseInt(weekId, 10);
+      weekData = weeks.find((w: { weekNumber: number }) => w.weekNumber === weekNum);
     }
 
-    const weekData = weekDoc.data()!;
+    if (!weekData) {
+      return NextResponse.json({ error: 'Week not found' }, { status: 404 });
+    }
 
     // Get the source content
     let sourceContent: string;
 
     if (source.type === 'call_summary' && source.summaryId) {
-      // Fetch call summary
-      const summaryDoc = await adminDb.collection('call_summaries').doc(source.summaryId).get();
+      // Fetch call summary from org subcollection
+      const summaryDoc = await adminDb
+        .collection('organizations')
+        .doc(organizationId)
+        .collection('call_summaries')
+        .doc(source.summaryId)
+        .get();
       if (!summaryDoc.exists) {
         return NextResponse.json({ error: 'Call summary not found' }, { status: 404 });
       }

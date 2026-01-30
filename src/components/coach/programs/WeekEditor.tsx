@@ -191,7 +191,7 @@ interface WeekEditorProps {
   // Callback when a call is scheduled (to refresh events list)
   onCallScheduled?: () => void;
   // Callback to refresh instance data (after fill-week-from-summary)
-  onInstanceRefresh?: () => void;
+  onInstanceRefresh?: () => void | Promise<void>;
 }
 
 // Member info for task completion breakdown
@@ -3770,9 +3770,14 @@ export function WeekEditor({
           }}
           eventId={fillWeekEventId || ''}
           summary={fillWeekSummary}
-          onFilled={() => {
+          onFilled={async () => {
+            console.log('[WeekEditor:onFilled] Starting refresh...');
             // Refresh the instance data to show new weekly tasks
-            onInstanceRefresh?.();
+            // Use Promise + small delay to ensure Firestore data is consistent
+            await new Promise(resolve => setTimeout(resolve, 500));
+            console.log('[WeekEditor:onFilled] Calling onInstanceRefresh...');
+            await onInstanceRefresh?.();
+            console.log('[WeekEditor:onFilled] Instance refresh complete');
             // Also refresh events in case anything changed
             onCallScheduled?.();
           }}

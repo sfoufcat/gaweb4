@@ -253,7 +253,7 @@ export function ProgramSettingsDrawer({
   };
 
   const content = (showCloseButton: boolean) => (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 relative">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
         <div className="flex items-center gap-3">
@@ -283,7 +283,7 @@ export function ProgramSettingsDrawer({
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+      <div className="flex-1 overflow-y-auto px-6 py-6 pb-20 space-y-8 relative">
         {/* Section 1: Program Details (Collapsible) */}
         <section>
           <button
@@ -926,7 +926,11 @@ export function ProgramSettingsDrawer({
             </button>
           </div>
         </section>
+
       </div>
+
+      {/* Bottom blur gradient for comfortable scrolling */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white dark:from-[#171b22] to-transparent pointer-events-none" />
     </div>
   );
 

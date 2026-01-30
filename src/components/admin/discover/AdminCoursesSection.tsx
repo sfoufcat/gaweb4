@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Pencil, Trash2, ChevronLeft, ChevronRight, Search, X, Plus, Layers, PlayCircle } from 'lucide-react';
+import { Settings, Trash2, ChevronLeft, ChevronRight, Search, X, Plus, Layers, PlayCircle } from 'lucide-react';
 import type { DiscoverCourse } from '@/types/discover';
 import {
   AlertDialog,
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { CourseEditor } from './CourseEditor';
 import { CreateCourseModal } from './CreateCourseModal';
+import { ResourceSettingsModal } from '@/components/admin/ResourceSettingsModal';
 
 // Strip HTML tags for plain text display
 function stripHtml(html: string): string {
@@ -66,6 +67,7 @@ export function AdminCoursesSection({
   const [selectedCourse, setSelectedCourse] = useState<DiscoverCourse | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [settingsCourse, setSettingsCourse] = useState<DiscoverCourse | null>(null);
 
   // Track last processed course ID to prevent re-opening after close
   const lastProcessedCourseId = useRef<string | null>(null);
@@ -193,6 +195,29 @@ export function AdminCoursesSection({
   const handleSaveSuccess = async () => {
     await fetchCourses();
     handleCloseEditor();
+  };
+
+  // Update settings course field and save to API
+  const updateSettingsCourse = async <K extends keyof DiscoverCourse>(
+    field: K,
+    value: DiscoverCourse[K]
+  ) => {
+    if (!settingsCourse) return;
+    const updated = { ...settingsCourse, [field]: value };
+    setSettingsCourse(updated);
+
+    // Auto-save to API
+    try {
+      await fetch(`${apiEndpoint}/${settingsCourse.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+      // Update local courses list
+      setCourses(prev => prev.map(c => c.id === settingsCourse.id ? updated : c));
+    } catch (err) {
+      console.error('Failed to save course settings:', err);
+    }
   };
 
   // Get unique categories
@@ -484,12 +509,12 @@ export function AdminCoursesSection({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEditCourse(course);
+                            setSettingsCourse(course);
                           }}
                           className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
-                          title="Edit course"
+                          title="Course settings"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Settings className="w-4 h-4" />
                         </button>
                         <button
                           onClick={(e) => {
@@ -579,6 +604,32 @@ export function AdminCoursesSection({
         apiEndpoint={apiEndpoint}
         programsApiEndpoint={programsApiEndpoint}
         uploadEndpoint={uploadEndpoint}
+      />
+
+      {/* Course Settings Modal */}
+      <ResourceSettingsModal
+        open={!!settingsCourse}
+        onOpenChange={(open) => !open && setSettingsCourse(null)}
+        type="course"
+        title={settingsCourse?.title || ''}
+        onTitleChange={(title) => updateSettingsCourse('title', title)}
+        coverImageUrl={settingsCourse?.coverImageUrl || ''}
+        onCoverImageChange={(url) => updateSettingsCourse('coverImageUrl', url)}
+        description={settingsCourse?.shortDescription || ''}
+        onDescriptionChange={(desc) => updateSettingsCourse('shortDescription', desc)}
+        category={settingsCourse?.category}
+        onCategoryChange={(cat) => updateSettingsCourse('category', cat)}
+        programIds={settingsCourse?.programIds}
+        onProgramIdsChange={(ids) => updateSettingsCourse('programIds', ids)}
+        pricing={settingsCourse?.pricing || { priceInCents: null, currency: 'usd', purchaseType: 'popup', isPublic: true }}
+        onPricingChange={(pricing) => updateSettingsCourse('pricing', pricing)}
+        featured={settingsCourse?.featured}
+        onFeaturedChange={(featured) => updateSettingsCourse('featured', featured)}
+        trending={settingsCourse?.trending}
+        onTrendingChange={(trending) => updateSettingsCourse('trending', trending)}
+        uploadEndpoint={uploadEndpoint}
+        programsApiEndpoint={programsApiEndpoint}
+        categoriesApiEndpoint="/api/coach/org-course-categories"
       />
     </>
   );

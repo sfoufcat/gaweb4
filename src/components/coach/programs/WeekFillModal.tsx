@@ -4,12 +4,12 @@
  * WeekFillModal
  *
  * Modal for filling a program week using AI from various sources:
- * - Call Summary: Select from existing call summaries
- * - PDF: Paste extracted PDF text
+ * - Sessions: Select from existing call recordings (with or without summaries)
+ * - PDF: Upload and extract text from PDF documents
  * - Prompt: Custom instructions for generating content
  */
 
-import React, { useState, useEffect, Fragment, useCallback } from 'react';
+import React, { useState, useEffect, Fragment, useCallback, useRef } from 'react';
 import { Dialog, Transition, Tab } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -24,14 +24,19 @@ import {
   StickyNote,
   ChevronRight,
   RefreshCw,
+  Upload,
+  Video,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type {
   ProgramWeek,
   ProgramTaskTemplate,
-  CallSummary,
+  UnifiedEvent,
   WeekFillSource,
+  CallSummary,
 } from '@/types';
+import { extractPdfText, formatFileSize, type PdfExtractionResult } from '@/lib/pdf-utils';
 
 interface WeekFillResult {
   tasks: Array<{
@@ -54,12 +59,263 @@ interface WeekFillModalProps {
   programId: string;
   week: ProgramWeek;
   onApply: (updates: Partial<ProgramWeek>) => Promise<void>;
-  // Client context for 1:1 programs - when provided, filters call summaries by client
+  // Client context for 1:1 programs - when provided, filters sessions by client
   enrollmentId?: string;
   clientUserId?: string;
 }
 
-type FillSourceType = 'call_summary' | 'pdf' | 'prompt';
+type FillSourceType = 'session' | 'pdf' | 'prompt';
+
+// Session with potential summary data
+interface SessionWithSummary extends UnifiedEvent {
+  summaryId?: string;
+  hasSummary?: boolean;
+  hasRecording?: boolean;
+}
+
+// Inline upload recording button for compact row display
+function InlineUploadRecordingButton({
+  eventId,
+  onUploaded,
+}: {
+  eventId: string;
+  onUploaded: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<'upload' | 'link'>('upload');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const handleLinkSubmit = async () => {
+    if (!linkUrl.trim()) return;
+    setIsSubmitting(true);
+    setError(undefined);
+
+    try {
+      const response = await fetch(`/api/events/${eventId}/recording`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recordingUrl: linkUrl.trim() }),
+      });
+
+      if (response.ok) {
+        setIsOpen(false);
+        setLinkUrl('');
+        onUploaded();
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to save recording');
+      }
+    } catch {
+      setError('Network error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUploadComplete = () => {
+    setIsOpen(false);
+    onUploaded();
+  };
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-brand-accent/10 hover:text-brand-accent transition-colors"
+      >
+        Add Recording
+      </button>
+    );
+  }
+
+  return (
+    <div className="absolute right-0 top-full mt-1 z-10 w-80 p-4 bg-white dark:bg-[#1e222a] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] shadow-lg">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+          Add Recording
+        </span>
+        <button
+          onClick={() => {
+            setIsOpen(false);
+            setLinkUrl('');
+            setError(undefined);
+            setMode('upload');
+          }}
+          className="p-1 rounded hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]"
+        >
+          <X className="w-4 h-4 text-[#5f5a55]" />
+        </button>
+      </div>
+
+      {/* Tab switcher */}
+      <div className="flex gap-1 p-1 bg-[#f3f1ef] dark:bg-[#11141b] rounded-lg mb-3">
+        <button
+          onClick={() => setMode('upload')}
+          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+            mode === 'upload'
+              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          Upload File
+        </button>
+        <button
+          onClick={() => setMode('link')}
+          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+            mode === 'link'
+              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          Paste Link
+        </button>
+      </div>
+
+      {mode === 'upload' ? (
+        <InlineRecordingUploadCompact
+          eventId={eventId}
+          onUploadComplete={handleUploadComplete}
+        />
+      ) : (
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            placeholder="https://..."
+            className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e]"
+          />
+
+          {error && (
+            <p className="text-xs text-red-500">{error}</p>
+          )}
+
+          <button
+            onClick={handleLinkSubmit}
+            disabled={!linkUrl.trim() || isSubmitting}
+            className="w-full px-3 py-2 text-sm font-medium bg-brand-accent text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
+          >
+            {isSubmitting ? 'Saving...' : 'Save Link'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Compact version of InlineRecordingUpload for the popup
+function InlineRecordingUploadCompact({
+  eventId,
+  onUploadComplete,
+}: {
+  eventId: string;
+  onUploadComplete: () => void;
+}) {
+  // Import dynamically to avoid circular deps - use the existing component
+  const [RecordingUpload, setRecordingUpload] = useState<React.ComponentType<{
+    eventId: string;
+    onUploadComplete?: () => void;
+    variant?: 'default' | 'compact' | 'link';
+  }> | null>(null);
+
+  useEffect(() => {
+    import('@/components/scheduling/InlineRecordingUpload').then((mod) => {
+      setRecordingUpload(() => mod.InlineRecordingUpload);
+    });
+  }, []);
+
+  if (!RecordingUpload) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
+      </div>
+    );
+  }
+
+  return (
+    <RecordingUpload
+      eventId={eventId}
+      onUploadComplete={onUploadComplete}
+      variant="compact"
+    />
+  );
+}
+
+// Inline summary generation button for compact row display
+function InlineGenerateSummaryButton({
+  eventId,
+  onGenerated,
+}: {
+  eventId: string;
+  onGenerated: (summaryId: string) => void;
+}) {
+  const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [error, setError] = useState<string>();
+
+  const handleGenerate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setState('loading');
+    setError(undefined);
+
+    try {
+      const response = await fetch(`/api/events/${eventId}/generate-summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        onGenerated(data.summaryId);
+      } else if (response.status === 402) {
+        setError(`Need credits`);
+        setState('error');
+      } else {
+        setError(data.error || 'Failed');
+        setState('error');
+      }
+    } catch {
+      setError('Error');
+      setState('error');
+    }
+  };
+
+  if (state === 'loading') {
+    return (
+      <button
+        disabled
+        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-accent/10 text-brand-accent flex items-center gap-1.5"
+      >
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        Generating...
+      </button>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <button
+        onClick={handleGenerate}
+        title={error}
+        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors flex items-center gap-1.5"
+      >
+        <AlertCircle className="w-3.5 h-3.5" />
+        Retry
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleGenerate}
+      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-brand-accent/10 hover:text-brand-accent transition-colors"
+    >
+      Get Summary (1 credit)
+    </button>
+  );
+}
 
 export function WeekFillModal({
   isOpen,
@@ -71,14 +327,20 @@ export function WeekFillModal({
   clientUserId,
 }: WeekFillModalProps) {
   // Source selection
-  const [sourceType, setSourceType] = useState<FillSourceType>('call_summary');
+  const [sourceType, setSourceType] = useState<FillSourceType>('session');
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   const [selectedSummaryId, setSelectedSummaryId] = useState<string>('');
   const [promptText, setPromptText] = useState('');
-  const [pdfText, setPdfText] = useState('');
 
-  // Available summaries
-  const [summaries, setSummaries] = useState<CallSummary[]>([]);
-  const [loadingSummaries, setLoadingSummaries] = useState(false);
+  // PDF state
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfExtraction, setPdfExtraction] = useState<PdfExtractionResult | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Available sessions (events with recordings)
+  const [sessions, setSessions] = useState<SessionWithSummary[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -88,54 +350,214 @@ export function WeekFillModal({
   // Apply state
   const [isApplying, setIsApplying] = useState(false);
 
-  // Fetch call summaries for this program (filtered by enrollment if in client mode)
-  const fetchSummaries = useCallback(async () => {
-    setLoadingSummaries(true);
+  // Fetch sessions (events with recordings) for this program
+  const fetchSessions = useCallback(async () => {
+    setLoadingSessions(true);
     try {
-      const params = new URLSearchParams({
+      // Fetch events for this program - include all statuses (except canceled)
+      // to catch draft events without recordings
+      // Include recurring events (parent events) since those are actual scheduled calls
+      const eventsParams = new URLSearchParams({
+        programId,
+        status: 'all',
+        includeInstances: 'false',
+        limit: '100',
+      });
+      // Don't filter by eventType - we'll filter client-side for call types
+      // This ensures we get all calls regardless of eventType variations
+
+      // Fetch call summaries for this program
+      const summariesParams = new URLSearchParams({
         programId,
         status: 'completed',
-        limit: '20',
+        limit: '50',
       });
-      // Filter by enrollment when in client mode for 1:1 programs
       if (enrollmentId) {
-        params.set('programEnrollmentId', enrollmentId);
+        summariesParams.set('programEnrollmentId', enrollmentId);
       }
-      const res = await fetch(`/api/coach/call-summaries?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSummaries(data.summaries || []);
+
+      // Fetch both in parallel
+      const [eventsRes, summariesRes] = await Promise.all([
+        fetch(`/api/events?${eventsParams}`),
+        fetch(`/api/coach/call-summaries?${summariesParams}`),
+      ]);
+
+      let allEvents: UnifiedEvent[] = [];
+      let summaries: CallSummary[] = [];
+
+      if (eventsRes.ok) {
+        const eventsData = await eventsRes.json();
+        // Filter to call-type events (with or without recordings)
+        const callTypes = ['coaching_1on1', 'cohort_call', 'squad_call'];
+        allEvents = (eventsData.events || []).filter(
+          (e: UnifiedEvent) => callTypes.includes(e.eventType || '')
+        );
+        console.log('[WeekFillModal] Fetched events:', allEvents.length, allEvents.map(e => ({ id: e.id, title: e.title, status: e.status, hasRecording: !!e.recordingUrl, callSummaryId: e.callSummaryId })));
       }
+
+      if (summariesRes.ok) {
+        const summariesData = await summariesRes.json();
+        summaries = summariesData.summaries || [];
+        console.log('[WeekFillModal] Fetched summaries:', summaries.length, summaries.map(s => ({ id: s.id, eventId: s.eventId, status: s.status })));
+      }
+
+      // Create map for eventId -> summary
+      const eventIdToSummary = new Map<string, CallSummary>();
+      // Also create map for callId -> summary (backup matching)
+      const callIdToSummary = new Map<string, CallSummary>();
+
+      for (const summary of summaries) {
+        if (summary.eventId) {
+          eventIdToSummary.set(summary.eventId, summary);
+        }
+        if (summary.callId) {
+          callIdToSummary.set(summary.callId, summary);
+        }
+      }
+
+      // Match events with their summaries
+      const sessionsWithSummaryInfo: SessionWithSummary[] = allEvents.map(
+        (event: UnifiedEvent) => {
+          // Try to match by eventId first, then by callId as fallback
+          let summaryId = eventIdToSummary.get(event.id)?.id;
+          if (!summaryId && event.streamCallId) {
+            summaryId = callIdToSummary.get(event.streamCallId)?.id;
+          }
+          // Also check if event already has callSummaryId set directly
+          // (this is the most reliable indicator as it's set when summary is created)
+          if (!summaryId && event.callSummaryId) {
+            summaryId = event.callSummaryId;
+          }
+
+          const hasSummary = !!summaryId;
+
+          return {
+            ...event,
+            summaryId,
+            hasSummary,
+            hasRecording: !!event.recordingUrl,
+          };
+        }
+      );
+
+      // Also include summaries that don't have matching events in our list
+      // (they might be from events not linked to this program but still relevant)
+      const eventIds = new Set(allEvents.map(e => e.id));
+      for (const summary of summaries) {
+        if (summary.eventId && !eventIds.has(summary.eventId)) {
+          // This summary has an event we didn't fetch - create a synthetic session entry
+          sessionsWithSummaryInfo.push({
+            id: summary.eventId,
+            title: 'Coaching Call',
+            eventType: 'coaching_1on1',
+            startDateTime: summary.callStartedAt || summary.createdAt,
+            durationMinutes: summary.recordingDurationSeconds
+              ? Math.round(summary.recordingDurationSeconds / 60)
+              : undefined,
+            recordingUrl: summary.recordingUrl,
+            summaryId: summary.id,
+            hasSummary: true,
+            hasRecording: !!summary.recordingUrl,
+          } as SessionWithSummary);
+        }
+      }
+
+      // Sort by date, newest first
+      sessionsWithSummaryInfo.sort((a, b) => {
+        const dateA = a.startDateTime || '';
+        const dateB = b.startDateTime || '';
+        return dateB.localeCompare(dateA);
+      });
+
+      console.log('[WeekFillModal] Final sessions:', sessionsWithSummaryInfo.map(s => ({ id: s.id, title: s.title, hasSummary: s.hasSummary, hasRecording: s.hasRecording })));
+      setSessions(sessionsWithSummaryInfo);
     } catch (error) {
-      console.error('Failed to fetch call summaries:', error);
+      console.error('Failed to fetch sessions:', error);
     } finally {
-      setLoadingSummaries(false);
+      setLoadingSessions(false);
     }
   }, [programId, enrollmentId]);
 
-  // Load summaries when modal opens
+  // Load sessions when modal opens
   useEffect(() => {
     if (isOpen) {
-      fetchSummaries();
+      fetchSessions();
       // Reset state
       setResult(null);
       setGenerationError(null);
       setPromptText('');
-      setPdfText('');
+      setPdfFile(null);
+      setPdfExtraction(null);
+      setSelectedSessionId('');
       setSelectedSummaryId('');
     }
-  }, [isOpen, fetchSummaries]);
+  }, [isOpen, fetchSessions]);
+
+  // Handle PDF file selection
+  const handlePdfSelect = async (file: File) => {
+    setPdfFile(file);
+    setIsExtracting(true);
+    setPdfExtraction(null);
+
+    try {
+      const result = await extractPdfText(file);
+      setPdfExtraction(result);
+    } catch (error) {
+      setPdfExtraction({
+        success: false,
+        text: '',
+        pageCount: 0,
+        charCount: 0,
+        truncated: false,
+        error: error instanceof Error ? error.message : 'Failed to extract PDF',
+      });
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  // Handle file input change
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handlePdfSelect(file);
+    }
+  };
+
+  // Handle drag and drop
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
+      handlePdfSelect(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  // Clear PDF
+  const clearPdf = () => {
+    setPdfFile(null);
+    setPdfExtraction(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   // Check if can generate
   const canGenerate = () => {
-    if (sourceType === 'call_summary') {
+    if (sourceType === 'session') {
       return !!selectedSummaryId;
     }
     if (sourceType === 'prompt') {
       return promptText.trim().length >= 50;
     }
     if (sourceType === 'pdf') {
-      return pdfText.trim().length >= 50;
+      return pdfExtraction?.success && pdfExtraction.text.length >= 50;
     }
     return false;
   };
@@ -150,18 +572,20 @@ export function WeekFillModal({
 
     try {
       const source: {
-        type: FillSourceType;
+        type: 'call_summary' | 'prompt' | 'pdf';
         summaryId?: string;
         prompt?: string;
         pdfText?: string;
-      } = { type: sourceType };
+      } = {
+        type: sourceType === 'session' ? 'call_summary' : sourceType,
+      };
 
-      if (sourceType === 'call_summary') {
+      if (sourceType === 'session') {
         source.summaryId = selectedSummaryId;
       } else if (sourceType === 'prompt') {
         source.prompt = promptText;
       } else if (sourceType === 'pdf') {
-        source.pdfText = pdfText;
+        source.pdfText = pdfExtraction?.text || '';
       }
 
       const res = await fetch('/api/ai/fill-week', {
@@ -188,6 +612,19 @@ export function WeekFillModal({
     }
   };
 
+  // Handle summary generation from session
+  const handleSummaryGenerated = (eventId: string, summaryId: string) => {
+    // Update the session with the new summary
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === eventId ? { ...s, summaryId, hasSummary: true } : s
+      )
+    );
+    // Auto-select this summary
+    setSelectedSessionId(eventId);
+    setSelectedSummaryId(summaryId);
+  };
+
   // Apply result to week
   const handleApply = async () => {
     if (!result) return;
@@ -197,7 +634,7 @@ export function WeekFillModal({
       // Convert result to ProgramWeek updates
       const tasks: ProgramTaskTemplate[] = result.tasks.map((t) => ({
         label: t.label,
-        type: t.type === 'reflection' ? 'task' : t.type, // Map reflection to task for ProgramTaskTemplate
+        type: t.type === 'reflection' ? 'task' : t.type,
         isPrimary: t.isPrimary,
         estimatedMinutes: t.estimatedMinutes,
         notes: t.notes,
@@ -205,8 +642,13 @@ export function WeekFillModal({
       }));
 
       const fillSource: WeekFillSource = {
-        type: sourceType === 'call_summary' ? 'call_summary' : sourceType === 'pdf' ? 'pdf' : 'ai_prompt',
-        sourceId: sourceType === 'call_summary' ? selectedSummaryId : undefined,
+        type:
+          sourceType === 'session'
+            ? 'call_summary'
+            : sourceType === 'pdf'
+            ? 'pdf'
+            : 'ai_prompt',
+        sourceId: sourceType === 'session' ? selectedSummaryId : undefined,
         sourceName: getSourceName(),
         generatedAt: new Date().toISOString(),
       };
@@ -231,16 +673,16 @@ export function WeekFillModal({
 
   // Get source name for tracking
   const getSourceName = (): string => {
-    if (sourceType === 'call_summary') {
-      const summary = summaries.find((s) => s.id === selectedSummaryId);
-      if (summary) {
-        const date = new Date(summary.callStartedAt).toLocaleDateString();
-        return `Call - ${date}`;
+    if (sourceType === 'session') {
+      const session = sessions.find((s) => s.id === selectedSessionId);
+      if (session) {
+        const date = new Date(session.startDateTime || '').toLocaleDateString();
+        return `Session - ${date}`;
       }
-      return 'Call Summary';
+      return 'Session';
     }
     if (sourceType === 'pdf') {
-      return 'PDF Extract';
+      return pdfFile?.name || 'PDF Upload';
     }
     return 'Custom Prompt';
   };
@@ -253,6 +695,12 @@ export function WeekFillModal({
       hour: 'numeric',
       minute: '2-digit',
     });
+  };
+
+  // Get week display name
+  const getWeekDisplayName = () => {
+    if (week.weekNumber === 0) return 'Onboarding';
+    return `Week ${week.weekNumber}`;
   };
 
   return (
@@ -297,7 +745,7 @@ export function WeekFillModal({
                     </div>
                     <div>
                       <Dialog.Title className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                        Fill Week {week.weekNumber} with AI
+                        Fill {getWeekDisplayName()} with AI
                       </Dialog.Title>
                       <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                         Generate tasks, focus areas, and notes from a source
@@ -320,7 +768,7 @@ export function WeekFillModal({
                         {/* Source Tabs */}
                         <Tab.Group
                           selectedIndex={
-                            sourceType === 'call_summary'
+                            sourceType === 'session'
                               ? 0
                               : sourceType === 'prompt'
                               ? 1
@@ -329,7 +777,7 @@ export function WeekFillModal({
                           onChange={(index) =>
                             setSourceType(
                               index === 0
-                                ? 'call_summary'
+                                ? 'session'
                                 : index === 1
                                 ? 'prompt'
                                 : 'pdf'
@@ -346,8 +794,8 @@ export function WeekFillModal({
                                 }`
                               }
                             >
-                              <MessageSquare className="w-4 h-4" />
-                              Call Summary
+                              <Video className="w-4 h-4" />
+                              Sessions
                             </Tab>
                             <Tab
                               className={({ selected }) =>
@@ -371,62 +819,99 @@ export function WeekFillModal({
                               }
                             >
                               <FileText className="w-4 h-4" />
-                              PDF Text
+                              PDF
                             </Tab>
                           </Tab.List>
 
                           <Tab.Panels className="mt-4">
-                            {/* Call Summary Panel */}
+                            {/* Sessions Panel */}
                             <Tab.Panel className="space-y-4">
                               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                Select a call summary to extract tasks and focus
-                                areas from your coaching conversation.
+                                Select a session with a summary to fill this week with insights from your coaching call.
                               </p>
 
-                              {loadingSummaries ? (
+                              {loadingSessions ? (
                                 <div className="flex items-center justify-center py-8">
                                   <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
                                 </div>
-                              ) : summaries.length === 0 ? (
+                              ) : sessions.length === 0 ? (
                                 <div className="text-center py-8 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
-                                  <MessageSquare className="w-8 h-8 mx-auto text-[#a7a39e] dark:text-[#7d8190] mb-2" />
+                                  <Video className="w-8 h-8 mx-auto text-[#a7a39e] dark:text-[#7d8190] mb-2" />
                                   <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                    No call summaries found for this program
+                                    No sessions found
                                   </p>
                                   <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
-                                    Record a call to generate summaries
+                                    Schedule a coaching call first
                                   </p>
                                 </div>
                               ) : (
                                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                                  {summaries.map((summary) => (
-                                    <button
-                                      key={summary.id}
-                                      onClick={() =>
-                                        setSelectedSummaryId(summary.id)
-                                      }
+                                  {sessions.map((session) => (
+                                    <div
+                                      key={session.id}
                                       className={`w-full text-left p-3 rounded-xl border transition-all ${
-                                        selectedSummaryId === summary.id
+                                        selectedSessionId === session.id
                                           ? 'border-brand-accent bg-brand-accent/5'
                                           : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d4cfc9] dark:hover:border-[#3a4150]'
                                       }`}
                                     >
                                       <div className="flex items-center justify-between">
-                                        <div>
+                                        <div className="flex-1">
                                           <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                                            {formatDate(summary.callStartedAt)}
+                                            {session.title || 'Coaching Call'}
                                           </p>
-                                          {summary.summary?.executive && (
-                                            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5 line-clamp-1">
-                                              {summary.summary.executive}
-                                            </p>
+                                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                                            {session.startDateTime
+                                              ? formatDate(session.startDateTime)
+                                              : 'No date'}
+                                            {session.durationMinutes && (
+                                              <span className="ml-2">
+                                                · {session.durationMinutes} min
+                                              </span>
+                                            )}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 relative">
+                                          {session.hasSummary ? (
+                                            // Has summary - show Use Summary button
+                                            <button
+                                              onClick={() => {
+                                                setSelectedSessionId(session.id);
+                                                setSelectedSummaryId(session.summaryId || '');
+                                              }}
+                                              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                                                selectedSessionId === session.id
+                                                  ? 'bg-brand-accent text-white'
+                                                  : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#2d333e]'
+                                              }`}
+                                            >
+                                              {selectedSessionId === session.id ? (
+                                                <span className="flex items-center gap-1">
+                                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                                  Selected
+                                                </span>
+                                              ) : (
+                                                'Use Summary'
+                                              )}
+                                            </button>
+                                          ) : session.hasRecording ? (
+                                            // Has recording but no summary - show Get Summary button
+                                            <InlineGenerateSummaryButton
+                                              eventId={session.id}
+                                              onGenerated={(summaryId) =>
+                                                handleSummaryGenerated(session.id, summaryId)
+                                              }
+                                            />
+                                          ) : (
+                                            // No recording - show Upload Recording button
+                                            <InlineUploadRecordingButton
+                                              eventId={session.id}
+                                              onUploaded={() => fetchSessions()}
+                                            />
                                           )}
                                         </div>
-                                        {selectedSummaryId === summary.id && (
-                                          <CheckCircle2 className="w-5 h-5 text-brand-accent" />
-                                        )}
                                       </div>
-                                    </button>
+                                    </div>
                                   ))}
                                 </div>
                               )}
@@ -435,8 +920,7 @@ export function WeekFillModal({
                             {/* Prompt Panel */}
                             <Tab.Panel className="space-y-4">
                               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                Describe what you want for this week. Include
-                                goals, themes, and specific areas to focus on.
+                                Describe what you want for this week. Include goals, themes, and specific areas to focus on.
                               </p>
                               <textarea
                                 value={promptText}
@@ -454,20 +938,95 @@ export function WeekFillModal({
                             {/* PDF Panel */}
                             <Tab.Panel className="space-y-4">
                               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                Paste the extracted text from a PDF document
-                                (intake form, notes, etc.)
+                                Upload a PDF document (intake form, notes, etc.) to extract content for this week.
                               </p>
-                              <textarea
-                                value={pdfText}
-                                onChange={(e) => setPdfText(e.target.value)}
-                                placeholder="Paste the extracted PDF text here..."
-                                rows={6}
-                                className="w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm resize-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent"
-                              />
-                              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                                Minimum 50 characters required. {pdfText.length}
-                                /50
-                              </p>
+
+                              {!pdfFile ? (
+                                <div
+                                  onDrop={handleDrop}
+                                  onDragOver={handleDragOver}
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-8 text-center cursor-pointer hover:border-brand-accent/50 hover:bg-brand-accent/5 transition-colors"
+                                >
+                                  <Upload className="w-8 h-8 mx-auto text-[#a7a39e] dark:text-[#7d8190] mb-3" />
+                                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-1">
+                                    Drop a PDF here or click to upload
+                                  </p>
+                                  <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                                    Maximum file size: 10MB
+                                  </p>
+                                  <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept=".pdf,application/pdf"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                                        <FileText className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                                          {pdfFile.name}
+                                        </p>
+                                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                                          {formatFileSize(pdfFile.size)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={clearPdf}
+                                      className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] text-[#5f5a55] hover:text-red-500 transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+
+                                  {isExtracting ? (
+                                    <div className="mt-4 flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      Extracting text...
+                                    </div>
+                                  ) : pdfExtraction ? (
+                                    <div className="mt-4">
+                                      {pdfExtraction.success ? (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            <span>
+                                              Extracted {pdfExtraction.charCount.toLocaleString()} characters
+                                              {pdfExtraction.pageCount > 0 && (
+                                                <span className="text-[#5f5a55] dark:text-[#b2b6c2]">
+                                                  {' '}from {pdfExtraction.pageCount} pages
+                                                </span>
+                                              )}
+                                            </span>
+                                          </div>
+                                          {pdfExtraction.truncated && (
+                                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                                              Content was truncated to stay within limits
+                                            </p>
+                                          )}
+                                          <div className="p-3 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-lg text-xs text-[#5f5a55] dark:text-[#b2b6c2] max-h-24 overflow-y-auto">
+                                            {pdfExtraction.text.slice(0, 500)}
+                                            {pdfExtraction.text.length > 500 && '...'}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                                          <AlertCircle className="w-4 h-4" />
+                                          <span>{pdfExtraction.error}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              )}
                             </Tab.Panel>
                           </Tab.Panels>
                         </Tab.Group>
@@ -643,7 +1202,7 @@ export function WeekFillModal({
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4" />
-                          Generate Content
+                          Fill Week
                         </>
                       )}
                     </Button>

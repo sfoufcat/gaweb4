@@ -982,8 +982,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     instanceId,
     instanceLoading,
     cohortWeekContent,
-    // Still need instanceWeeks and instance for the computation, but instanceWeekStableKey controls when to recompute
-    // The eslint-disable above acknowledges this intentional omission
+    // Also depend on instance?.weeks directly to catch SWR refreshes
+    instance?.weeks,
   ]);
 
   // Modal states

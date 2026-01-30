@@ -181,8 +181,9 @@ function SettingsContent({
 
   return (
     <>
+      <div className="relative">
       <div className="overflow-y-auto max-h-[70vh] md:max-h-[75vh] scrollbar-thin">
-        <div className="space-y-8 px-5 py-5">
+        <div className="space-y-8 px-5 py-5 pb-16">
           {/* Section 1: Course Details (Collapsible) */}
           <section>
             <button
@@ -489,6 +490,11 @@ function SettingsContent({
             </section>
           )}
         </div>
+
+      </div>
+
+      {/* Bottom blur gradient for comfortable scrolling */}
+      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-[#171b22] to-transparent pointer-events-none" />
       </div>
 
       {/* Stripe Connect Modal */}

@@ -142,7 +142,7 @@ export function useProgramInstance(instanceId: string | null) {
     data: instanceData,
     error: fetchError,
     isLoading,
-    mutate: mutateInstance,
+    mutate: mutateInstanceInternal,
   } = useSWR<InstanceResponse>(
     instanceId ? `/api/instances/${instanceId}` : null,
     fetcher,
@@ -150,6 +150,18 @@ export function useProgramInstance(instanceId: string | null) {
       revalidateOnFocus: false,
     }
   );
+
+  // Wrap mutate to add logging
+  const mutateInstance = useCallback(async () => {
+    console.log('[useProgramInstance] Refreshing instance data for:', instanceId);
+    const result = await mutateInstanceInternal();
+    console.log('[useProgramInstance] Refresh complete, new data:', {
+      instanceId,
+      weekCount: result?.instance?.weeks?.length,
+      firstWeekTasks: result?.instance?.weeks?.[0]?.weeklyTasks?.length,
+    });
+    return result;
+  }, [instanceId, mutateInstanceInternal]);
 
   // Update instance metadata
   const updateInstance = useCallback(

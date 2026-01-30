@@ -1078,7 +1078,7 @@ export function InviteClientsDialog({ isOpen, onClose, initialTargetType }: Invi
       )}
 
       {/* Content */}
-      <div className={`flex-1 overflow-y-auto px-6 pb-6 ${isWizardMode && wizardStep === 'welcome' ? 'pt-0' : 'pt-4'}`}>
+      <div className={`flex-1 overflow-y-auto px-6 pb-6 ${isWizardMode && wizardStep === 'welcome' ? 'pt-0' : 'pt-4'}`} data-vaul-no-drag>
         {/* Loading */}
         {isLoading && (
           <div className="space-y-4 animate-pulse">
@@ -3559,7 +3559,7 @@ export function InviteClientsDialog({ isOpen, onClose, initialTargetType }: Invi
         onOpenChange={(open) => !open && onClose()}
         shouldScaleBackground={false}
       >
-        <DrawerContent className="max-h-[90vh] overflow-hidden flex flex-col">
+        <DrawerContent className="max-h-[90vh] flex flex-col">
           <DrawerTitle className="sr-only">{headerInfo.title}</DrawerTitle>
           {content}
         </DrawerContent>

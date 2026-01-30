@@ -408,7 +408,7 @@ export function FillWeekPreviewModal({
             : "bg-brand-accent text-white hover:bg-brand-accent/90 border-2 border-brand-accent"
         )}
       >
-        Create Tasks
+        Fill Week
         <Wand2 className="w-4 h-4" />
       </button>
     </div>

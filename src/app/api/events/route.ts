@@ -125,7 +125,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter by status
-    if (status) {
+    // 'all' = return all statuses (except canceled)
+    // specific status = filter to that status
+    // no status = default to confirmed/live/completed
+    if (status === 'all') {
+      // Include all except canceled
+      events = events.filter(e => e.status !== 'canceled');
+    } else if (status) {
       events = events.filter(e => e.status === status);
     } else {
       // Default: exclude canceled and draft events

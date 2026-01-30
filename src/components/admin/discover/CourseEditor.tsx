@@ -587,7 +587,7 @@ export function CourseEditor({
         {(activeTab === 'content' || !isEditing) && (
           <div className="h-full flex rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
         {/* Sidebar - Module/Lesson Tree (hidden on mobile when lesson selected) */}
-        <div className={`w-full md:w-[420px] flex-shrink-0 flex flex-col border-r border-[#e8e4df] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#0d0f14] ${selectedLesson ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-[420px] flex-shrink-0 flex flex-col border-r border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#171b22] ${selectedLesson ? 'hidden md:flex' : 'flex'}`}>
           {/* Sidebar Header */}
           <div className="px-6 py-4 flex items-center gap-2 border-b border-[#e8e4df] dark:border-[#262b35]">
             <LayoutGrid className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
