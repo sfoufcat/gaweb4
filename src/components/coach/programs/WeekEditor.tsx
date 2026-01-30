@@ -35,6 +35,7 @@ import { MediaPlayer } from '@/components/video/MediaPlayer';
 // Audio utilities for duration detection
 import { getAudioDuration } from '@/lib/audio-compression';
 import { generateTasksFromResources, mergeResourceTasks } from '@/lib/resource-tasks';
+import { SessionCard } from './SessionCard';
 
 /**
  * Small component to fetch recording from video call providers
@@ -3558,207 +3559,47 @@ export function WeekEditor({
             {/* Sessions list */}
             <div>
 
-              {/* Currently linked events */}
+              {/* Currently linked events - using new SessionCard component */}
               {formData.linkedCallEventIds.length > 0 && (
                 <div className="space-y-2 mb-3">
                   {formData.linkedCallEventIds.map((eventId) => {
                     const event = availableEvents.find(e => e.id === eventId);
                     // Skip canceled/deleted events (they're soft-deleted with status='canceled')
                     if (!event || event.status === 'canceled') return null;
-                    const isRecurringInstance = event?.parentEventId;
                     const eventDate = event?.startDateTime ? new Date(event.startDateTime) : null;
-                    const isPast = eventDate ? eventDate < new Date() : false;
                     const isToday = eventDate ? eventDate.toDateString() === new Date().toDateString() : false;
                     // Check if this call has a linked summary
                     const hasSummary = availableCallSummaries.some(s => s.eventId === eventId);
+                    const summaryForEvent = availableCallSummaries.find(s => s.eventId === eventId);
                     // Check recording status
-                    const hasRecording = event?.recordingUrl || event?.hasCallRecording;
+                    const hasRecording = !!(event?.recordingUrl || event?.hasCallRecording);
                     const recordingStatus = event?.recordingStatus;
-                    const isProcessing = recordingStatus === 'processing';
-                    // Check if this is a video call (zoom/google_meet/stream) that could have automatic recording
-                    const isVideoCall = event?.meetingProvider === 'zoom' ||
-                                        event?.meetingProvider === 'google_meet' ||
-                                        event?.meetingProvider === 'stream' ||
-                                        event?.locationType === 'chat';
-                    // Check if call ended recently (within 10 minutes) - recording may still be processing
-                    const endTime = event?.endDateTime ? new Date(event.endDateTime) : eventDate ? new Date(eventDate.getTime() + (event?.durationMinutes || 60) * 60000) : null;
-                    const minutesSinceEnd = endTime ? (Date.now() - endTime.getTime()) / 60000 : Infinity;
-                    const isRecentlyEnded = isPast && isVideoCall && minutesSinceEnd < 10;
-                    // Can generate summary if: past, has recording, no summary yet, not processing
-                    const canGenerateSummary = isPast && hasRecording && !hasSummary && !isProcessing;
 
                     return (
-                      <div
+                      <SessionCard
                         key={eventId}
-                        className={cn(
-                          "p-3 rounded-xl group border",
-                          hasSummary
-                            ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                            : isToday
-                            ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
-                            : isPast && isRecentlyEnded
-                            ? "bg-slate-50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-700"
-                            : "bg-[#faf8f6] dark:bg-[#1e222a] border-[#e8e4df] dark:border-[#2a2f3a]"
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          {hasSummary ? (
-                            <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          ) : isProcessing || (isRecentlyEnded && !hasRecording) ? (
-                            <Loader2 className="w-4 h-4 text-slate-500 animate-spin flex-shrink-0" />
-                          ) : isToday ? (
-                            <Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                          ) : isPast && hasRecording ? (
-                            <Video className="w-4 h-4 text-brand-accent flex-shrink-0" />
-                          ) : isPast ? (
-                            <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                          ) : (
-                            <Calendar className="w-4 h-4 text-brand-accent flex-shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <span className="block text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                              {event?.title || `Call ${eventId.slice(0, 8)}...`}
-                            </span>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {eventDate && (
-                                <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                                  {eventDate.toLocaleDateString('en-US', {
-                                    weekday: 'short',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                  })}
-                                </span>
-                              )}
-                              {isRecurringInstance && (
-                                <span className="text-xs text-brand-accent">• Recurring</span>
-                              )}
-                              {hasSummary && (
-                                <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                                  • Summary ready
-                                </span>
-                              )}
-                              {isProcessing && (
-                                <span className="text-xs text-brand-accent font-medium">
-                                  • Generating...
-                                </span>
-                              )}
-                              {isPast && !hasSummary && !isProcessing && hasRecording && (
-                                <span className="text-xs text-brand-accent">
-                                  • Recording ready
-                                </span>
-                              )}
-                              {isPast && !hasSummary && !isProcessing && !hasRecording && isRecentlyEnded && (
-                                <span className="text-xs text-slate-500 dark:text-slate-400">
-                                  • Fetching recording...
-                                </span>
-                              )}
-                              {isToday && (
-                                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                                  • Today
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => removeEventLink(eventId)}
-                            className="p-1 text-[#a7a39e] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Unlink call"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        
-                        {/* Media Player for past sessions with recording (audio or video) */}
-                        {isPast && hasRecording && event?.recordingUrl && (
-                          <div className="mt-3">
-                            <MediaPlayer
-                              src={event.recordingUrl}
-                              poster={event.coverImageUrl}
-                              className="rounded-lg overflow-hidden"
-                              aspectRatio="16:9"
-                              isAudioOnly={event.isAudioOnly}
-                            />
-                            <a
-                              href={event.recordingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 mt-2 text-xs text-brand-accent hover:underline font-medium"
-                            >
-                              <Video className="w-3.5 h-3.5" />
-                              View Full Recording
-                            </a>
-                          </div>
-                        )}
-
-                        {/* Recording actions for past sessions without recording */}
-                        {isPast && !hasRecording && !isProcessing && (
-                          <div className="mt-3">
-                            {/* Processing state card for video calls that recently ended */}
-                            {isRecentlyEnded ? (
-                              <div className="p-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Loader2 className="w-4 h-4 text-slate-500 animate-spin" />
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                      Recording processing...
-                                    </p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                                      Usually ready within a few minutes
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3 mt-3">
-                                  <FetchRecordingButton
-                                    eventId={eventId}
-                                    onSuccess={() => onCallScheduled?.()}
-                                    variant="button"
-                                  />
-                                  <InlineRecordingUpload
-                                    eventId={eventId}
-                                    onUploadComplete={() => onCallScheduled?.()}
-                                    variant="link"
-                                  />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                {/* Fetch recording button for video calls */}
-                                {isVideoCall && (
-                                  <FetchRecordingButton
-                                    eventId={eventId}
-                                    onSuccess={() => onCallScheduled?.()}
-                                  />
-                                )}
-                                <InlineRecordingUpload
-                                  eventId={eventId}
-                                  onUploadComplete={() => onCallScheduled?.()}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Generate Summary Button */}
-                        {canGenerateSummary && (
-                          <div className="mt-2 pl-6">
-                            <GenerateSummaryButton
-                              eventId={eventId}
-                              durationMinutes={event?.durationMinutes || 60}
-                              onGenerated={(summaryId) => {
-                                // Add the new summary to linked summaries
-                                if (!formData.linkedSummaryIds.includes(summaryId)) {
-                                  addSummaryLink(summaryId);
-                                }
-                                // Notify parent if callback provided
-                                onSummaryGenerated?.(summaryId);
-                              }}
-                              className="w-full"
-                            />
-                          </div>
-                        )}
-                      </div>
+                        event={event}
+                        hasSummary={hasSummary}
+                        hasRecording={hasRecording}
+                        recordingStatus={recordingStatus}
+                        isToday={isToday}
+                        onRemove={() => removeEventLink(eventId)}
+                        onViewSummary={() => {
+                          if (summaryForEvent) {
+                            setViewingSummary(summaryForEvent);
+                            setIsViewModalOpen(true);
+                          }
+                        }}
+                        onSummaryGenerated={(summaryId) => {
+                          // Add the new summary to linked summaries
+                          if (!formData.linkedSummaryIds.includes(summaryId)) {
+                            addSummaryLink(summaryId);
+                          }
+                          // Notify parent if callback provided
+                          onSummaryGenerated?.(summaryId);
+                        }}
+                        onRecordingFetched={() => onCallScheduled?.()}
+                      />
                     );
                   })}
                 </div>

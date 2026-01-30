@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import type { DiscoverEvent } from '@/types/discover';
 import { Button } from '@/components/ui/button';
+import { InlineRecordingUpload } from '@/components/scheduling/InlineRecordingUpload';
 import {
   ArrowLeft,
   Calendar,
@@ -16,7 +17,34 @@ import {
   Check,
   User,
   Globe,
+  Upload,
+  X,
 } from 'lucide-react';
+
+// Provider icons
+function ZoomIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4.585 6.836A2.5 2.5 0 0 1 7.085 4.5h9.83a2.5 2.5 0 0 1 2.5 2.336l.5 8a2.5 2.5 0 0 1-2.5 2.664h-9.83a2.5 2.5 0 0 1-2.5-2.664l.5-8zm12.665 2.414l3.25-2.167v9.834l-3.25-2.167V9.25z" />
+    </svg>
+  );
+}
+
+function GoogleMeetIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+    </svg>
+  );
+}
+
+function StreamIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
+    </svg>
+  );
+}
 
 // Helper functions
 function formatTime12Hour(time: string): string {
@@ -57,6 +85,28 @@ export function PastEventEditor({
   const [fetchingRecording, setFetchingRecording] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [showLinkInput, setShowLinkInput] = useState(false);
+
+  // Determine recording states
+  const hasRecording = !!recordingUrl;
+  const isEncoding = event.recordingStatus === 'encoding';
+  const videoCallProviders = ['zoom', 'google_meet', 'stream'];
+  const isVideoCallProvider = event.meetingProvider && videoCallProviders.includes(event.meetingProvider);
+
+  // Check if this is a recent call that might still be fetching recordings
+  const isRecentVideoCall = useMemo(() => {
+    if (!event.endTime || !event.date || !isVideoCallProvider) return false;
+
+    // Parse end datetime
+    const endDateTime = new Date(`${event.date}T${event.endTime}`);
+    const now = new Date();
+    const minutesAgo = (now.getTime() - endDateTime.getTime()) / 60000;
+
+    return minutesAgo > 0 && minutesAgo < 90;
+  }, [event.date, event.endTime, isVideoCallProvider]);
+
+  const showWaitingState = !hasRecording && !isEncoding && isRecentVideoCall;
+  const showUploadOptions = !hasRecording && !isEncoding && !isRecentVideoCall;
 
   // Determine which auto-fetch options are available
   const canFetchFromZoom = event.meetingProvider === 'zoom' && event.externalMeetingId;
@@ -153,6 +203,42 @@ export function PastEventEditor({
     }
   };
 
+  const handleUploadComplete = useCallback(() => {
+    // Recording uploaded, refresh the event data
+    onSave();
+  }, [onSave]);
+
+  const handleRecordingUploaded = useCallback((url: string) => {
+    setRecordingUrl(url);
+  }, []);
+
+  // Get provider icon for waiting state
+  const ProviderIcon = useMemo(() => {
+    switch (event.meetingProvider) {
+      case 'zoom':
+        return ZoomIcon;
+      case 'google_meet':
+        return GoogleMeetIcon;
+      case 'stream':
+        return StreamIcon;
+      default:
+        return Video;
+    }
+  }, [event.meetingProvider]);
+
+  const providerName = useMemo(() => {
+    switch (event.meetingProvider) {
+      case 'zoom':
+        return 'Zoom';
+      case 'google_meet':
+        return 'Google Meet';
+      case 'stream':
+        return 'in-app call';
+      default:
+        return 'video call';
+    }
+  }, [event.meetingProvider]);
+
   // Format the event time
   const eventTime = event.startTime && event.endTime
     ? `${formatTime12Hour(event.startTime)} – ${formatTime12Hour(event.endTime)}`
@@ -222,59 +308,201 @@ export function PastEventEditor({
                       Event Recording
                     </h2>
                     <p className="text-sm text-[#6b7280] dark:text-[#9ca3af]">
-                      Add a recording link for attendees to watch
+                      {hasRecording ? 'Recording available for attendees' : 'Add a recording link for attendees to watch'}
                     </p>
                   </div>
                 </div>
 
-                {/* Recording URL input */}
                 <div className="space-y-3">
-                  <div className="relative">
-                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a958f] dark:text-[#6b7280]" />
-                    <input
-                      type="url"
-                      value={recordingUrl}
-                      onChange={(e) => {
-                        setRecordingUrl(e.target.value);
-                        setFetchError(null);
-                      }}
-                      placeholder="Paste recording URL (YouTube, Vimeo, Zoom, etc.)"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-white placeholder:text-[#9a958f] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500 font-albert"
-                    />
-                  </div>
+                  {/* State 1: Has Recording - Show preview */}
+                  {hasRecording && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/30">
+                          <Play className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#1a1a1a] dark:text-white truncate">
+                            Recording available
+                          </p>
+                          <a
+                            href={recordingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-violet-600 dark:text-violet-400 hover:underline truncate block"
+                          >
+                            {recordingUrl}
+                          </a>
+                        </div>
+                        <a
+                          href={recordingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                        </a>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setRecordingUrl('');
+                          setShowLinkInput(false);
+                        }}
+                        className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-600 dark:hover:text-red-400 hover:underline"
+                      >
+                        Remove recording
+                      </button>
+                    </div>
+                  )}
 
-                  {/* Auto-fetch buttons */}
-                  {(canFetchFromZoom || canFetchFromGoogleDrive) && (
-                    <div className="flex flex-wrap gap-2">
-                      {canFetchFromZoom && (
+                  {/* State 2: Encoding - Show processing state */}
+                  {isEncoding && (
+                    <div className="flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                      <Loader2 className="w-5 h-5 animate-spin text-violet-600 dark:text-violet-400" />
+                      <div>
+                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">
+                          Processing video...
+                        </p>
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                          This may take a few minutes
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* State 3: Waiting for recording (recent call) */}
+                  {showWaitingState && !showLinkInput && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-amber-200/50 dark:border-amber-800/30">
+                        <div className="relative">
+                          <ProviderIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                          <div className="absolute -bottom-1 -right-1 w-3 h-3">
+                            <Loader2 className="w-3 h-3 animate-spin text-amber-600 dark:text-amber-400" />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">
+                            Looking for {providerName} recording...
+                          </p>
+                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                            Recordings usually appear within 15-30 minutes
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Manual options while waiting */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                          Can&apos;t wait? Add manually:
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <InlineRecordingUpload
+                              eventId={event.id}
+                              onUploadComplete={handleUploadComplete}
+                              onRecordingUploaded={handleRecordingUploaded}
+                              variant="compact"
+                            />
+                          </div>
+                          <button
+                            onClick={() => setShowLinkInput(true)}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-xl font-albert font-medium text-sm hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
+                          >
+                            <LinkIcon className="w-4 h-4" />
+                            Add from link
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* State 4: No recording, not waiting - Show upload + link options side by side */}
+                  {showUploadOptions && !showLinkInput && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <InlineRecordingUpload
+                            eventId={event.id}
+                            onUploadComplete={handleUploadComplete}
+                            onRecordingUploaded={handleRecordingUploaded}
+                            variant="compact"
+                          />
+                        </div>
                         <button
-                          onClick={handleFetchFromZoom}
-                          disabled={fetchingRecording}
-                          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-50"
+                          onClick={() => setShowLinkInput(true)}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-xl font-albert font-medium text-sm hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
                         >
-                          {fetchingRecording ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Video className="w-4 h-4" />
-                          )}
-                          Fetch from Zoom
+                          <LinkIcon className="w-4 h-4" />
+                          Add from link
                         </button>
-                      )}
-                      {canFetchFromGoogleDrive && (
+                      </div>
+                      <p className="text-xs text-center text-[#5f5a55] dark:text-[#b2b6c2]">
+                        Audio or video up to 500MB
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Link input expanded (for both waiting and non-waiting states) */}
+                  {(showUploadOptions || showWaitingState) && showLinkInput && (
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a958f] dark:text-[#6b7280]" />
+                        <input
+                          type="url"
+                          value={recordingUrl}
+                          onChange={(e) => {
+                            setRecordingUrl(e.target.value);
+                            setFetchError(null);
+                          }}
+                          placeholder="Paste recording URL (YouTube, Vimeo, Zoom, etc.)"
+                          className="w-full pl-10 pr-10 py-3 rounded-xl bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-white placeholder:text-[#9a958f] dark:placeholder:text-[#6b7280] focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500 font-albert"
+                          autoFocus
+                        />
                         <button
-                          onClick={handleFetchFromGoogleDrive}
-                          disabled={fetchingRecording}
-                          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 transition-colors disabled:opacity-50"
+                          onClick={() => {
+                            setShowLinkInput(false);
+                            setRecordingUrl('');
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors"
                         >
-                          {fetchingRecording ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z" />
-                            </svg>
-                          )}
-                          Fetch from Google Drive
+                          <X className="w-4 h-4 text-[#9a958f] dark:text-[#6b7280]" />
                         </button>
+                      </div>
+
+                      {/* Auto-fetch buttons */}
+                      {(canFetchFromZoom || canFetchFromGoogleDrive) && (
+                        <div className="flex flex-wrap gap-2">
+                          {canFetchFromZoom && (
+                            <button
+                              onClick={handleFetchFromZoom}
+                              disabled={fetchingRecording}
+                              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-50"
+                            >
+                              {fetchingRecording ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Video className="w-4 h-4" />
+                              )}
+                              Fetch from Zoom
+                            </button>
+                          )}
+                          {canFetchFromGoogleDrive && (
+                            <button
+                              onClick={handleFetchFromGoogleDrive}
+                              disabled={fetchingRecording}
+                              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 transition-colors disabled:opacity-50"
+                            >
+                              {fetchingRecording ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z" />
+                                </svg>
+                              )}
+                              Fetch from Google Drive
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -284,19 +512,6 @@ export function PastEventEditor({
                     <p className="text-sm text-red-600 dark:text-red-400">
                       {fetchError}
                     </p>
-                  )}
-
-                  {/* Preview link */}
-                  {recordingUrl && (
-                    <a
-                      href={recordingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-sm text-violet-600 dark:text-violet-400 hover:underline"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      View recording
-                    </a>
                   )}
                 </div>
               </div>
@@ -329,40 +544,55 @@ export function PastEventEditor({
                 </div>
               </div>
 
-              {/* Mobile-only: Date, Time, Host info */}
+              {/* Mobile-only: Date, Time, Timezone in one card + Host separately */}
               <div className="lg:hidden space-y-3">
-                <div className="flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e8e4df] dark:border-[#262b35]">
-                  <Calendar className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                  <div>
-                    <p className="text-xs text-[#9a958f] dark:text-[#6b7280]">Date</p>
-                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-white font-albert">
-                      {formatDateDisplay(event.date)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e8e4df] dark:border-[#262b35]">
-                  <Clock className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                  <div>
-                    <p className="text-xs text-[#9a958f] dark:text-[#6b7280]">Time</p>
-                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-white font-albert">
-                      {eventTime}
-                    </p>
-                  </div>
-                </div>
-
-                {event.timezone && (
-                  <div className="flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e8e4df] dark:border-[#262b35]">
-                    <Globe className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                    <div>
-                      <p className="text-xs text-[#9a958f] dark:text-[#6b7280]">Timezone</p>
-                      <p className="text-sm font-medium text-[#1a1a1a] dark:text-white font-albert">
-                        {event.timezone}
-                      </p>
+                {/* Date & Time Card - Combined */}
+                <div className="bg-white dark:bg-[#171b22] rounded-xl border border-[#e8e4df] dark:border-[#262b35] p-4">
+                  <h3 className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider mb-3 font-albert">
+                    Date & Time
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-[#9a958f] dark:text-[#6b7280]">Date</p>
+                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-white font-albert">
+                          {formatDateDisplay(event.date)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
 
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center flex-shrink-0">
+                        <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-[#9a958f] dark:text-[#6b7280]">Time</p>
+                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-white font-albert">
+                          {eventTime}
+                        </p>
+                      </div>
+                    </div>
+
+                    {event.timezone && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center flex-shrink-0">
+                          <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#9a958f] dark:text-[#6b7280]">Timezone</p>
+                          <p className="text-sm font-medium text-[#1a1a1a] dark:text-white font-albert">
+                            {event.timezone}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Host Card - Separate */}
                 {event.hostName && (
                   <div className="flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e8e4df] dark:border-[#262b35]">
                     {event.hostAvatarUrl ? (

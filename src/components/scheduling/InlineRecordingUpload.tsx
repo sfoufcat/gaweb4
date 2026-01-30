@@ -21,8 +21,8 @@ interface InlineRecordingUploadProps {
   onUploadComplete?: () => void;
   /** Called with the recording URL after it's set on the event */
   onRecordingUploaded?: (recordingUrl: string) => void;
-  /** Display variant - 'default' shows full button, 'link' shows text link */
-  variant?: 'default' | 'link';
+  /** Display variant - 'default' shows full button with helper text, 'compact' shows button only, 'link' shows text link */
+  variant?: 'default' | 'compact' | 'link';
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'encoding' | 'saving' | 'completed' | 'error';
@@ -329,7 +329,29 @@ export function InlineRecordingUpload({
       );
     }
 
-    // Default variant - full button
+    // Compact variant - button only, no helper text
+    if (variant === 'compact') {
+      return (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_FORMATS.join(',')}
+            onChange={handleFileInputChange}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl font-albert font-medium text-sm hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            Upload Recording
+          </button>
+        </>
+      );
+    }
+
+    // Default variant - full button with helper text
     return (
       <div className="space-y-2">
         <input

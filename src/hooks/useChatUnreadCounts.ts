@@ -16,6 +16,7 @@ interface OrgFilterData {
   orgChannelIds: Set<string>;
   userSquadChannelIds: Set<string>;
   isPlatformMode: boolean;
+  currentOrgId: string | null;
 }
 
 /**
@@ -44,6 +45,7 @@ export function useChatUnreadCounts() {
     orgChannelIds: new Set(),
     userSquadChannelIds: new Set(),
     isPlatformMode: false,
+    currentOrgId: null,
   });
   const orgFilterFetched = useRef(false);
   
@@ -93,6 +95,7 @@ export function useChatUnreadCounts() {
           orgChannelIds,
           userSquadChannelIds,
           isPlatformMode: orgData?.isPlatformMode || false,
+          currentOrgId: orgData?.organizationId || null,
         });
       } catch (err) {
         console.warn('Failed to fetch org filter data:', err);
@@ -110,7 +113,7 @@ export function useChatUnreadCounts() {
     let mainUnread = 0;
     let directUnread = 0;
 
-    const { orgChannelIds, userSquadChannelIds, isPlatformMode } = orgFilterData;
+    const { orgChannelIds, userSquadChannelIds, isPlatformMode, currentOrgId } = orgFilterData;
 
     // Get all channels the user is a member of
     const channels = Object.values(client.activeChannels);
@@ -140,6 +143,14 @@ export function useChatUnreadCounts() {
             channelId === SHARE_WINS_CHANNEL_ID) {
           if (!orgChannelIds.has(channelId)) {
             continue;
+          }
+        }
+
+        // Filter coaching channels - check organizationId in Stream channel data
+        if (channelId.startsWith('coaching-')) {
+          const channelOrgId = (channel.data as { organizationId?: string })?.organizationId;
+          if (currentOrgId && channelOrgId && channelOrgId !== currentOrgId) {
+            continue; // Skip coaching channels from other orgs
           }
         }
       }

@@ -110,16 +110,19 @@ function PollFormContent({
     <>
       {/* Header */}
       <div className="px-4 pt-2 md:pt-5 pb-6 flex-shrink-0">
-        <button
-          onClick={onClose}
-          className="w-6 h-6 flex items-center justify-center text-[#1a1a1a] hover:opacity-70 transition-opacity"
-          aria-label="Close"
-        >
-          <CloseIcon />
-        </button>
-        <h1 className="font-albert text-[36px] font-normal text-[#1a1a1a] tracking-[-2px] leading-[1.2] mt-3">
-          New poll
-        </h1>
+        <div className="flex items-start justify-between">
+          <h1 className="font-albert text-[36px] font-normal text-[#1a1a1a] tracking-[-2px] leading-[1.2]">
+            New poll
+          </h1>
+          {/* Desktop only: X button far-right */}
+          <button
+            onClick={onClose}
+            className="hidden md:flex w-8 h-8 items-center justify-center text-[#5f5a55] hover:text-[#1a1a1a] hover:bg-[#f3f1ef] rounded-lg transition-all"
+            aria-label="Close"
+          >
+            <CloseIcon className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Scrollable Content */}
@@ -203,13 +206,20 @@ function PollFormContent({
                   placeholder="Date"
                   displayFormat="MMM d"
                   className="bg-[rgba(118,118,128,0.12)] rounded-[6px] border-0"
+                  zIndex="z-[10003]"
                 />
-                <input
-                  type="time"
-                  value={timeValue}
-                  onChange={(e) => setTimeValue(e.target.value)}
-                  className="bg-[rgba(118,118,128,0.12)] rounded-[6px] px-3 py-1.5 font-['SF_Pro'] text-[17px] text-[#000000] tracking-[-0.43px]"
-                />
+                <div className="relative flex items-center">
+                  <input
+                    type="time"
+                    value={timeValue}
+                    onChange={(e) => setTimeValue(e.target.value)}
+                    className="bg-[rgba(118,118,128,0.12)] rounded-[6px] pl-3 pr-8 py-1.5 font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent transition-all [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                  />
+                  <svg className="absolute right-2.5 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12,6 12,12 16,14" />
+                  </svg>
+                </div>
               </div>
             </div>
 

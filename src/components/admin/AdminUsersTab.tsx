@@ -1109,14 +1109,11 @@ export function AdminUsersTab({
             </h2>
 
             <div className="flex items-center gap-2 ml-auto">
-              {/* Mobile search - animated expand */}
-              <div className="flex items-center sm:hidden">
+              {/* Mobile: animated search input - only animates on open, instant close */}
+              {isSearchExpanded && (
                 <div
-                  className={cn(
-                    "flex items-center overflow-hidden transition-all duration-300 ease-out",
-                    isSearchExpanded ? "opacity-100" : "w-0 opacity-0"
-                  )}
-                  style={{ width: isSearchExpanded ? '160px' : 0 }}
+                  className="sm:hidden flex items-center animate-in slide-in-from-right-4 fade-in duration-200"
+                  style={{ width: '200px' }}
                 >
                   <input
                     ref={searchInputRef}
@@ -1127,96 +1124,104 @@ export function AdminUsersTab({
                     className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-0 font-albert"
                   />
                 </div>
-                <button
-                  onClick={isSearchExpanded ? handleSearchCollapse : handleSearchExpand}
-                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                  title={isSearchExpanded ? "Close search" : "Search"}
-                >
-                  {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
-                </button>
-              </div>
+              )}
 
-              {/* Desktop search (hidden on mobile) */}
-              <div className="relative hidden sm:block">
-                <input
-                  type="text"
-                  placeholder="Search by name or email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-56 pl-9 pr-4 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-0 font-albert"
-                />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" />
-                {searchQuery && (
+              {/* Mobile search toggle button */}
+              <button
+                onClick={isSearchExpanded ? handleSearchCollapse : handleSearchExpand}
+                className="sm:hidden p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                title={isSearchExpanded ? "Close search" : "Search"}
+              >
+                {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+              </button>
+
+              {/* Icons container - hidden on mobile when search expanded */}
+              <div className={cn(
+                "flex items-center gap-2",
+                isSearchExpanded && "sm:flex hidden"
+              )}>
+                {/* Desktop search (hidden on mobile) */}
+                <div className="relative hidden sm:block">
+                  <input
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-56 pl-9 pr-4 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent focus:border-[#e1ddd8] dark:focus:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-0 font-albert"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Status Filter Dropdown */}
+                <Select
+                  value={clientFilter}
+                  onValueChange={(value) => handleFilterChange(value as ClientFilter)}
+                >
+                  <SelectTrigger className="w-[140px] h-auto py-1.5 bg-[#f3f1ef] dark:bg-[#1e222a] border-transparent text-sm font-albert">
+                    <Filter className="w-4 h-4 mr-2 text-[#5f5a55] dark:text-[#7d8190]" />
+                    <SelectValue placeholder="All Clients" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    <SelectItem value="at-risk">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        At-Risk
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="active">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        Active
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="inactive">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-gray-400" />
+                        Inactive
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Export Button */}
+                {isCoachContext && (
                   <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]"
+                    onClick={handleExportCSV}
+                    disabled={selectedUserIds.size === 0}
+                    className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={selectedUserIds.size === 0 ? 'Select users to export' : 'Export selected users to CSV'}
                   >
-                    <X className="w-4 h-4" />
+                    <Download className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* Add Clients Button */}
+                {showInviteButton && (
+                  <button
+                    onClick={() => {
+                      if (isDemoMode) {
+                        openSignupModal();
+                        return;
+                      }
+                      setShowInviteDialog(true);
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
+                    title="Add New Clients"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Add New Clients</span>
                   </button>
                 )}
               </div>
-
-              {/* Status Filter Dropdown */}
-              <Select
-                value={clientFilter}
-                onValueChange={(value) => handleFilterChange(value as ClientFilter)}
-              >
-                <SelectTrigger className="w-[140px] h-auto py-1.5 bg-[#f3f1ef] dark:bg-[#1e222a] border-transparent text-sm font-albert">
-                  <Filter className="w-4 h-4 mr-2 text-[#5f5a55] dark:text-[#7d8190]" />
-                  <SelectValue placeholder="All Clients" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Clients</SelectItem>
-                  <SelectItem value="at-risk">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-red-500" />
-                      At-Risk
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="active">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      Active
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="inactive">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-gray-400" />
-                      Inactive
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-
-              {/* Export + Add Button */}
-              {isCoachContext && (
-                <button
-                  onClick={handleExportCSV}
-                  disabled={selectedUserIds.size === 0}
-                  className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  title={selectedUserIds.size === 0 ? 'Select users to export' : 'Export selected users to CSV'}
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              )}
-
-              {/* Add Clients Button */}
-              {showInviteButton && (
-                <button
-                  onClick={() => {
-                    if (isDemoMode) {
-                      openSignupModal();
-                      return;
-                    }
-                    setShowInviteDialog(true);
-                  }}
-                  className="flex items-center gap-2 px-2.5 py-1.5 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white rounded-lg font-albert font-medium text-[15px] transition-colors duration-200"
-                  title="Add New Clients"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Add New Clients</span>
-                </button>
-              )}
             </div>
           </div>
         </div>

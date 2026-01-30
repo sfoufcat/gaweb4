@@ -106,6 +106,8 @@ export function ChatChannelsProvider({
   const [isPlatformMode, setIsPlatformMode] = useState(
     initialIsPlatformMode ?? false
   );
+  // Current organization ID for coaching channel filtering
+  const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   // Map of streamChannelId -> icon identifier for org channels
   const [orgChannelIcons, setOrgChannelIcons] = useState<Map<string, string>>(
     () => new Map()
@@ -200,7 +202,8 @@ export function ChatChannelsProvider({
       platformMode: boolean,
       squadDataLoaded: boolean,
       clientUserId: string,
-      iconMap?: Map<string, string>
+      iconMap?: Map<string, string>,
+      currentOrgId?: string | null
     ): ChannelPreview | null => {
       const channelData = channel.data as Record<string, unknown>;
       const channelId = channel.id || '';
@@ -292,6 +295,14 @@ export function ChatChannelsProvider({
             return null;
           }
         }
+
+        // Filter coaching channels - check organizationId in Stream channel data
+        if (channelId.startsWith('coaching-')) {
+          const channelOrgId = channelData?.organizationId as string | undefined;
+          if (currentOrgId && channelOrgId && channelOrgId !== currentOrgId) {
+            return null; // Skip coaching channels from other orgs
+          }
+        }
       }
 
       // Get last message
@@ -320,11 +331,12 @@ export function ChatChannelsProvider({
     channelIds: Set<string>;
     iconMap: Map<string, string>;
     platformMode: boolean;
+    organizationId: string | null;
   }> => {
     try {
       const res = await fetch('/api/user/org-channels');
       if (!res.ok) {
-        return { channelIds: new Set(), iconMap: new Map(), platformMode: false };
+        return { channelIds: new Set(), iconMap: new Map(), platformMode: false, organizationId: null };
       }
       const data = await res.json();
       const channelIds = new Set<string>();
@@ -343,9 +355,10 @@ export function ChatChannelsProvider({
         channelIds,
         iconMap,
         platformMode: data.isPlatformMode || false,
+        organizationId: data.organizationId || null,
       };
     } catch {
-      return { channelIds: new Set(), iconMap: new Map(), platformMode: false };
+      return { channelIds: new Set(), iconMap: new Map(), platformMode: false, organizationId: null };
     }
   }, []);
 
@@ -388,15 +401,17 @@ export function ChatChannelsProvider({
         ),
       ]);
 
-      // Store org channel data (IDs, icons, platform mode)
+      // Store org channel data (IDs, icons, platform mode, org ID)
       setOrgChannelIds(orgData.channelIds);
       setOrgChannelIcons(orgData.iconMap);
       setIsPlatformMode(orgData.platformMode);
+      setCurrentOrgId(orgData.organizationId);
 
       // Process channels using fetched filter data
       const filterOrgIds = orgData.channelIds;
       const filterPlatformMode = orgData.platformMode;
       const iconMap = orgData.iconMap;
+      const filterOrgId = orgData.organizationId;
 
       const previews: ChannelPreview[] = [];
       for (const channel of channelResponse) {
@@ -407,7 +422,8 @@ export function ChatChannelsProvider({
           filterPlatformMode,
           true, // With SSR data, we always have squad filter data ready
           client.userID!,
-          iconMap
+          iconMap,
+          filterOrgId
         );
         if (preview) {
           previews.push(preview);
@@ -498,7 +514,8 @@ export function ChatChannelsProvider({
               isPlatformMode,
               true, // With SSR data, we always have filter data ready
               client.userID!,
-              orgChannelIcons
+              orgChannelIcons,
+              currentOrgId
             );
             if (preview) {
               return [preview, ...prev];
@@ -547,6 +564,7 @@ export function ChatChannelsProvider({
       orgChannelIcons,
       userSquadChannelIds,
       isPlatformMode,
+      currentOrgId,
       processChannel,
     ]
   );

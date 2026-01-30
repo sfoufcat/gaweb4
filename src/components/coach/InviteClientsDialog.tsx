@@ -37,6 +37,7 @@ import {
   Download,
   Home,
   Settings,
+  Globe,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
