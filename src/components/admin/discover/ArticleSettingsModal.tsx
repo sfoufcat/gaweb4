@@ -79,9 +79,10 @@ export function ArticleSettingsModal({
         <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.5px]">
           Article Settings
         </h2>
+        {/* Hide X button on mobile since drawer has its own close mechanism */}
         <button
           onClick={onClose}
-          className="p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+          className="hidden sm:block p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
@@ -214,7 +215,8 @@ export function ArticleSettingsModal({
                 onChange={(checked) => onChange({ featured: checked })}
               />
               <span
-                className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
+                className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
+                style={{ fontWeight: 400 }}
                 onClick={() => onChange({ featured: !formData.featured })}
               >
                 Featured
@@ -226,7 +228,8 @@ export function ArticleSettingsModal({
                 onChange={(checked) => onChange({ trending: checked })}
               />
               <span
-                className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
+                className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
+                style={{ fontWeight: 400 }}
                 onClick={() => onChange({ trending: !formData.trending })}
               >
                 Trending

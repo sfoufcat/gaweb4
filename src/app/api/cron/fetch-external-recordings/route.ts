@@ -14,8 +14,9 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getZoomRecordings } from '@/lib/integrations/zoom';
-import { findMeetRecordingByEventId } from '@/lib/integrations/google-drive';
+import { findMeetRecordingByEventId, getGoogleDriveDownloadInfo } from '@/lib/integrations/google-drive';
 import { generateSummaryForEvent } from '@/lib/event-summary';
+import { storeRecordingToBunny } from '@/lib/recording-storage';
 import type { UnifiedEvent } from '@/types';
 
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -148,11 +149,28 @@ async function fetchEventRecording(event: UnifiedEvent): Promise<ProcessingResul
   console.log(`[CRON_RECORDINGS] Checking ${meetingProvider} recording for event ${eventId}`);
 
   // Fetch recording URL based on provider
+  // Download and store to Bunny for permanent access (provider URLs expire)
   let recordingUrl: string | undefined;
 
   if (meetingProvider === 'zoom') {
     const result = await getZoomRecordings(organizationId, externalMeetingId);
-    if (result.success && result.recordingUrl) {
+    if (result.success && result.downloadInfo) {
+      // Download and store to Bunny
+      try {
+        recordingUrl = await storeRecordingToBunny(
+          result.downloadInfo.url,
+          organizationId,
+          eventId,
+          { Authorization: `Bearer ${result.downloadInfo.accessToken}` }
+        );
+        console.log(`[CRON_RECORDINGS] Stored Zoom recording to Bunny for event ${eventId}`);
+      } catch (storageError) {
+        console.error(`[CRON_RECORDINGS] Failed to store Zoom recording to Bunny:`, storageError);
+        // Fallback to share URL (may expire)
+        recordingUrl = result.recordingUrl;
+      }
+    } else if (result.success && result.recordingUrl) {
+      // No downloadInfo but has recordingUrl (fallback)
       recordingUrl = result.recordingUrl;
     } else if (result.error?.includes('No cloud recordings')) {
       // No recording available - this is expected if recording wasn't enabled
@@ -163,7 +181,29 @@ async function fetchEventRecording(event: UnifiedEvent): Promise<ProcessingResul
     }
   } else if (meetingProvider === 'google_meet') {
     const result = await findMeetRecordingByEventId(organizationId, externalMeetingId);
-    if (result.success && result.recordingUrl) {
+    if (result.success && result.fileId) {
+      // Get download info and store to Bunny
+      const downloadInfo = await getGoogleDriveDownloadInfo(organizationId, result.fileId);
+      if (downloadInfo) {
+        try {
+          recordingUrl = await storeRecordingToBunny(
+            downloadInfo.downloadUrl,
+            organizationId,
+            eventId,
+            { Authorization: `Bearer ${downloadInfo.accessToken}` }
+          );
+          console.log(`[CRON_RECORDINGS] Stored Meet recording to Bunny for event ${eventId}`);
+        } catch (storageError) {
+          console.error(`[CRON_RECORDINGS] Failed to store Meet recording to Bunny:`, storageError);
+          // Fallback to webViewLink (requires Google auth)
+          recordingUrl = result.recordingUrl;
+        }
+      } else {
+        // No download info available, use webViewLink
+        recordingUrl = result.recordingUrl;
+      }
+    } else if (result.success && result.recordingUrl) {
+      // Has URL but no fileId (shouldn't happen normally)
       recordingUrl = result.recordingUrl;
     } else if (result.error?.includes('No recordings found')) {
       // No recording available

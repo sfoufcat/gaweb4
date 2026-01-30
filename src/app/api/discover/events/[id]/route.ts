@@ -12,6 +12,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
 import { generateDemoEvents, generateAvatarUrl } from '@/lib/demo-data';
 import type { DiscoverEvent } from '@/types/discover';
+import type { CallSummary } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -194,6 +195,41 @@ export async function GET(
     // Check if current user has already RSVPed
     const isJoined = userId ? attendeeIds.includes(userId) : false;
 
+    // Fetch call summary if available
+    let callSummary: CallSummary | null = null;
+    if (eventData?.callSummaryId) {
+      try {
+        const summaryDoc = await adminDb.collection('call_summaries').doc(eventData.callSummaryId).get();
+        if (summaryDoc.exists) {
+          const summaryData = summaryDoc.data();
+          // Filter for client-friendly view: hide coaching notes, filter action items
+          callSummary = {
+            id: summaryDoc.id,
+            eventId: summaryData?.eventId,
+            recordingUrl: summaryData?.recordingUrl,
+            summary: {
+              executive: summaryData?.summary?.executive,
+              keyDiscussionPoints: summaryData?.summary?.keyDiscussionPoints || [],
+              clientProgress: summaryData?.summary?.clientProgress,
+              challenges: summaryData?.summary?.challenges || [],
+              breakthroughs: summaryData?.summary?.breakthroughs || [],
+              // Omit coachingNotes for client view
+            },
+            // Filter action items to only show client-assigned ones
+            actionItems: (summaryData?.actionItems || []).filter(
+              (item: { assignedTo?: string }) => item.assignedTo === 'client'
+            ),
+            status: summaryData?.status || 'completed',
+            reviewedByCoach: summaryData?.reviewedByCoach || false,
+            createdAt: summaryData?.createdAt?.toDate?.()?.toISOString?.() || summaryData?.createdAt,
+            updatedAt: summaryData?.updatedAt?.toDate?.()?.toISOString?.() || summaryData?.updatedAt,
+          } as CallSummary;
+        }
+      } catch (err) {
+        console.error(`Failed to fetch call summary ${eventData.callSummaryId}:`, err);
+      }
+    }
+
     // Check ownership if user is signed in
     let isOwned = false;
     let includedInProgramName: string | undefined;
@@ -237,14 +273,15 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ 
-      event, 
-      updates, 
+    return NextResponse.json({
+      event,
+      updates,
       attendees,
       isJoined,
       totalAttendees: attendeeIds.length,
       isOwned,
       includedInProgramName,
+      callSummary,
     });
   } catch (error) {
     console.error('[DISCOVER_EVENT_GET] Error:', error);

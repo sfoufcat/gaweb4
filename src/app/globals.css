@@ -386,6 +386,37 @@
     animation: backdropFadeIn 0.2s ease-out forwards;
   }
 
+  /* Step transition animations for multi-step modals */
+  @keyframes stepSlideInFromRight {
+    0% {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes stepSlideInFromLeft {
+    0% {
+      opacity: 0;
+      transform: translateX(-30px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-step-slide-in-right {
+    animation: stepSlideInFromRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-step-slide-in-left {
+    animation: stepSlideInFromLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
   /* AI Loading Animations */
   @keyframes aiPulse {
     0%, 100% {

@@ -12,7 +12,8 @@ import { MediaPlayer } from '@/components/video/MediaPlayer';
 import { RescheduleCallModal } from '@/components/scheduling/RescheduleCallModal';
 import { useSchedulingActions } from '@/hooks/useScheduling';
 import type { DiscoverEvent, EventUpdate, EventAttendee } from '@/types/discover';
-import type { UnifiedEvent } from '@/types';
+import type { UnifiedEvent, CallSummary } from '@/types';
+import { CallSummarySection } from '@/components/scheduling/CallSummarySection';
 
 interface EventPageProps {
   params: Promise<{ id: string }>;
@@ -26,6 +27,7 @@ interface EventDetailData {
   isJoined: boolean;
   isOwned: boolean;
   includedInProgramName?: string;
+  callSummary?: CallSummary | null;
 }
 
 // Helper function to check if within 1 hour before event
@@ -390,6 +392,7 @@ export default function EventDetailPage({ params }: EventPageProps) {
           isJoining={isJoining}
           onReschedule={event.eventType === 'coaching_1on1' ? () => setShowRescheduleModal(true) : undefined}
           onCancel={event.eventType === 'coaching_1on1' ? handleCancel : undefined}
+          callSummary={data?.callSummary}
         />
 
         {/* Reschedule Modal for 1:1 events */}
@@ -513,6 +516,7 @@ function EventContent({
   isJoining,
   onReschedule,
   onCancel,
+  callSummary,
 }: {
   event: DiscoverEvent & { coachName?: string; coachImageUrl?: string; eventType?: string };
   normalizedEvent: ReturnType<typeof Object.assign> | null;
@@ -529,6 +533,7 @@ function EventContent({
   isJoining: boolean;
   onReschedule?: () => void;
   onCancel?: () => void;
+  callSummary?: CallSummary | null;
 }) {
   if (!normalizedEvent) return null;
 
@@ -678,6 +683,7 @@ function EventContent({
                     <MediaPlayer
                       src={normalizedEvent.recordingUrl}
                       className="w-full"
+                      isAudioOnly={normalizedEvent.isAudioOnly}
                     />
                   </div>
                   {/* Open in new tab link */}
@@ -699,6 +705,11 @@ function EventContent({
                   <p className="text-text-secondary text-sm font-medium">This call has ended</p>
                   <p className="text-text-muted text-xs mt-1">No recording available</p>
                 </div>
+              )}
+
+              {/* Call Summary Section */}
+              {callSummary && callSummary.status === 'completed' && (
+                <CallSummarySection summary={callSummary} />
               )}
             </div>
           ) : (

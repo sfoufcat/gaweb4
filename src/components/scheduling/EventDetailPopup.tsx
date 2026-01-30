@@ -705,6 +705,7 @@ export function EventDetailPopup({
                   <MediaPlayer
                     src={event.recordingUrl}
                     className="w-full"
+                    isAudioOnly={event.isAudioOnly}
                   />
                   <a
                     href={event.recordingUrl}

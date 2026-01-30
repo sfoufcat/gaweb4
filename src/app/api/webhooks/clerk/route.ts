@@ -450,12 +450,15 @@ export async function POST(req: Request) {
     try {
       const streamClient = await getStreamServerClient();
       const name = `${first_name || ''} ${last_name || ''}`.trim() || 'User';
+      // Only super_coach gets Stream admin role (for channel permissions)
+      const streamRole = public_metadata?.orgRole === 'super_coach' ? 'admin' : undefined;
       await streamClient.upsertUser({
         id,
         name,
         image: image_url || undefined,
-      });
-      console.log(`[CLERK_WEBHOOK] Synced user ${id} to Stream Chat`);
+        ...(streamRole && { role: streamRole }),
+      } as Parameters<typeof streamClient.upsertUser>[0]);
+      console.log(`[CLERK_WEBHOOK] Synced user ${id} to Stream Chat${streamRole ? ' with admin role' : ''}`);
     } catch (streamError) {
       // Non-fatal: log but don't fail the webhook
       console.error(`[CLERK_WEBHOOK] Failed to sync user ${id} to Stream:`, streamError);

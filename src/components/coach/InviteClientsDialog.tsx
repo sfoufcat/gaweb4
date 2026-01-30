@@ -24,10 +24,11 @@ import {
   ArrowRight,
   DollarSign,
   Calendar,
-  Sparkles,
+  Gift,
   RefreshCw,
   CreditCard,
-  Globe,
+  Lock,
+  Megaphone,
   FileText,
   Rocket,
   Phone,
@@ -39,7 +40,7 @@ import {
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
@@ -2710,12 +2711,12 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                       </SelectTrigger>
                     <SelectContent>
                       {funnels.map(funnel => (
-                        <SelectItem key={funnel.id} value={funnel.id}>
+                        <SelectItem key={funnel.id} value={funnel.id} hideIndicator>
                           <div className="flex items-center gap-2">
                             {funnel.accessType === 'public' ? (
-                              <Globe className="w-4 h-4 text-emerald-500" />
+                              <Megaphone className="w-4 h-4 text-emerald-500" />
                             ) : (
-                              <Mail className="w-4 h-4 text-violet-500" />
+                              <Lock className="w-4 h-4 text-violet-500" />
                             )}
                             {funnel.name || 'Unnamed Funnel'}
                             <span className="text-xs text-[#8a857f] dark:text-[#6b7280]">
@@ -2838,23 +2839,23 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="required" disabled={!canAcceptPayments}>
+                        <SelectItem value="required" disabled={!canAcceptPayments} hideIndicator>
                           <div className="flex items-center gap-2">
                             <CreditCard className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                             <span>Payment Required</span>
                             {!canAcceptPayments && <span className="text-xs text-[#8a857f]">(Connect Stripe)</span>}
                           </div>
                         </SelectItem>
-                        <SelectItem value="pre_paid">
+                        <SelectItem value="pre_paid" hideIndicator>
                           <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                             <span>Pre-paid</span>
                             <span className="text-xs text-[#8a857f]">Paid externally</span>
                           </div>
                         </SelectItem>
-                        <SelectItem value="free">
+                        <SelectItem value="free" hideIndicator>
                           <div className="flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                            <Gift className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                             <span>Free Access</span>
                           </div>
                         </SelectItem>
@@ -3564,6 +3565,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
         shouldScaleBackground={false}
       >
         <DrawerContent className="max-h-[90vh] overflow-hidden flex flex-col">
+          <DrawerTitle className="sr-only">{headerInfo.title}</DrawerTitle>
           {content}
         </DrawerContent>
       </Drawer>

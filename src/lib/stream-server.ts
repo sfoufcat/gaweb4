@@ -47,24 +47,26 @@ export const syncUserToStream = async (
     lastName?: string;
     imageUrl?: string;
     avatarUrl?: string;
+    role?: 'admin' | 'user';
   }
 ) => {
   try {
     const client = await getStreamServerClient();
-    
+
     // Build display name: prefer explicit name, fallback to firstName + lastName
-    const displayName = profile.name 
-      || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() 
+    const displayName = profile.name
+      || `${profile.firstName || ''} ${profile.lastName || ''}`.trim()
       || 'User';
-    
+
     // Prefer avatarUrl (Firebase), fallback to imageUrl (Clerk)
     const imageUrl = profile.avatarUrl || profile.imageUrl || undefined;
-    
+
     await client.upsertUser({
       id: userId,
       name: displayName,
       image: imageUrl,
-    });
+      ...(profile.role && { role: profile.role }),
+    } as Parameters<typeof client.upsertUser>[0]);
     
     console.log('[STREAM] Synced user profile:', userId, { name: displayName, hasImage: !!imageUrl });
     return true;

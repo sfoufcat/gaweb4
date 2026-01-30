@@ -13,6 +13,7 @@ import { ProgramOverviewTab } from './ProgramOverviewTab';
 import { ProgramDashboard, type DashboardViewContext } from './dashboard';
 import { WeekFillModal } from './WeekFillModal';
 import { ProgramSettingsModal, ProgramSettingsButton } from './ProgramSettingsModal';
+import { ProgramSettingsDrawer } from './ProgramSettingsDrawer';
 import { DayCourseSelector } from './DayCourseSelector';
 import { ProgramScheduleEditor } from './ProgramScheduleEditor';
 import type { DiscoverCourse, DiscoverArticle, DiscoverDownload, DiscoverLink } from '@/types/discover';
@@ -60,6 +61,8 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { format } from 'date-fns';
 import { StatusBadge, TypeBadge, VisibilityBadge } from '@/components/ui/program-badges';
 import { CoachSelector } from '@/components/coach/CoachSelector';
+import { SingleCoachSelector } from '@/components/coach/SingleCoachSelector';
+import { useOrgEntitlements } from '@/lib/billing/use-entitlements';
 import { ClientSelector } from './ClientSelector';
 import { CohortSelector } from './CohortSelector';
 import { LimitReachedModal, useLimitCheck } from '@/components/coach';
@@ -287,7 +290,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const { isDemoMode, openSignupModal } = useDemoMode();
   const demoSession = useDemoSession();
   const { user: currentUser } = useUser();
-  
+  const entitlements = useOrgEntitlements();
+
   const [programs, setPrograms] = useState<ProgramWithStats[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<ProgramWithStats | null>(null);
   const [programDays, setProgramDays] = useState<ProgramDay[]>([]);
@@ -997,6 +1001,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
   const [isWeekFillModalOpen, setIsWeekFillModalOpen] = useState(false);
   const [weekToFill, setWeekToFill] = useState<ProgramWeek | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isSettingsDrawerOpen, setIsSettingsDrawerOpen] = useState(false);
+  const [settingsDrawerProgram, setSettingsDrawerProgram] = useState<ProgramWithStats | null>(null);
   const [isPageDropdownOpen, setIsPageDropdownOpen] = useState(false);
   
   // Enrollment settings modal state
@@ -1026,6 +1032,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     squadCapacity: number | undefined;
     coachInSquads: boolean;
     assignedCoachIds: string[];
+    coachId: string | undefined; // Primary program coach
+    applyCoachToExistingSquads: boolean; // Whether to update existing squads when coach changes
     isActive: boolean;
     isPublished: boolean;
     defaultHabits: ProgramHabitTemplate[];
@@ -1054,6 +1062,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     squadCapacity: undefined,
     coachInSquads: true,
     assignedCoachIds: [],
+    coachId: undefined,
+    applyCoachToExistingSquads: false,
     isActive: true,
     isPublished: false,
     defaultHabits: [],
@@ -2959,6 +2969,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         squadCapacity: program.squadCapacity,
         coachInSquads: program.coachInSquads !== false,
         assignedCoachIds: program.assignedCoachIds || [],
+        coachId: program.coachId || undefined,
+        applyCoachToExistingSquads: false, // Reset on each edit
         isActive: program.isActive,
         isPublished: program.isPublished,
         defaultHabits: program.defaultHabits || [],
@@ -2995,6 +3007,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         squadCapacity: undefined,
         coachInSquads: true,
         assignedCoachIds: [],
+        coachId: undefined,
+        applyCoachToExistingSquads: false,
         isActive: true,
         isPublished: false,
         defaultHabits: [],
@@ -3117,6 +3131,81 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       setDuplicatingCohort(null);
     }
   };
+
+  // Open the unified settings drawer for a program
+  const handleOpenSettingsDrawer = useCallback((program: ProgramWithStats) => {
+    // In demo mode, show signup modal instead
+    if (isDemoMode) {
+      openSignupModal();
+      return;
+    }
+    fetchCoaches(); // Ensure coaches are loaded
+    setSettingsDrawerProgram(program);
+    setIsSettingsDrawerOpen(true);
+  }, [isDemoMode, openSignupModal, fetchCoaches]);
+
+  // Save settings from the drawer (auto-save)
+  const handleSaveSettingsDrawer = useCallback(async (updates: Partial<{
+    name: string;
+    description: string;
+    coverImageUrl: string;
+    priceInCents: number;
+    callCreditsPerMonth: number;
+    dailyFocusSlots: number;
+    taskDistribution: TaskDistribution;
+    includeWeekends: boolean;
+    coachId?: string;
+    clientCommunityEnabled: boolean;
+    completionConfig: {
+      showConfetti: boolean;
+      upsellProgramId?: string;
+      upsellHeadline?: string;
+      upsellDescription?: string;
+    };
+    isActive: boolean;
+    isPublished: boolean;
+  }>) => {
+    if (!settingsDrawerProgram) return;
+
+    const response = await fetch(`${apiBasePath}/${settingsDrawerProgram.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...updates,
+        // Always set showConfetti to true (per requirements)
+        completionConfig: updates.completionConfig ? {
+          ...updates.completionConfig,
+          showConfetti: true,
+        } : undefined,
+        // Always apply coach changes (removed the checkbox)
+        applyCoachToExistingSquads: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to save program settings');
+    }
+
+    // Update local state optimistically without full page refresh
+    const updatedProgram = { ...settingsDrawerProgram, ...updates } as ProgramWithStats;
+    if (updates.completionConfig) {
+      updatedProgram.completionConfig = { ...updates.completionConfig, showConfetti: true };
+    }
+
+    // Update programs list in-place
+    setPrograms(prev => prev.map(p =>
+      p.id === settingsDrawerProgram.id ? updatedProgram : p
+    ));
+
+    // Update settings drawer program reference (also ProgramWithStats)
+    setSettingsDrawerProgram(updatedProgram);
+
+    // Update selected program if it's the same one
+    if (selectedProgram?.id === settingsDrawerProgram.id) {
+      setSelectedProgram(updatedProgram);
+    }
+  }, [settingsDrawerProgram, apiBasePath, selectedProgram]);
 
   const handleSaveProgram = async () => {
     try {
@@ -4143,7 +4232,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
                   {/* Settings */}
                   <ProgramSettingsButton
-                    onClick={() => setIsSettingsModalOpen(true)}
+                    onClick={() => selectedProgram && handleOpenSettingsDrawer(selectedProgram)}
                     isSaving={saving}
                   />
                 </div>
@@ -4208,23 +4297,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   </div>
                 )}
 
-                {/* Structure mismatch warning */}
-                {structureMismatch && instanceId && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                    <span className="text-xs text-amber-700 dark:text-amber-300 whitespace-nowrap">
-                      Week structure changed
-                    </span>
-                    <button
-                      type="button"
-                      onClick={syncInstanceStructure}
-                      disabled={syncingStructure}
-                      className="text-xs font-medium text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 underline whitespace-nowrap"
-                    >
-                      {syncingStructure ? 'Syncing...' : 'Sync now'}
-                    </button>
-                  </div>
-                )}
               </div>
 
               {/* ===== DESKTOP HEADER ===== */}
@@ -4329,24 +4401,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       />
                     ) : null}
                   </div>
-
-                  {/* Structure mismatch warning */}
-                  {structureMismatch && instanceId && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                      <span className="text-xs text-amber-700 dark:text-amber-300 whitespace-nowrap">
-                        Week structure changed
-                      </span>
-                      <button
-                        type="button"
-                        onClick={syncInstanceStructure}
-                        disabled={syncingStructure}
-                        className="text-xs font-medium text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 underline whitespace-nowrap"
-                      >
-                        {syncingStructure ? 'Syncing...' : 'Sync now'}
-                      </button>
-                    </div>
-                  )}
 
                   {/* Right side controls */}
                   <div className="flex-shrink-0 flex items-center gap-2 ml-auto">
@@ -4517,7 +4571,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
                     {/* Settings */}
                     <ProgramSettingsButton
-                      onClick={() => setIsSettingsModalOpen(true)}
+                      onClick={() => selectedProgram && handleOpenSettingsDrawer(selectedProgram)}
                       isSaving={saving}
                     />
                   </div>
@@ -4675,7 +4729,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleOpenProgramModal(program);
+                                handleOpenSettingsDrawer(program);
                               }}
                               className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent"
                               title="Program settings"
@@ -4811,7 +4865,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleOpenProgramModal(program);
+                                handleOpenSettingsDrawer(program);
                               }}
                               className="glass-action-btn text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent"
                               title="Program settings"
@@ -5092,6 +5146,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               onRefreshInstance={async () => { await refreshInstance(); }}
               instanceModules={instance?.modules}
               instanceId={instanceId}
+              structureMismatch={structureMismatch}
+              onSyncStructure={syncInstanceStructure}
+              syncingStructure={syncingStructure}
             />
                 </div>
 
@@ -6840,6 +6897,49 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       )}
                     </div>
 
+                    {/* Primary Coach (applies to both program types) */}
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                        Program Coach
+                      </h4>
+                      <div>
+                        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                          Primary Coach
+                        </label>
+                        {entitlements?.features.multiCoachSupport ? (
+                          <>
+                            <SingleCoachSelector
+                              coaches={availableCoaches}
+                              value={programFormData.coachId || currentUser?.id || ''}
+                              onChange={(coachId) => setProgramFormData({
+                                ...programFormData,
+                                coachId: coachId || undefined,
+                              })}
+                              loading={loadingCoaches}
+                            />
+                            {editingProgram && (
+                              <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-3">
+                                <BrandedCheckbox
+                                  checked={programFormData.applyCoachToExistingSquads}
+                                  onChange={(checked) => setProgramFormData({ ...programFormData, applyCoachToExistingSquads: checked })}
+                                />
+                                <span className="cursor-pointer" onClick={() => setProgramFormData({ ...programFormData, applyCoachToExistingSquads: !programFormData.applyCoachToExistingSquads })}>
+                                  Apply to existing squads
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="px-3 py-2 bg-[#f5f3ef] dark:bg-[#1a1f2b] rounded-lg text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                            {currentUser?.firstName} {currentUser?.lastName} (you)
+                          </div>
+                        )}
+                        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
+                          The primary coach joins all squads and receives notifications
+                        </p>
+                      </div>
+                    </div>
+
                     {/* Group-specific settings */}
                     {programFormData.type === 'group' && (
                       <div className="space-y-4">
@@ -6896,8 +6996,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                               loading={loadingCoaches}
                               placeholder="Select coaches to assign..."
                             />
-                            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                              Coaches are assigned in round-robin order (Coach A → Squad 1, Coach B → Squad 2, etc.)
+                            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                              Coaches are assigned in round-robin order as new squads are created.
+                              {programFormData.assignedCoachIds.length > 1 && (
+                                <span className="block mt-1">
+                                  With {programFormData.assignedCoachIds.length} coaches selected, each coach will be assigned to every {programFormData.assignedCoachIds.length === 2 ? 'other' : `${programFormData.assignedCoachIds.length}th`} squad.
+                                </span>
+                              )}
                             </p>
                           </div>
                         )}
@@ -7785,6 +7890,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
             squadCapacity: undefined,
             coachInSquads: true,
             assignedCoachIds: [],
+            coachId: undefined,
+            applyCoachToExistingSquads: false,
             isActive: true,
             isPublished: false,
             defaultHabits: [],
@@ -8050,7 +8157,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         />
       )}
 
-      {/* Program Settings Modal */}
+      {/* Program Settings Modal (Legacy - for task distribution quick access) */}
       <ProgramSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
@@ -8060,6 +8167,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         programType={selectedProgram?.type}
         cohortCompletionThreshold={selectedProgram?.cohortCompletionThreshold}
         onCohortCompletionThresholdChange={handleCohortCompletionThresholdChange}
+      />
+
+      {/* Unified Program Settings Drawer */}
+      <ProgramSettingsDrawer
+        isOpen={isSettingsDrawerOpen}
+        onClose={() => {
+          setIsSettingsDrawerOpen(false);
+          setSettingsDrawerProgram(null);
+        }}
+        program={settingsDrawerProgram}
+        programs={programs}
+        coaches={availableCoaches}
+        loadingCoaches={loadingCoaches}
+        onSave={handleSaveSettingsDrawer}
       />
 
       {/* Leave Warning Dialog for Unsaved Changes */}

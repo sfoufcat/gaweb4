@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { getPlaybackUrl, getDirectVideoUrl, deleteVideo, getThumbnailUrl } from '@/lib/bunny-stream';
+import { getPlaybackUrl, getDirectVideoUrl, deleteVideo, getThumbnailUrl, getVideoStatus } from '@/lib/bunny-stream';
 
 interface BunnyWebhookPayload {
   VideoGuid: string;
@@ -84,16 +84,20 @@ export async function POST(request: NextRequest) {
           const playbackUrl = getPlaybackUrl(videoId);
           const directUrl = await getDirectVideoUrl(videoId);
 
+          // Get video metadata to detect audio-only
+          const videoStatus = await getVideoStatus(videoId);
+
           await eventRef.set({
             recordingUrl: directUrl || playbackUrl, // Use direct URL for transcription compatibility
             bunnyPlaybackUrl: playbackUrl, // HLS for player
             recordingStatus: 'ready',
             hasCallRecording: true,
             recordingDurationSeconds: durationSeconds || null,
+            isAudioOnly: videoStatus.isAudioOnly,
             updatedAt: FieldValue.serverTimestamp(),
           }, { merge: true });
 
-          console.log(`[BUNNY_WEBHOOK] Event ${eventDoc.id} recording ready: ${playbackUrl}`);
+          console.log(`[BUNNY_WEBHOOK] Event ${eventDoc.id} recording ready: ${playbackUrl}, isAudioOnly: ${videoStatus.isAudioOnly}`);
         } else {
           await eventRef.set({
             recordingStatus: 'failed',
@@ -141,6 +145,7 @@ export async function POST(request: NextRequest) {
 
         if (isSuccess) {
           const playbackUrl = getPlaybackUrl(videoId);
+          const videoStatus = await getVideoStatus(videoId);
 
           // Update the lesson's videoUrl in the embedded modules array
           const modules = courseData.modules || [];
@@ -152,6 +157,7 @@ export async function POST(request: NextRequest) {
                 lesson.videoUrl = playbackUrl;
                 lesson.videoDurationSeconds = durationSeconds;
                 lesson.videoStatus = 'ready';
+                lesson.isAudioOnly = videoStatus.isAudioOnly;
                 updated = true;
               }
             }
@@ -163,7 +169,7 @@ export async function POST(request: NextRequest) {
               updatedAt: FieldValue.serverTimestamp(),
             }, { merge: true });
 
-            console.log(`[BUNNY_WEBHOOK] Course ${courseDoc.id} lesson video ready: ${playbackUrl}`);
+            console.log(`[BUNNY_WEBHOOK] Course ${courseDoc.id} lesson video ready: ${playbackUrl}, isAudioOnly: ${videoStatus.isAudioOnly}`);
           }
         }
 
@@ -204,6 +210,7 @@ export async function POST(request: NextRequest) {
 
         if (isSuccess) {
           const playbackUrl = getPlaybackUrl(videoId);
+          const videoStatus = await getVideoStatus(videoId);
 
           const modules = courseData.modules || [];
           for (const module of modules) {
@@ -212,6 +219,7 @@ export async function POST(request: NextRequest) {
                 lesson.videoUrl = playbackUrl;
                 lesson.videoDurationSeconds = durationSeconds;
                 lesson.videoStatus = 'ready';
+                lesson.isAudioOnly = videoStatus.isAudioOnly;
               }
             }
           }
@@ -221,7 +229,7 @@ export async function POST(request: NextRequest) {
             updatedAt: FieldValue.serverTimestamp(),
           }, { merge: true });
 
-          console.log(`[BUNNY_WEBHOOK] Org course ${courseDoc.id} lesson video ready`);
+          console.log(`[BUNNY_WEBHOOK] Org course ${courseDoc.id} lesson video ready, isAudioOnly: ${videoStatus.isAudioOnly}`);
         }
 
         return NextResponse.json({ received: true, courseId: courseDoc.id });
@@ -260,6 +268,7 @@ export async function POST(request: NextRequest) {
         if (isSuccess) {
           const playbackUrl = getPlaybackUrl(videoId);
           const oldBunnyVideoId = videoData.bunnyVideoId;
+          const videoStatus = await getVideoStatus(videoId);
 
           // Swap: pending becomes main, clear pending field
           await videoDoc.ref.set({
@@ -268,6 +277,7 @@ export async function POST(request: NextRequest) {
             thumbnailUrl: getThumbnailUrl(videoId),
             durationSeconds: durationSeconds || null,
             videoStatus: 'ready',
+            isAudioOnly: videoStatus.isAudioOnly,
             pendingBunnyVideoId: FieldValue.delete(),
             updatedAt: FieldValue.serverTimestamp(),
           }, { merge: true });
@@ -282,7 +292,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          console.log(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} replacement ready: ${playbackUrl}`);
+          console.log(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} replacement ready: ${playbackUrl}, isAudioOnly: ${videoStatus.isAudioOnly}`);
         } else {
           // Pending video failed - clear it but keep old video
           await videoDoc.ref.set({
@@ -326,15 +336,17 @@ export async function POST(request: NextRequest) {
 
         if (isSuccess) {
           const playbackUrl = getPlaybackUrl(videoId);
+          const videoStatus = await getVideoStatus(videoId);
 
           await videoDoc.ref.set({
             playbackUrl,
             durationSeconds: durationSeconds || null,
             videoStatus: 'ready',
+            isAudioOnly: videoStatus.isAudioOnly,
             updatedAt: FieldValue.serverTimestamp(),
           }, { merge: true });
 
-          console.log(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} ready: ${playbackUrl}`);
+          console.log(`[BUNNY_WEBHOOK] Discover video ${videoDoc.id} ready: ${playbackUrl}, isAudioOnly: ${videoStatus.isAudioOnly}`);
         } else {
           await videoDoc.ref.set({
             videoStatus: 'failed',

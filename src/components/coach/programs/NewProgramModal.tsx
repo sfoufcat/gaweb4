@@ -46,6 +46,9 @@ import { MediaUpload } from '@/components/admin/MediaUpload';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
 import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
+import { useAuth, useUser } from '@clerk/nextjs';
+import { useOrgEntitlements } from '@/lib/billing/use-entitlements';
+import useSWR from 'swr';
 
 // Wizard step types
 type WizardStep = 'type' | 'structure' | 'details' | 'community' | 'settings' | 'cohort';
@@ -72,6 +75,7 @@ interface ProgramWizardData {
   name: string;
   description: string;
   coverImage?: string;
+  coachId?: string; // Primary program coach (Scale plan allows selection)
   // Step 3.5 (1:1 only)
   includeCommunity: boolean;
   // Step 4
@@ -92,6 +96,7 @@ const DEFAULT_WIZARD_DATA: ProgramWizardData = {
   name: '',
   description: '',
   coverImage: undefined,
+  coachId: undefined, // Set to userId on mount
   includeCommunity: false,
   visibility: 'private',
   pricing: 'free',
@@ -152,6 +157,23 @@ export function NewProgramModal({
   const [cohortError, setCohortError] = useState<string | null>(null);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
+
+  // Auth and entitlements for coach selection (Scale plan feature)
+  const { userId } = useAuth();
+  const { user } = useUser();
+  const entitlements = useOrgEntitlements();
+  const canSelectCoach = entitlements?.features.multiCoachSupport ?? false;
+
+  // Fetch available coaches only when modal is open and on Scale plan
+  const { data: coachesData, isLoading: loadingCoaches } = useSWR(
+    isOpen && canSelectCoach ? '/api/coach/org-coaches' : null,
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch coaches');
+      return res.json();
+    }
+  );
+  const availableCoaches = coachesData?.coaches || [];
   
   // Track if this is the initial mount to skip animation on first open
   const isInitialMount = useRef(true);
@@ -336,6 +358,7 @@ export function NewProgramModal({
           recurring: wizardData.recurring,
           recurringCadence: wizardData.recurringCadence,
           includeCommunity: wizardData.type === 'individual' ? wizardData.includeCommunity : false,
+          coachId: wizardData.coachId || userId, // Primary program coach
         }),
       });
 
@@ -607,6 +630,11 @@ export function NewProgramModal({
               <DetailsStep
                 data={wizardData}
                 onChange={updateWizardData}
+                canSelectCoach={canSelectCoach}
+                coaches={availableCoaches}
+                loadingCoaches={loadingCoaches}
+                currentUserId={userId || ''}
+                currentUserName={user?.fullName || user?.firstName || 'You'}
               />
             </motion.div>
           )}
@@ -1026,12 +1054,38 @@ function StructureStep({ data, onChange }: StructureStepProps) {
 // ============================================================================
 // STEP 3: Details
 // ============================================================================
+interface Coach {
+  id: string;
+  name: string;
+  email: string;
+  imageUrl?: string;
+}
+
 interface DetailsStepProps {
   data: ProgramWizardData;
   onChange: (updates: Partial<ProgramWizardData>) => void;
+  // Coach selection props
+  canSelectCoach: boolean; // true if Scale plan
+  coaches: Coach[];
+  loadingCoaches: boolean;
+  currentUserId: string;
+  currentUserName: string;
 }
 
-function DetailsStep({ data, onChange }: DetailsStepProps) {
+function DetailsStep({
+  data,
+  onChange,
+  canSelectCoach,
+  coaches,
+  loadingCoaches,
+  currentUserId,
+  currentUserName,
+}: DetailsStepProps) {
+  // Lazy import SingleCoachSelector to avoid circular deps
+  const SingleCoachSelector = React.lazy(() =>
+    import('@/components/coach/SingleCoachSelector').then(mod => ({ default: mod.SingleCoachSelector }))
+  );
+
   return (
     <div className="space-y-5">
       {/* Program Name */}
@@ -1077,6 +1131,35 @@ function DetailsStep({ data, onChange }: DetailsStepProps) {
           aspectRatio="16:9"
           collapsiblePreview
         />
+      </div>
+
+      {/* Program Coach */}
+      <div>
+        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          Program Coach <span className="text-red-500">*</span>
+        </label>
+        {canSelectCoach ? (
+          <React.Suspense fallback={
+            <div className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#8c8c8c]">
+              Loading...
+            </div>
+          }>
+            <SingleCoachSelector
+              coaches={coaches}
+              value={data.coachId || currentUserId}
+              onChange={(id) => onChange({ coachId: id })}
+              loading={loadingCoaches}
+              placeholder="Select program coach..."
+            />
+          </React.Suspense>
+        ) : (
+          <div className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            {currentUserName} <span className="text-[#8c8c8c]">(you)</span>
+          </div>
+        )}
+        <p className="text-xs text-[#8c8c8c] dark:text-[#6b7280] mt-1">
+          Coach joins all squads and cohorts in this program
+        </p>
       </div>
     </div>
   );

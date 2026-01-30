@@ -8,6 +8,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { clerkClient } from '@clerk/nextjs/server';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { Squad, Program } from '@/types';
 
 // NOTE: undefined squadCapacity = unlimited (no auto-splitting)
@@ -228,6 +229,12 @@ async function createNewSquad(params: CreateNewSquadParams): Promise<string | nu
   const squadName = `${program.name} Squad ${squadNumber}`;
   
   try {
+    // Determine initial members - include coach if program has one
+    const initialMemberIds = [userId];
+    if (program.coachId && program.coachId !== userId) {
+      initialMemberIds.push(program.coachId);
+    }
+
     // Create squad document
     const squadRef = await adminDb.collection('squads').add({
       name: squadName,
@@ -235,9 +242,9 @@ async function createNewSquad(params: CreateNewSquadParams): Promise<string | nu
       avatarUrl: '', // Could use program's cover image
       visibility: 'private', // Auto-created squads are private
       timezone: 'UTC',
-      memberIds: [userId],
+      memberIds: initialMemberIds,
       hasCoach: true, // Paid programs get coached squads
-      coachId: null, // Will be assigned by coach later
+      coachId: program.coachId || null, // Use program's assigned coach
       organizationId,
       programId,
       cohortId: cohortId || null,
@@ -262,35 +269,79 @@ async function createNewSquad(params: CreateNewSquadParams): Promise<string | nu
       createdAt: now,
       updatedAt: now,
     });
-    
+
+    // If program has a coach, add them as a squadMember with coach role
+    if (program.coachId && program.coachId !== userId) {
+      try {
+        const clerk = await clerkClient();
+        const coachClerkUser = await clerk.users.getUser(program.coachId);
+        await adminDb.collection('squadMembers').add({
+          squadId,
+          userId: program.coachId,
+          roleInSquad: 'coach',
+          firstName: coachClerkUser.firstName || '',
+          lastName: coachClerkUser.lastName || '',
+          imageUrl: coachClerkUser.imageUrl || '',
+          createdAt: now,
+          updatedAt: now,
+        });
+        // Also update coach's user document with squadId reference
+        await adminDb.collection('users').doc(program.coachId).set({
+          squadIds: FieldValue.arrayUnion(squadId),
+          updatedAt: now,
+        }, { merge: true });
+        console.log(`[SQUAD_ASSIGNMENT] Added program coach ${program.coachId} to squad ${squadId}`);
+      } catch (coachErr) {
+        console.error(`[SQUAD_ASSIGNMENT] Failed to add coach to squad:`, coachErr);
+        // Non-fatal - coach can be added later
+      }
+    }
+
     // Create Stream Chat channel for the squad
     try {
       const streamClient = await getStreamServerClient();
       const channelId = `squad-${squadId}`;
-      
+
       // Ensure user exists in Stream
       await streamClient.upsertUser({
         id: userId,
         name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User',
         image: clerkUser.imageUrl,
       });
-      
+
+      // Build initial channel members - user + coach if exists
+      const channelMembers = [userId];
+      if (program.coachId && program.coachId !== userId) {
+        try {
+          const clerk = await clerkClient();
+          const coachClerkUser = await clerk.users.getUser(program.coachId);
+          await streamClient.upsertUser({
+            id: program.coachId,
+            name: `${coachClerkUser.firstName || ''} ${coachClerkUser.lastName || ''}`.trim() || 'Coach',
+            image: coachClerkUser.imageUrl,
+          });
+          channelMembers.push(program.coachId);
+        } catch (coachStreamErr) {
+          console.error(`[SQUAD_ASSIGNMENT] Failed to add coach to Stream:`, coachStreamErr);
+        }
+      }
+
       // Create the squad group chat channel
       const channel = streamClient.channel('messaging', channelId, {
-        members: [userId],
+        members: channelMembers,
         created_by_id: userId,
         name: squadName,
         isSquadChannel: true,
       } as Record<string, unknown>);
-      
+
       await channel.create();
-      
+
       // Update squad with chat channel ID
       await squadRef.update({
         chatChannelId: channelId,
       });
-      
-      console.log(`[SQUAD_ASSIGNMENT] Created Stream channel ${channelId} for squad ${squadId}`);
+
+      console.log(`[SQUAD_ASSIGNMENT] Created Stream channel ${channelId} for squad ${squadId} with ${channelMembers.length} members`);
     } catch (streamErr) {
       // Non-fatal - squad is created, just no chat
       console.error(`[SQUAD_ASSIGNMENT] Failed to create Stream channel:`, streamErr);

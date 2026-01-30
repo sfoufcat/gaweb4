@@ -346,6 +346,11 @@ export async function getZoomRecordings(
     downloadUrl?: string;
     shareUrl?: string;
   }>;
+  /** Download info for storing recording to permanent storage */
+  downloadInfo?: {
+    url: string;
+    accessToken: string;
+  };
   error?: string;
 }> {
   try {
@@ -424,10 +429,18 @@ export async function getZoomRecordings(
       shareUrl: shareUrl,
     }));
 
+    // Get the first downloadable recording for permanent storage
+    const downloadableRecording = videoRecordings[0];
+
     return {
       success: true,
       recordingUrl: shareUrl || recordings[0]?.playUrl || recordings[0]?.downloadUrl,
       recordings,
+      // Provide download info for caller to store to Bunny
+      downloadInfo: downloadableRecording?.download_url ? {
+        url: downloadableRecording.download_url,
+        accessToken,
+      } : undefined,
     };
   } catch (error) {
     console.error('[ZOOM] Get recordings error:', error);

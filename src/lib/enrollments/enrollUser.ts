@@ -607,8 +607,8 @@ async function findOrCreateSquadForProgram(
 
   // Create new squad
   const squadNumber = squadsSnapshot.size + 1;
-  const squadName = cohort?.name 
-    ? `${cohort.name} - Squad ${squadNumber}`
+  const squadName = cohort?.name
+    ? `${program.name} (${cohort.name}) - Group ${squadNumber}`
     : `${program.name} Squad ${squadNumber}`;
 
   const squadData: Omit<Squad, 'id'> = {

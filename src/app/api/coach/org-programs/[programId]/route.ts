@@ -15,6 +15,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { getStreamServerClient } from '@/lib/stream-server';
 import type { Program, ProgramDay, ProgramCohort, ProgramHabitTemplate, ProgramFeature, ProgramTestimonial, ProgramFAQ, Squad } from '@/types';
 import { syncProgramWeeks, recalculateWeekDayIndices, syncInstanceStructure } from '@/lib/program-utils';
+import { replaceCoachInProgramSquads } from '@/lib/squad-coach-utils';
 
 /**
  * Calculate cohort status dynamically based on dates.
@@ -470,6 +471,12 @@ export async function PUT(
       }
     }
 
+    // Handle coachId update (primary program coach)
+    // Note: Entitlement check is done client-side; server accepts the update
+    if (body.coachId !== undefined) {
+      updateData.coachId = body.coachId;
+    }
+
     // Handle default habits
     if (body.defaultHabits !== undefined) {
       const defaultHabits: ProgramHabitTemplate[] = [];
@@ -727,6 +734,18 @@ export async function PUT(
       }
     }
 
+    // Handle primary coach (coachId) replacement in squads
+    if (body.coachId !== undefined && body.applyCoachToExistingSquads === true) {
+      const oldCoachId = currentData?.coachId as string | null | undefined;
+      const newCoachId = body.coachId as string;
+
+      if (oldCoachId !== newCoachId) {
+        console.log(`[COACH_ORG_PROGRAM_PUT] Replacing primary coach in squads: ${oldCoachId} -> ${newCoachId}`);
+        const result = await replaceCoachInProgramSquads(programId, oldCoachId, newCoachId, organizationId);
+        console.log(`[COACH_ORG_PROGRAM_PUT] Coach replacement result: ${result.updated} updated, ${result.errors.length} errors`);
+      }
+    }
+
     // Fetch updated program
     const updatedDoc = await adminDb.collection('programs').doc(programId).get();
     const updatedData = updatedDoc.data();
@@ -802,6 +821,13 @@ export async function PATCH(
     if (body.isPublished !== undefined) updateData.isPublished = body.isPublished;
     if (body.name !== undefined) updateData.name = body.name.trim();
 
+    // Handle coachId update (primary program coach)
+    // Note: Entitlement check is done client-side; server accepts the update
+    // Coach replacement in squads is handled separately via applyCoachToExistingSquads flag
+    if (body.coachId !== undefined) {
+      updateData.coachId = body.coachId;
+    }
+
     // Handle lengthDays update
     if (body.lengthDays !== undefined) {
       if (typeof body.lengthDays !== 'number' || body.lengthDays < 1 || body.lengthDays > 365) {
@@ -818,6 +844,18 @@ export async function PATCH(
     await adminDb.collection('programs').doc(programId).update(updateData);
 
     console.log(`[COACH_ORG_PROGRAM_PATCH] Updated program: ${programId}, fields: ${Object.keys(updateData).join(', ')}`);
+
+    // If coachId changed and applyCoachToExistingSquads is true, update all squads
+    if (body.coachId !== undefined && body.applyCoachToExistingSquads === true) {
+      const oldCoachId = currentData?.coachId as string | null | undefined;
+      const newCoachId = body.coachId as string;
+
+      if (oldCoachId !== newCoachId) {
+        console.log(`[COACH_ORG_PROGRAM_PATCH] Replacing coach in squads: ${oldCoachId} -> ${newCoachId}`);
+        const result = await replaceCoachInProgramSquads(programId, oldCoachId, newCoachId, organizationId);
+        console.log(`[COACH_ORG_PROGRAM_PATCH] Coach replacement result: ${result.updated} updated, ${result.errors.length} errors`);
+      }
+    }
 
     // Fetch updated program
     const updatedDoc = await adminDb.collection('programs').doc(programId).get();

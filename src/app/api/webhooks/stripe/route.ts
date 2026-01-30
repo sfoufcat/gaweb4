@@ -942,7 +942,26 @@ async function updateCoachPlatformSubscriptionStatus(subscription: Stripe.Subscr
     graceEndsAt,
     updatedAt: now,
   }, { merge: true });
-  
+
+  // Recalculate credits if tier changed
+  const previousTier = existingData?.tier as CoachTier | undefined;
+  if (tier && tier !== previousTier) {
+    const callCredits = TIER_CALL_CREDITS[tier] || 20;
+    const newAllocatedMinutes = callCredits * 60;
+
+    const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
+    const existingCredits = orgDoc.data()?.summaryCredits;
+
+    await adminDb.collection('organizations').doc(organizationId).set({
+      summaryCredits: {
+        ...existingCredits,
+        allocatedMinutes: newAllocatedMinutes,
+      }
+    }, { merge: true });
+
+    console.log(`[STRIPE_WEBHOOK] Updated credits for org ${organizationId}: tier changed ${previousTier} -> ${tier}, allocatedMinutes=${newAllocatedMinutes}`);
+  }
+
   console.log(`[STRIPE_WEBHOOK] Updated coach platform subscription for org ${organizationId}: tier=${tier}, status=${status}, graceEndsAt=${graceEndsAt || 'none'}`);
   
   // CRITICAL: Sync to Clerk org publicMetadata for instant middleware gating

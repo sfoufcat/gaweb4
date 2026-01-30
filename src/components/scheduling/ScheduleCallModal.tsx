@@ -102,6 +102,7 @@ export function ScheduleCallModal({
 
   // Step state
   const [step, setStep] = useState<ScheduleStep>('details');
+  const [stepDirection, setStepDirection] = useState<'forward' | 'back'>('forward');
 
   // Form state
   const [mode, setMode] = useState<'propose' | 'confirm'>('propose');
@@ -132,8 +133,20 @@ export function ScheduleCallModal({
   useEffect(() => {
     if (isOpen) {
       setStep('details');
+      setStepDirection('forward');
     }
   }, [isOpen]);
+
+  // Step navigation helpers
+  const goToNextStep = () => {
+    setStepDirection('forward');
+    setStep('schedule');
+  };
+
+  const goToPreviousStep = () => {
+    setStepDirection('back');
+    setStep('details');
+  };
 
   // Fetch client's active 1:1 enrollment when modal opens
   useEffect(() => {
@@ -543,7 +556,7 @@ export function ScheduleCallModal({
           <div className="flex items-center gap-3">
             {step === 'schedule' && (
               <button
-                onClick={() => setStep('details')}
+                onClick={goToPreviousStep}
                 className="p-1.5 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
               >
                 <ChevronLeft className="w-5 h-5" />
@@ -584,10 +597,13 @@ export function ScheduleCallModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 overflow-hidden">
           {/* =============== STEP 1: DETAILS =============== */}
           {step === 'details' && (
-            <>
+            <div
+              key="step-details"
+              className={`space-y-6 ${stepDirection === 'back' ? 'animate-step-slide-in-left' : ''}`}
+            >
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
@@ -634,12 +650,15 @@ export function ScheduleCallModal({
                   <p className="text-sm">{meetingError}</p>
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* =============== STEP 2: SCHEDULE =============== */}
           {step === 'schedule' && (
-            <>
+            <div
+              key="step-schedule"
+              className={`space-y-6 ${stepDirection === 'forward' ? 'animate-step-slide-in-right' : ''}`}
+            >
               {/* Mode Toggle */}
               <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl">
                 <button
@@ -1042,7 +1061,7 @@ export function ScheduleCallModal({
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* Error Message (shown on both steps) */}
@@ -1064,7 +1083,7 @@ export function ScheduleCallModal({
           </button>
           {step === 'details' ? (
             <button
-              onClick={() => setStep('schedule')}
+              onClick={goToNextStep}
               className="flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:opacity-90 transition-opacity"
             >
               Next

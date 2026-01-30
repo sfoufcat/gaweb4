@@ -19,6 +19,7 @@ import {
   calculateCreditsUsed,
 } from '@/lib/platform-transcription';
 import { processCallSummary } from '@/lib/ai/call-summary';
+import { getTranscriptionUrl } from '@/lib/bunny-stream';
 import type { UnifiedEvent } from '@/types';
 
 // Default duration if we can't calculate (30 minutes)
@@ -86,10 +87,19 @@ export async function POST(
       return NextResponse.json({ error: 'Organization not found' }, { status: 400 });
     }
 
-    // Validate: must have recording URL
-    if (!event.recordingUrl) {
+    // Validate: must have recording URL or bunnyVideoId
+    if (!event.recordingUrl && !event.bunnyVideoId) {
       return NextResponse.json(
         { error: 'No recording available for this event' },
+        { status: 400 }
+      );
+    }
+
+    // Get transcription-compatible URL (Groq can't process HLS streams)
+    const transcriptionUrl = await getTranscriptionUrl(event.bunnyVideoId, event.recordingUrl);
+    if (!transcriptionUrl) {
+      return NextResponse.json(
+        { error: 'Recording is not available for transcription (encoding may still be in progress)' },
         { status: 400 }
       );
     }
@@ -163,7 +173,7 @@ export async function POST(
       const transcriptionResult = await transcribeCallWithGroq(
         organizationId,
         `${meetingProvider}_${eventId}`,
-        event.recordingUrl,
+        transcriptionUrl,
         eventId
       );
 

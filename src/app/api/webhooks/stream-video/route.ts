@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { storeRecordingToBunny } from '@/lib/recording-storage';
 
 // =============================================================================
 // TYPES
@@ -157,10 +158,21 @@ async function handleRecordingReady(payload: StreamWebhookPayload): Promise<void
   }
 
   const callId = call.id;
-  const recordingUrl = call_recording.url;
+  const streamUrl = call_recording.url;
   const eventId = call.custom?.eventId;
 
   console.log(`[STREAM_VIDEO_WEBHOOK] Recording ready for call ${callId} in org ${organizationId}`);
+
+  // Download from Stream and store to Bunny for permanent access
+  // Stream URLs expire after ~2 weeks
+  let recordingUrl = streamUrl;
+  try {
+    recordingUrl = await storeRecordingToBunny(streamUrl, organizationId, callId);
+    console.log(`[STREAM_VIDEO_WEBHOOK] Stored recording to Bunny: ${recordingUrl}`);
+  } catch (error) {
+    console.error(`[STREAM_VIDEO_WEBHOOK] Failed to store to Bunny, using Stream URL:`, error);
+    // Fallback to Stream URL if Bunny upload fails
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // DEDUPLICATION CHECK - Prevent double-processing of same recording

@@ -23,7 +23,7 @@ import { AuthorSelector } from '@/components/admin/AuthorSelector';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { CategorySelector } from '@/components/admin/CategorySelector';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
-import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectPrompt } from '@/components/ui/StripeConnectPrompt';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 
 // Wizard step types
@@ -541,15 +541,9 @@ function DetailsStep({ data, onChange, error, programsApiEndpoint, categoriesApi
           </button>
         </div>
 
-        {/* Stripe Warning - show when not connected regardless of pricing selection */}
+        {/* Connect Stripe prompt - show when not connected */}
         {!stripeLoading && !stripeConnected && (
-          <StripeConnectWarning
-            variant="inline"
-            showCta={true}
-            message="Connect Stripe to accept payments"
-            subMessage="Required to enable paid content."
-            onConnectClick={onOpenStripeModal}
-          />
+          <StripeConnectPrompt onClick={onOpenStripeModal} />
         )}
 
         {/* Price Input - only show when paid is selected AND stripe is connected */}

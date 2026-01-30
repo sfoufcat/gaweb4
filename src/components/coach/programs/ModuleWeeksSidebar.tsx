@@ -30,8 +30,10 @@ import {
   Check,
   Save,
   X,
+  Info,
 } from 'lucide-react';
 import { SyncTemplateDialog } from './SyncTemplateDialog';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 // Selection types (same as ProgramSidebarNav for compatibility)
 export type SidebarSelection =
@@ -94,6 +96,12 @@ interface ModuleWeeksSidebarProps {
   instanceModules?: ProgramInstanceModule[];
   /** Instance ID for module editing */
   instanceId?: string | null;
+  /** Structure mismatch - show sync button when instance/template differ */
+  structureMismatch?: boolean;
+  /** Callback to sync instance structure to match template */
+  onSyncStructure?: () => void;
+  /** Whether structure sync is in progress */
+  syncingStructure?: boolean;
 }
 
 /**
@@ -391,6 +399,9 @@ export function ModuleWeeksSidebar({
   onRefreshInstance,
   instanceModules,
   instanceId,
+  structureMismatch,
+  onSyncStructure,
+  syncingStructure,
 }: ModuleWeeksSidebarProps) {
   // In client view mode, disable reordering (structure comes from template)
   const isClientView = viewContext?.mode === 'client';
@@ -1736,19 +1747,40 @@ export function ModuleWeeksSidebar({
   return (
     <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex-shrink-0">
+      <div className="px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <LayoutList className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
             <h3 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Structure</h3>
+            {structureMismatch && onSyncStructure && (
+              <div className="flex items-center gap-1 ml-1">
+                <button
+                  type="button"
+                  onClick={onSyncStructure}
+                  disabled={syncingStructure}
+                  className="text-xs px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors disabled:opacity-50"
+                >
+                  {syncingStructure ? '...' : 'Sync'}
+                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5">
+                      <Info className="w-3.5 h-3.5 text-[#a7a39e] dark:text-[#7d8190]" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-[220px] whitespace-normal">
+                    Weekend setting changed. Sync to recalculate week boundaries.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
           </div>
-
         </div>
       </div>
 
       {/* Modules & Weeks Tree */}
       <div className="flex-1 overflow-hidden relative">
-        <div className="h-full max-h-[50vh] lg:max-h-[calc(100vh-220px)] overflow-y-auto px-2 py-3 scrollbar-thin scrollbar-thumb-[#d1cdc8] dark:scrollbar-thumb-[#363d4a] scrollbar-track-transparent">
+        <div className="h-full max-h-[50vh] lg:max-h-[calc(100vh-220px)] overflow-y-auto px-2 pt-4 pb-3 scrollbar-thin scrollbar-thumb-[#d1cdc8] dark:scrollbar-thumb-[#363d4a] scrollbar-track-transparent">
         {sortedModules.length === 0 ? (
           // No modules yet - prompt to add one (only in template mode)
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6 text-center">

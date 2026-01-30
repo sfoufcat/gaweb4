@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { storeRecordingToBunny } from '@/lib/recording-storage';
 import type { UnifiedEvent } from '@/types';
 
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -124,9 +125,9 @@ export async function GET(request: Request) {
         }
 
         const latestRecording = recordings[recordings.length - 1];
-        const recordingUrl = latestRecording.url;
+        const streamUrl = latestRecording.url;
 
-        if (!recordingUrl) {
+        if (!streamUrl) {
           results.push({ eventId: event.id, success: true, recordingFound: false, error: 'Still processing' });
           continue;
         }
@@ -138,6 +139,16 @@ export async function GET(request: Request) {
         if (durationSeconds < 120) {
           results.push({ eventId: event.id, success: true, recordingFound: false, error: `Too short (${durationSeconds}s)` });
           continue;
+        }
+
+        // Download from Stream and store to Bunny for permanent access
+        let recordingUrl = streamUrl;
+        try {
+          recordingUrl = await storeRecordingToBunny(streamUrl, event.organizationId!, `event-${event.id}`);
+          console.log(`[CRON_STREAM] Stored recording to Bunny for event ${event.id}`);
+        } catch (storageError) {
+          console.error(`[CRON_STREAM] Failed to store to Bunny for event ${event.id}:`, storageError);
+          // Fallback to Stream URL if Bunny upload fails
         }
 
         await adminDb.collection('events').doc(event.id).update({

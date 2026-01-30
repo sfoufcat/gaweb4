@@ -106,6 +106,8 @@ export async function findMeetRecording(
 ): Promise<{
   success: boolean;
   recordingUrl?: string;
+  /** File ID for downloading via getGoogleDriveDownloadInfo */
+  fileId?: string;
   files?: Array<{
     id: string;
     name: string;
@@ -175,6 +177,7 @@ export async function findMeetRecording(
     return {
       success: true,
       recordingUrl: files[0].webViewLink,
+      fileId: files[0].id,
       files: files.map((f: { id: string; name: string; webViewLink: string; mimeType: string; createdTime: string }) => ({
         id: f.id,
         name: f.name,
@@ -208,6 +211,8 @@ export async function findMeetRecordingByEventId(
 ): Promise<{
   success: boolean;
   recordingUrl?: string;
+  /** File ID for downloading via getGoogleDriveDownloadInfo */
+  fileId?: string;
   error?: string;
 }> {
   try {
@@ -277,5 +282,49 @@ export async function findMeetRecordingByEventId(
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     };
+  }
+}
+
+/**
+ * Get download info for a Google Drive file
+ *
+ * Returns the download URL and access token needed to download the file.
+ * This is used to store recordings to Bunny for permanent access.
+ *
+ * @param orgId - Organization ID
+ * @param fileId - Google Drive file ID
+ * @returns Download URL and access token, or null if unavailable
+ */
+export async function getGoogleDriveDownloadInfo(
+  orgId: string,
+  fileId: string
+): Promise<{ downloadUrl: string; accessToken: string } | null> {
+  try {
+    const integration = await getIntegration(orgId, 'google_calendar', true);
+    if (!integration) {
+      console.error('[GOOGLE_DRIVE] No Google Calendar integration found');
+      return null;
+    }
+
+    const accessToken = await getValidGoogleAccessToken(
+      orgId,
+      integration.id,
+      integration.accessToken,
+      integration.refreshToken,
+      integration.expiresAt as Date | string | undefined
+    );
+
+    if (!accessToken) {
+      console.error('[GOOGLE_DRIVE] Failed to get valid access token');
+      return null;
+    }
+
+    // Google Drive API download URL format
+    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+
+    return { downloadUrl, accessToken };
+  } catch (error) {
+    console.error('[GOOGLE_DRIVE] Error getting download info:', error);
+    return null;
   }
 }

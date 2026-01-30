@@ -798,6 +798,9 @@ export interface Program {
   billingInterval?: 'monthly' | 'quarterly' | 'yearly'; // Subscription billing interval
   stripeProductId?: string; // Stripe Product ID for subscription
   
+  // Coach assignment (Scale plan allows selection, otherwise defaults to creator)
+  coachId?: string; // Primary program coach - joins ALL squads (defaults to creator)
+
   // Group program settings (only applicable when type = 'group')
   squadCapacity?: number; // Max members per squad (e.g., 10)
   coachInSquads?: boolean; // Whether coach joins each squad
@@ -5250,6 +5253,7 @@ export interface UnifiedEvent {
   autoFillWeek?: boolean;                // Auto-fill week from summary after generation
   autoFillTarget?: 'current' | 'next' | 'until_call';  // Which week(s) to fill (default: 'until_call')
   bunnyVideoId?: string;                 // Bunny Stream video ID for uploaded recordings
+  isAudioOnly?: boolean;                 // True if recording has no video track (from Bunny width/height=0)
   meetingUrl?: string;                   // Zoom/Google Meet/manual link
   meetingProvider?: 'zoom' | 'google_meet' | 'stream' | 'manual';
   
@@ -6171,8 +6175,8 @@ export const CREDIT_PACK_PRICING: Record<CreditPackType, number> = {
  */
 export const TIER_CALL_CREDITS: Record<CoachTier, number> = {
   starter: 20,  // 20 calls/month = 1200 minutes
-  pro: 50,      // 50 calls/month = 3000 minutes
-  scale: 100,   // 100 calls/month = 6000 minutes
+  pro: 60,      // 60 calls/month = 3600 minutes
+  scale: 150,   // 150 calls/month = 9000 minutes
 };
 
 // ============================================================================

@@ -217,6 +217,26 @@ export function ArticleEditor({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
+  // Helper to get initial form data from article
+  const getInitialFormData = (art: DiscoverArticle) => ({
+    title: art.title || '',
+    content: art.content || '',
+    coverImageUrl: art.coverImageUrl || '',
+    thumbnailUrl: art.thumbnailUrl || '',
+    authorId: art.authorId || null,
+    authorName: art.authorName || '',
+    authorTitle: art.authorTitle || '',
+    publishedAt: art.publishedAt ? art.publishedAt.split('T')[0] : '',
+    category: art.category || '',
+    programIds: art.programIds || [],
+    featured: art.featured || false,
+    trending: art.trending || false,
+    priceInCents: art.priceInCents ?? null,
+    currency: art.currency || 'USD',
+    purchaseType: (art.purchaseType || 'popup') as 'popup' | 'landing_page',
+    isPublic: art.isPublic !== false,
+  });
+
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -236,28 +256,23 @@ export function ArticleEditor({
     isPublic: true,
   });
 
+  const [originalFormData, setOriginalFormData] = useState(formData);
+
   useEffect(() => {
     if (article) {
-      setFormData({
-        title: article.title || '',
-        content: article.content || '',
-        coverImageUrl: article.coverImageUrl || '',
-        thumbnailUrl: article.thumbnailUrl || '',
-        authorId: article.authorId || null,
-        authorName: article.authorName || '',
-        authorTitle: article.authorTitle || '',
-        publishedAt: article.publishedAt ? article.publishedAt.split('T')[0] : '',
-        category: article.category || '',
-        programIds: article.programIds || [],
-        featured: article.featured || false,
-        trending: article.trending || false,
-        priceInCents: article.priceInCents ?? null,
-        currency: article.currency || 'USD',
-        purchaseType: (article.purchaseType || 'popup') as 'popup' | 'landing_page',
-        isPublic: article.isPublic !== false,
-      });
+      const initialData = getInitialFormData(article);
+      setFormData(initialData);
+      setOriginalFormData(initialData);
     }
   }, [article]);
+
+  // Check if form has changes
+  const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalFormData);
+
+  // Reset form to original values
+  const handleCancel = () => {
+    setFormData(originalFormData);
+  };
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
@@ -352,21 +367,39 @@ export function ArticleEditor({
               </button>
             )}
 
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={saving}
-              className="hidden sm:inline-flex border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] font-albert"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={saving || !formData.title.trim()}
-              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm sm:text-base px-3 sm:px-4"
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </Button>
+            {/* Mobile cancel button - only show when there are changes */}
+            {hasChanges && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={saving}
+                className="sm:hidden p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors disabled:opacity-50"
+                title="Discard changes"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+            {/* Desktop cancel button - only show when there are changes */}
+            {hasChanges && (
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={saving}
+                className="hidden sm:inline-flex border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] font-albert px-4"
+              >
+                Cancel
+              </Button>
+            )}
+            {/* Save button - only show when there are changes */}
+            {hasChanges && (
+              <Button
+                onClick={handleSubmit}
+                disabled={saving || !formData.title.trim()}
+                className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert text-sm sm:text-base px-6 sm:px-8"
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -565,7 +598,8 @@ export function ArticleEditor({
                         onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
                       />
                       <span
-                        className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
+                        className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
+                        style={{ fontWeight: 400 }}
                         onClick={() => setFormData(prev => ({ ...prev, featured: !prev.featured }))}
                       >
                         Featured
@@ -577,7 +611,8 @@ export function ArticleEditor({
                         onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
                       />
                       <span
-                        className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
+                        className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer"
+                        style={{ fontWeight: 400 }}
                         onClick={() => setFormData(prev => ({ ...prev, trending: !prev.trending }))}
                       >
                         Trending

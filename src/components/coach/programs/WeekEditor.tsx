@@ -3678,6 +3678,7 @@ export function WeekEditor({
                               poster={event.coverImageUrl}
                               className="rounded-lg overflow-hidden"
                               aspectRatio="16:9"
+                              isAudioOnly={event.isAudioOnly}
                             />
                             <a
                               href={event.recordingUrl}

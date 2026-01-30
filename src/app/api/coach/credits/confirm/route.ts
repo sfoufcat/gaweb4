@@ -109,12 +109,27 @@ export async function POST(request: NextRequest) {
       }
 
       // Add credits
-      const currentPurchasedMinutes = orgData?.summaryCredits?.purchasedMinutes || 0;
+      const existingSummaryCredits = orgData?.summaryCredits;
+      const currentPurchasedMinutes = existingSummaryCredits?.purchasedMinutes || 0;
 
-      transaction.update(orgRef, {
-        'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
-        processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntentId], // Keep last 100
-      });
+      if (existingSummaryCredits) {
+        // summaryCredits exists as nested object, use dot notation
+        transaction.update(orgRef, {
+          'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
+          processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntentId],
+        });
+      } else {
+        // summaryCredits doesn't exist, create full nested object
+        transaction.update(orgRef, {
+          summaryCredits: {
+            allocatedMinutes: 0,
+            usedMinutes: 0,
+            purchasedMinutes: minutesToAdd,
+            usedPurchasedMinutes: 0,
+          },
+          processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntentId],
+        });
+      }
 
       return { alreadyProcessed: false, creditsAdded: creditsToAdd };
     });

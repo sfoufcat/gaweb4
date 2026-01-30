@@ -15,6 +15,8 @@ interface MediaPlayerProps {
   onEnded?: () => void;
   /** Aspect ratio for video (ignored for audio) */
   aspectRatio?: '16:9' | '4:3' | '1:1';
+  /** If known, whether this media is audio-only (bypasses detection) */
+  isAudioOnly?: boolean;
 }
 
 // Audio file extensions
@@ -23,10 +25,28 @@ const AUDIO_EXTENSIONS = ['.mp3', '.m4a', '.wav', '.ogg', '.aac', '.flac', '.wma
 const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.m4v', '.wmv'];
 
 /**
- * Check if URL is from Bunny CDN
+ * Check if URL is from Bunny CDN (either Storage or Stream)
  */
 function isBunnyCdnUrl(url: string): boolean {
   return url.includes('.b-cdn.net') || url.includes('bunnycdn');
+}
+
+/**
+ * Check if URL is from Bunny Stream (HLS video service)
+ * Bunny Stream URLs look like: vz-*.b-cdn.net/{videoId}/playlist.m3u8
+ * These need probing since they could be audio-only or have video tracks
+ */
+function isBunnyStreamUrl(url: string): boolean {
+  return /vz-[a-z0-9-]+\.b-cdn\.net/i.test(url);
+}
+
+/**
+ * Check if URL is from Bunny Storage (our file storage CDN)
+ * Bunny Storage URLs look like: coachful.b-cdn.net/orgs/.../recordings/...
+ * These are our uploaded recordings, mostly audio-only
+ */
+function isBunnyStorageUrl(url: string): boolean {
+  return isBunnyCdnUrl(url) && !isBunnyStreamUrl(url);
 }
 
 /**
@@ -43,16 +63,22 @@ function getMediaTypeFromUrl(url: string): 'audio' | 'video' | 'unknown' {
     if (ext && AUDIO_EXTENSIONS.includes(ext)) return 'audio';
     if (ext && VIDEO_EXTENSIONS.includes(ext)) return 'video';
 
-    // For Bunny CDN URLs without clear extension, default to audio
-    // Bunny converts all uploads to video format (even audio gets a static speaker image)
-    // so probing is unreliable. Most call recordings are audio-only.
-    if (isBunnyCdnUrl(url)) {
+    // For Bunny Storage URLs (our uploaded recordings), default to audio
+    // Most call recordings are audio-only
+    if (isBunnyStorageUrl(url)) {
       // Check if URL explicitly contains video quality indicator
       if (pathname.includes('play_') && pathname.endsWith('.mp4')) {
         return 'video';
       }
-      // Default to audio for Bunny recordings
+      // Default to audio for our recordings
       return 'audio';
+    }
+
+    // For Bunny Stream URLs (HLS), default to video
+    // HLS requires video element + HLS.js which only VideoPlayer has
+    // Audio-only HLS will show black video but plays correctly
+    if (isBunnyStreamUrl(url)) {
+      return 'video';
     }
 
     return 'unknown';
@@ -65,9 +91,14 @@ function getMediaTypeFromUrl(url: string): 'audio' | 'video' | 'unknown' {
     if (ext && AUDIO_EXTENSIONS.includes(ext)) return 'audio';
     if (ext && VIDEO_EXTENSIONS.includes(ext)) return 'video';
 
-    // Bunny CDN fallback
-    if (isBunnyCdnUrl(url)) {
+    // Bunny Storage fallback - default to audio
+    if (isBunnyStorageUrl(url)) {
       return 'audio';
+    }
+
+    // Bunny Stream fallback - use video (HLS requires video element)
+    if (isBunnyStreamUrl(url)) {
+      return 'video';
     }
 
     return 'unknown';
@@ -87,9 +118,13 @@ export function MediaPlayer({
   className,
   onEnded,
   aspectRatio = '16:9',
+  isAudioOnly,
 }: MediaPlayerProps) {
   const [mediaType, setMediaType] = useState<MediaType>(() => {
-    // Initialize with detected type if possible
+    // If isAudioOnly is explicitly provided, use it directly
+    if (isAudioOnly === true) return 'audio';
+    if (isAudioOnly === false) return 'video';
+    // Otherwise detect from URL
     if (!src) return 'unknown';
     const detected = getMediaTypeFromUrl(src);
     return detected !== 'unknown' ? detected : 'detecting';
@@ -99,6 +134,16 @@ export function MediaPlayer({
   const hasProbed = useRef(false);
 
   useEffect(() => {
+    // If isAudioOnly is explicitly provided, use it directly (no detection needed)
+    if (isAudioOnly === true) {
+      setMediaType('audio');
+      return;
+    }
+    if (isAudioOnly === false) {
+      setMediaType('video');
+      return;
+    }
+
     if (!src) {
       setMediaType('unknown');
       return;
@@ -177,7 +222,7 @@ export function MediaPlayer({
       clearTimeout(timeout);
       cleanup();
     };
-  }, [src]);
+  }, [src, isAudioOnly]);
 
   // Loading state while detecting
   if (mediaType === 'detecting') {

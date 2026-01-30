@@ -170,11 +170,27 @@ export async function POST(request: NextRequest) {
               return;
             }
 
-            const currentPurchasedMinutes = orgData?.summaryCredits?.purchasedMinutes || 0;
-            transaction.update(orgRef, {
-              'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
-              processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntent.id], // Keep last 100
-            });
+            const existingSummaryCredits = orgData?.summaryCredits;
+            const currentPurchasedMinutes = existingSummaryCredits?.purchasedMinutes || 0;
+
+            if (existingSummaryCredits) {
+              // summaryCredits exists as nested object, use dot notation
+              transaction.update(orgRef, {
+                'summaryCredits.purchasedMinutes': currentPurchasedMinutes + minutesToAdd,
+                processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntent.id],
+              });
+            } else {
+              // summaryCredits doesn't exist, create full nested object
+              transaction.update(orgRef, {
+                summaryCredits: {
+                  allocatedMinutes: 0,
+                  usedMinutes: 0,
+                  purchasedMinutes: minutesToAdd,
+                  usedPurchasedMinutes: 0,
+                },
+                processedCreditPurchases: [...processedPaymentIntents.slice(-99), paymentIntent.id],
+              });
+            }
           });
           console.log(`[CREDITS_PURCHASE_API] Added ${pack.credits} credits (${minutesToAdd} minutes) to org ${organizationId}`);
         } catch (creditError) {

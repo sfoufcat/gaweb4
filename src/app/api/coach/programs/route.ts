@@ -26,6 +26,7 @@ interface CreateProgramRequest {
   name: string;
   description?: string;
   coverImage?: string;
+  coachId?: string; // Primary program coach (Scale plan can select, otherwise defaults to creator)
 
   // Step 3.5: Community (1:1 programs only)
   includeCommunity?: boolean;
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       coverImage,
+      coachId,
       includeCommunity,
       visibility,
       pricing,
@@ -75,6 +77,11 @@ export async function POST(request: NextRequest) {
       subscriptionEnabled,
       billingInterval,
     } = body;
+
+    // Determine effective coachId - default to creator
+    // Scale plan entitlement check is done client-side; server accepts whatever is passed
+    // but always defaults to creator if not provided
+    const effectiveCoachId = coachId || userId;
 
     // Validate required fields
     if (!type || !name || !durationWeeks) {
@@ -140,6 +147,8 @@ export async function POST(request: NextRequest) {
       durationType: effectiveDurationType,
       priceInCents: pricing === 'paid' && price ? Math.round(price * 100) : 0,
       currency: 'usd',
+      // Primary program coach - joins all squads
+      coachId: effectiveCoachId,
       // Subscription settings (only for evergreen programs with paid pricing)
       subscriptionEnabled: effectiveDurationType === 'evergreen' && subscriptionEnabled === true,
       billingInterval: effectiveDurationType === 'evergreen' && subscriptionEnabled ? (billingInterval || 'monthly') : undefined,

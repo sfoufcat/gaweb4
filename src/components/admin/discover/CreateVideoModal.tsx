@@ -23,6 +23,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
 import { StripeConnectWarning } from '@/components/ui/StripeConnectWarning';
+import { StripeConnectPrompt } from '@/components/ui/StripeConnectPrompt';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 import { DiscardUploadDialog } from '@/components/ui/DiscardUploadDialog';
 import { ThumbnailWithFallback, pollForThumbnail, getThumbnailUrl } from '@/lib/video-thumbnail';

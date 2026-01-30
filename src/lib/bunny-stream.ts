@@ -17,6 +17,8 @@ interface BunnyVideoResponse {
   title: string;
   status: number; // 0=created, 1=uploaded, 2=processing, 3=transcoding, 4=finished, 5=error, 6=failed
   length: number; // Duration in seconds
+  width: number; // Original video width (0 for audio-only)
+  height: number; // Original video height (0 for audio-only)
   thumbnailFileName: string;
   dateUploaded: string;
   encodeProgress: number;
@@ -35,6 +37,8 @@ interface VideoStatus {
   durationSeconds: number;
   playbackUrl: string | null;
   thumbnailUrl: string | null;
+  /** True if video has no video track (width/height are 0) */
+  isAudioOnly: boolean;
 }
 
 /**
@@ -166,6 +170,9 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatus> {
       ? `https://${cdnHostname}/${videoId}/${video.thumbnailFileName}`
       : null;
 
+  // Audio-only files have width/height of 0
+  const isAudioOnly = (video.width === 0 || !video.width) && (video.height === 0 || !video.height);
+
   return {
     videoId,
     status,
@@ -173,6 +180,7 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatus> {
     durationSeconds: video.length || 0,
     playbackUrl,
     thumbnailUrl,
+    isAudioOnly,
   };
 }
 
@@ -207,6 +215,34 @@ export async function getDirectVideoUrl(videoId: string): Promise<string | null>
   // Return the original quality MP4 for transcription
   // Format: https://cdn.hostname/videoId/play_720p.mp4
   return `https://${cdnHostname}/${videoId}/original`;
+}
+
+/**
+ * Get a transcription-compatible URL for a recording.
+ * Groq's Whisper API cannot process HLS streams (.m3u8), so we need direct MP4 URLs.
+ *
+ * @param bunnyVideoId - Optional Bunny video GUID
+ * @param recordingUrl - Existing recording URL (may be HLS or direct)
+ * @returns Direct MP4 URL suitable for transcription, or null if unavailable
+ */
+export async function getTranscriptionUrl(
+  bunnyVideoId: string | undefined,
+  recordingUrl: string | undefined
+): Promise<string | null> {
+  // If we have a bunnyVideoId, get the direct MP4 URL
+  if (bunnyVideoId) {
+    const directUrl = await getDirectVideoUrl(bunnyVideoId);
+    if (directUrl) {
+      return directUrl;
+    }
+  }
+
+  // Fall back to recordingUrl only if it's not an HLS playlist
+  if (recordingUrl && !recordingUrl.endsWith('.m3u8')) {
+    return recordingUrl;
+  }
+
+  return null;
 }
 
 /**
