@@ -27,6 +27,9 @@ import {
   Upload,
   Video,
   Trash2,
+  Calendar,
+  Wand2,
+  ArrowLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type {
@@ -37,6 +40,16 @@ import type {
   CallSummary,
 } from '@/types';
 import { extractPdfText, formatFileSize, type PdfExtractionResult } from '@/lib/pdf-utils';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+
+type FillTarget = 'current' | 'next' | 'until_call';
+
+const FILL_OPTIONS: { value: FillTarget; label: string }[] = [
+  { value: 'current', label: 'Current week' },
+  { value: 'next', label: 'Next week' },
+  { value: 'until_call', label: 'Until next call' },
+];
 
 interface WeekFillResult {
   tasks: Array<{
@@ -342,6 +355,21 @@ export function WeekFillModal({
   const [sessions, setSessions] = useState<SessionWithSummary[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
 
+  // Full summary data (when using existing summary)
+  const [selectedSummary, setSelectedSummary] = useState<CallSummary | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  // For client mode: show fill preview with timing options
+  const [showFillPreview, setShowFillPreview] = useState(false);
+  const [fillTarget, setFillTarget] = useState<FillTarget>('current');
+  const [hasNextCall, setHasNextCall] = useState<boolean | null>(null);
+  const [fillState, setFillState] = useState<'preview' | 'loading' | 'success' | 'error'>('preview');
+  const [fillError, setFillError] = useState<string>();
+  const [fillResult, setFillResult] = useState<{ daysUpdated: number; weeksUpdated: number }>();
+
+  // Determine if we're in client mode (should use FillWeekPreviewModal)
+  const isClientMode = !!enrollmentId;
+
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -490,8 +518,82 @@ export function WeekFillModal({
       setPdfExtraction(null);
       setSelectedSessionId('');
       setSelectedSummaryId('');
+      setSelectedSummary(null);
+      setShowFillPreview(false);
+      setFillState('preview');
+      setFillError(undefined);
+      setFillResult(undefined);
+      setHasNextCall(null);
+      setFillTarget('current');
     }
   }, [isOpen, fetchSessions]);
+
+  // Check for next call when entering fill preview mode
+  useEffect(() => {
+    if (!showFillPreview || !selectedSessionId) return;
+
+    async function checkNextCall() {
+      try {
+        const response = await fetch(`/api/events/${selectedSessionId}/has-next-call`);
+        if (response.ok) {
+          const data = await response.json();
+          setHasNextCall(data.hasNextCall);
+          if (data.hasNextCall) {
+            setFillTarget('until_call');
+          }
+        }
+      } catch {
+        setHasNextCall(false);
+      }
+    }
+    checkNextCall();
+  }, [showFillPreview, selectedSessionId]);
+
+  // Get fill options based on whether there's a next call
+  const fillOptions = hasNextCall === true
+    ? FILL_OPTIONS
+    : FILL_OPTIONS.filter(opt => opt.value !== 'until_call');
+
+  // Handle fill week from summary (client mode)
+  const handleFillFromSummary = async () => {
+    if (!selectedSessionId) return;
+
+    setFillState('loading');
+    setFillError(undefined);
+
+    try {
+      const response = await fetch(`/api/events/${selectedSessionId}/fill-week-from-summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fillTarget }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setFillResult({
+          daysUpdated: data.daysUpdated || 0,
+          weeksUpdated: data.weeksUpdated || 0,
+        });
+        setFillState('success');
+      } else {
+        setFillError(data.error || 'Failed to fill week');
+        setFillState('error');
+      }
+    } catch {
+      setFillError('Network error. Please try again.');
+      setFillState('error');
+    }
+  };
+
+  // Get priority badge variant
+  const getPriorityVariant = (priority: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    switch (priority) {
+      case 'high': return 'destructive';
+      case 'medium': return 'default';
+      default: return 'secondary';
+    }
+  };
 
   // Handle PDF file selection
   const handlePdfSelect = async (file: File) => {
@@ -548,6 +650,55 @@ export function WeekFillModal({
     }
   };
 
+  // Fetch full summary data when a summary is selected
+  const fetchSummaryData = useCallback(async (summaryId: string) => {
+    setLoadingSummary(true);
+    try {
+      const res = await fetch(`/api/coach/call-summaries/${summaryId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedSummary(data.summary || data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch summary:', error);
+    } finally {
+      setLoadingSummary(false);
+    }
+  }, []);
+
+  // When a summary is selected, fetch the full data
+  useEffect(() => {
+    if (selectedSummaryId && sourceType === 'session') {
+      fetchSummaryData(selectedSummaryId);
+    } else {
+      setSelectedSummary(null);
+    }
+  }, [selectedSummaryId, sourceType, fetchSummaryData]);
+
+  // Convert existing CallSummary to WeekFillResult (no AI call needed!)
+  const convertSummaryToResult = (summary: CallSummary): WeekFillResult => {
+    // Convert actionItems to tasks
+    const tasks = summary.actionItems
+      .filter(item => item.assignedTo === 'client' || item.assignedTo === 'both')
+      .map(item => ({
+        label: item.description,
+        type: 'task' as const,
+        isPrimary: item.priority === 'high',
+        tag: item.category,
+      }));
+
+    // Use weekContent if available (pre-generated during summary creation)
+    const weekContent = summary.weekContent || {};
+
+    return {
+      tasks,
+      currentFocus: weekContent.goals || weekContent.currentFocus || [],
+      notes: weekContent.notes || [],
+      weekTheme: weekContent.theme,
+      weekDescription: weekContent.description,
+    };
+  };
+
   // Check if can generate
   const canGenerate = () => {
     if (sourceType === 'session') {
@@ -566,11 +717,50 @@ export function WeekFillModal({
   const handleGenerate = async () => {
     if (!canGenerate()) return;
 
+    // In client mode with session selected, show fill preview instead
+    // Check selectedSummaryId (not selectedSummary) because summary might still be loading
+    if (isClientMode && sourceType === 'session' && selectedSummaryId) {
+      // If summary is still loading, wait for it
+      if (loadingSummary) {
+        return; // Button should be disabled anyway, but just in case
+      }
+      // If we have the summary, show the preview
+      if (selectedSummary) {
+        setShowFillPreview(true);
+        return;
+      }
+      // If no summary loaded yet but we have an ID, fetch it first then show preview
+      // This shouldn't happen normally since useEffect fetches it, but just in case
+      setGenerationError('Please wait for the summary to load');
+      return;
+    }
+
+    // For session mode, ensure summary is fully loaded before proceeding
+    if (sourceType === 'session') {
+      if (loadingSummary) {
+        setGenerationError('Please wait for the summary to load');
+        return;
+      }
+      if (!selectedSummary) {
+        setGenerationError('Summary not found. Please select a session with a summary.');
+        return;
+      }
+    }
+
     setIsGenerating(true);
     setGenerationError(null);
     setResult(null);
 
     try {
+      // For sessions with existing summaries (template mode), use the data directly - no AI call needed!
+      if (sourceType === 'session' && selectedSummary) {
+        const convertedResult = convertSummaryToResult(selectedSummary);
+        setResult(convertedResult);
+        setIsGenerating(false);
+        return;
+      }
+
+      // For prompt/PDF sources, call AI endpoint
       const source: {
         type: 'call_summary' | 'prompt' | 'pdf';
         summaryId?: string;
@@ -740,15 +930,32 @@ export function WeekFillModal({
                     <X className="w-5 h-5" />
                   </button>
                   <div className="flex items-center gap-3">
+                    {showFillPreview && (
+                      <button
+                        onClick={() => {
+                          setShowFillPreview(false);
+                          setFillState('preview');
+                        }}
+                        className="p-2 -ml-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </button>
+                    )}
                     <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-brand-accent" />
+                      {showFillPreview ? (
+                        <Wand2 className="w-5 h-5 text-brand-accent" />
+                      ) : (
+                        <Sparkles className="w-5 h-5 text-brand-accent" />
+                      )}
                     </div>
                     <div>
                       <Dialog.Title className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                        Fill {getWeekDisplayName()} with AI
+                        {showFillPreview ? 'Fill Week from Summary' : `Fill ${getWeekDisplayName()} with AI`}
                       </Dialog.Title>
                       <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                        Generate tasks, focus areas, and notes from a source
+                        {showFillPreview
+                          ? 'Review and apply tasks from your coaching call'
+                          : 'Generate tasks, focus areas, and notes from a source'}
                       </p>
                     </div>
                   </div>
@@ -757,7 +964,200 @@ export function WeekFillModal({
                 {/* Content */}
                 <div className="p-6 flex-1 min-h-0 overflow-y-auto">
                   <AnimatePresence mode="wait">
-                    {!result ? (
+                    {showFillPreview && selectedSummary ? (
+                      /* Fill Preview Mode (client mode) */
+                      <motion.div
+                        key="fill-preview"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-4"
+                      >
+                        {/* Success State */}
+                        {fillState === 'success' && fillResult && (
+                          <div className="p-6 rounded-xl bg-emerald-50/70 dark:bg-emerald-900/20 border border-emerald-200/60 dark:border-emerald-800/60">
+                            <div className="flex flex-col items-center text-center gap-3">
+                              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                              <div>
+                                <p className="text-lg font-semibold font-albert text-emerald-700 dark:text-emerald-300">
+                                  Tasks Created!
+                                </p>
+                                <p className="text-sm font-albert text-emerald-600/80 dark:text-emerald-400/80 mt-1">
+                                  {fillResult.daysUpdated} day{fillResult.daysUpdated !== 1 ? 's' : ''} updated
+                                  {fillResult.weeksUpdated > 1 ? ` across ${fillResult.weeksUpdated} weeks` : ''}
+                                </p>
+                              </div>
+                              <button
+                                onClick={onClose}
+                                className="mt-2 px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-semibold font-albert transition-colors"
+                              >
+                                Done
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Error State */}
+                        {fillState === 'error' && (
+                          <div className="p-4 rounded-xl bg-red-50/70 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/60">
+                            <div className="flex items-start gap-3">
+                              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold font-albert text-red-700 dark:text-red-300">
+                                  Failed to create tasks
+                                </p>
+                                <p className="text-sm font-albert text-red-600/80 dark:text-red-400/80 mt-1">{fillError}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setFillState('preview')}
+                              className="mt-3 w-full py-2.5 rounded-xl text-sm font-semibold font-albert text-red-600 dark:text-red-400 bg-white dark:bg-red-900/30 border border-red-200 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/40 transition-colors"
+                            >
+                              Try Again
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Loading State */}
+                        {fillState === 'loading' && (
+                          <div className="py-12 flex flex-col items-center gap-4">
+                            <Loader2 className="w-8 h-8 text-brand-accent animate-spin" />
+                            <div className="text-center">
+                              <p className="text-base font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                                Creating tasks...
+                              </p>
+                              <p className="text-sm font-albert text-[#8a857f] dark:text-[#9a969f] mt-1">
+                                Converting action items to program tasks
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Preview State */}
+                        {fillState === 'preview' && (
+                          <>
+                            {/* Client Tasks */}
+                            {(() => {
+                              const clientItems = selectedSummary.actionItems?.filter(
+                                i => i.assignedTo === 'client' || i.assignedTo === 'both'
+                              ) || [];
+                              return clientItems.length > 0 && (
+                                <div>
+                                  <h4 className="text-sm font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1.5 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-sky-500" />
+                                    Client Tasks ({clientItems.length})
+                                  </h4>
+                                  <div className="space-y-1.5">
+                                    {clientItems.map((item) => (
+                                      <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-[#f5f3f0] dark:bg-[#1e222a] border border-[#e5e1dc] dark:border-[#2a2f3a]">
+                                        <Badge variant={getPriorityVariant(item.priority)} className="shrink-0 text-xs font-albert">
+                                          {item.priority}
+                                        </Badge>
+                                        <span className="flex-1 text-sm text-[#3a3a3a] dark:text-[#e0e0e5] font-albert">
+                                          {item.description}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Week Content Preview */}
+                            {selectedSummary.weekContent && (selectedSummary.weekContent.theme || selectedSummary.weekContent.description || selectedSummary.weekContent.notes?.length || selectedSummary.weekContent.goals?.length || selectedSummary.weekContent.currentFocus?.length) && (
+                              <div className="space-y-2 p-3 rounded-xl bg-amber-50/40 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-700/30">
+                                {selectedSummary.weekContent.theme && (
+                                  <div>
+                                    <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-0.5">
+                                      Weekly Theme
+                                    </h4>
+                                    <p className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] italic">
+                                      {selectedSummary.weekContent.theme}
+                                    </p>
+                                  </div>
+                                )}
+                                {selectedSummary.weekContent.description && (
+                                  <div>
+                                    <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-0.5">
+                                      Description
+                                    </h4>
+                                    <p className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] line-clamp-2">
+                                      {selectedSummary.weekContent.description}
+                                    </p>
+                                  </div>
+                                )}
+                                {selectedSummary.weekContent.notes && selectedSummary.weekContent.notes.length > 0 && (
+                                  <div>
+                                    <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 flex items-center gap-1.5">
+                                      <StickyNote className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                      Week Notes
+                                    </h4>
+                                    <ul className="space-y-1">
+                                      {selectedSummary.weekContent.notes.map((note, idx) => (
+                                        <li key={idx} className="text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2] pl-2.5 border-l-2 border-amber-400/60 dark:border-amber-500/40">
+                                          {note}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                {(selectedSummary.weekContent.goals?.length || selectedSummary.weekContent.currentFocus?.length) ? (
+                                  <div>
+                                    <h4 className="text-xs font-semibold font-albert text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 flex items-center gap-1.5">
+                                      <Target className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                      Goals
+                                    </h4>
+                                    <div className="flex flex-wrap gap-1">
+                                      {(selectedSummary.weekContent.goals || selectedSummary.weekContent.currentFocus || []).map((goal, idx) => (
+                                        <span
+                                          key={idx}
+                                          className="px-2 py-0.5 text-xs font-medium font-albert bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md"
+                                        >
+                                          {goal}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
+
+                            {/* Fill Target Selection */}
+                            <div className="pt-4 border-t border-[#e8e4df] dark:border-[#2a2f3a]">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Calendar className="w-4 h-4 text-[#8a857f] dark:text-[#9a969f]" />
+                                <h4 className="text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
+                                  Add tasks to:
+                                </h4>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                {fillOptions.map((option) => (
+                                  <button
+                                    key={option.value}
+                                    onClick={() => setFillTarget(option.value)}
+                                    className={cn(
+                                      "flex items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all",
+                                      fillTarget === option.value
+                                        ? "border-brand-accent bg-brand-accent/5"
+                                        : "border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50"
+                                    )}
+                                  >
+                                    <span className={cn(
+                                      "text-sm font-semibold font-albert",
+                                      fillTarget === option.value
+                                        ? "text-brand-accent"
+                                        : "text-[#5f5a55] dark:text-[#b2b6c2]"
+                                    )}>
+                                      {option.label}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </motion.div>
+                    ) : !result ? (
                       <motion.div
                         key="source-selection"
                         initial={{ opacity: 0, y: 10 }}
@@ -827,7 +1227,7 @@ export function WeekFillModal({
                             {/* Sessions Panel */}
                             <Tab.Panel className="space-y-4">
                               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                Select a session with a summary to fill this week with insights from your coaching call.
+                                Select a session with a summary to fill this week. Using existing summaries is free!
                               </p>
 
                               {loadingSessions ? (
@@ -878,6 +1278,10 @@ export function WeekFillModal({
                                               onClick={() => {
                                                 setSelectedSessionId(session.id);
                                                 setSelectedSummaryId(session.summaryId || '');
+                                                // Set loading immediately to prevent race condition
+                                                if (session.summaryId) {
+                                                  setLoadingSummary(true);
+                                                }
                                               }}
                                               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                                                 selectedSessionId === session.id
@@ -1184,46 +1588,80 @@ export function WeekFillModal({
 
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#11141b] flex items-center justify-end gap-3">
-                  <Button variant="ghost" onClick={onClose}>
-                    Cancel
-                  </Button>
-
-                  {!result ? (
-                    <Button
-                      onClick={handleGenerate}
-                      disabled={!canGenerate() || isGenerating}
-                      className="flex items-center gap-2"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4" />
+                  {showFillPreview ? (
+                    /* Fill Preview Footer (client mode) */
+                    fillState === 'preview' && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setShowFillPreview(false);
+                            setFillState('preview');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleFillFromSummary}
+                          className="flex items-center gap-2"
+                        >
                           Fill Week
-                        </>
-                      )}
-                    </Button>
+                          <Wand2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )
                   ) : (
-                    <Button
-                      onClick={handleApply}
-                      disabled={isApplying}
-                      className="flex items-center gap-2"
-                    >
-                      {isApplying ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Applying...
-                        </>
+                    /* Normal Footer */
+                    <>
+                      <Button variant="ghost" onClick={onClose}>
+                        Cancel
+                      </Button>
+
+                      {!result ? (
+                        <Button
+                          onClick={handleGenerate}
+                          disabled={!canGenerate() || isGenerating || (sourceType === 'session' && loadingSummary)}
+                          className="flex items-center gap-2"
+                        >
+                          {isGenerating || (sourceType === 'session' && loadingSummary) ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              {loadingSummary ? 'Loading...' : 'Generating...'}
+                            </>
+                          ) : sourceType === 'session' && selectedSummary ? (
+                            // Using existing summary - no AI credit needed
+                            <>
+                              <CheckCircle2 className="w-4 h-4" />
+                              Fill Week
+                            </>
+                          ) : (
+                            // Prompt/PDF needs AI generation
+                            <>
+                              <Sparkles className="w-4 h-4" />
+                              Fill Week
+                            </>
+                          )}
+                        </Button>
                       ) : (
-                        <>
-                          <CheckCircle2 className="w-4 h-4" />
-                          Apply to Week
-                        </>
+                        <Button
+                          onClick={handleApply}
+                          disabled={isApplying}
+                          className="flex items-center gap-2"
+                        >
+                          {isApplying ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Applying...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-4 h-4" />
+                              Apply to Week
+                            </>
+                          )}
+                        </Button>
                       )}
-                    </Button>
+                    </>
                   )}
                 </div>
               </Dialog.Panel>

@@ -3,7 +3,8 @@
 import React, { Fragment, useState, useEffect, useCallback } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { X, Code, Save, Loader2 } from 'lucide-react';
-import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { FunnelTrackingConfig } from '@/types';
 
@@ -305,7 +306,10 @@ export function GlobalPixelsModal({ isOpen, onClose }: GlobalPixelsModalProps) {
       </div>
 
       {/* Footer */}
-      <div className="flex-shrink-0 px-6 py-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 bg-[#faf9f7] dark:bg-[#11141b]/50">
+      <div
+        className="flex-shrink-0 px-6 py-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 bg-[#faf9f7]/80 dark:bg-[#11141b]/80 backdrop-blur-xl"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {hasChanges && (
@@ -348,7 +352,10 @@ export function GlobalPixelsModal({ isOpen, onClose }: GlobalPixelsModalProps) {
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DrawerContent className="h-[90vh] max-h-[90vh] flex flex-col">
+        <DrawerContent className="h-[90vh] max-h-[90vh] flex flex-col bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border-t border-[#e8e4df]/50 dark:border-[#262b35]/50">
+          <VisuallyHidden>
+            <DrawerTitle>Global Tracking Pixels</DrawerTitle>
+          </VisuallyHidden>
           {content}
         </DrawerContent>
       </Drawer>

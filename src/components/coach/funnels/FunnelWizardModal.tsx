@@ -22,7 +22,9 @@ import {
 import {
   Drawer,
   DrawerContent,
+  DrawerTitle,
 } from '@/components/ui/drawer';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import {
   Select,
   SelectContent,
@@ -911,6 +913,9 @@ export function FunnelWizardModal({
     return (
       <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DrawerContent className="h-[90vh] max-h-[90vh] flex flex-col">
+          <VisuallyHidden>
+            <DrawerTitle>Create Funnel</DrawerTitle>
+          </VisuallyHidden>
           {wizardContent}
         </DrawerContent>
       </Drawer>
