@@ -173,62 +173,30 @@ export function ResponsesViewer({
       // Multi-choice
       const options = question.options || [];
       const labels = answer.value.map(v => options.find(o => o.value === v)?.label || v);
-      return (
-        <div className="flex flex-wrap gap-1.5">
-          {labels.map((label, i) => (
-            <span
-              key={i}
-              className="inline-block px-2.5 py-1 text-sm bg-brand-accent/10 text-brand-accent rounded-lg font-medium"
-            >
-              {label}
-            </span>
-          ))}
-        </div>
-      );
+      return <span className="text-[#5f5a55] dark:text-[#b2b6c2]">{labels.join(', ')}</span>;
     }
 
     if (typeof answer.value === 'number') {
-      // Scale
-      if (question.type === 'scale') {
-        const min = question.minValue ?? 1;
-        const max = question.maxValue ?? 5;
-        const percentage = ((answer.value - min) / (max - min)) * 100;
-        return (
-          <div className="flex items-center gap-3">
-            <div className="w-20 h-2.5 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-brand-accent rounded-full"
-                style={{ width: `${percentage}%` }}
-              />
-            </div>
-            <span className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">{answer.value}</span>
-          </div>
-        );
-      }
-      return <span className="font-medium">{answer.value}</span>;
+      return <span className="text-[#5f5a55] dark:text-[#b2b6c2]">{answer.value}</span>;
     }
 
     // Single choice
     if (question.type === 'single_choice') {
       const option = question.options?.find(o => o.value === answer.value);
-      return (
-        <span className="inline-block px-2.5 py-1 text-sm bg-brand-accent/10 text-brand-accent rounded-lg font-medium">
-          {option?.label || answer.value}
-        </span>
-      );
+      return <span className="text-[#5f5a55] dark:text-[#b2b6c2]">{option?.label || answer.value}</span>;
     }
 
     // Text - truncate long responses
     const text = String(answer.value);
     if (text.length > 100) {
       return (
-        <span title={text} className="cursor-help text-[#1a1a1a] dark:text-[#f5f5f8]">
+        <span title={text} className="cursor-help text-[#5f5a55] dark:text-[#b2b6c2]">
           {text.substring(0, 100)}...
         </span>
       );
     }
 
-    return <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{text}</span>;
+    return <span className="text-[#5f5a55] dark:text-[#b2b6c2]">{text}</span>;
   };
 
   // Format date
@@ -326,7 +294,7 @@ export function ResponsesViewer({
               <ArrowLeft className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
             </button>
             <div className="min-w-0 flex-1">
-              <h1 className="text-base sm:text-lg font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+              <h1 className="text-base sm:text-lg font-bold text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
                 {questionnaireName}
               </h1>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
@@ -344,7 +312,7 @@ export function ResponsesViewer({
                 placeholder="Search by name or email..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 w-full sm:w-64 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="pl-9 pr-4 py-2 w-full sm:w-64 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent text-sm font-albert text-[#5f5a55] dark:text-[#b2b6c2]"
               />
             </div>
 
@@ -377,19 +345,19 @@ export function ResponsesViewer({
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b border-[#e1ddd8] dark:border-[#262b35]">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert sticky left-0 bg-white dark:bg-[#171b22] z-10 min-w-[220px]">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#5f5a55] dark:text-[#b2b6c2] font-albert sticky left-0 bg-white dark:bg-[#171b22] z-10 min-w-[220px]">
                       Respondent
                     </th>
                     {data.questionnaire.questions.map(q => (
                       <th
                         key={q.id}
-                        className="px-6 py-4 text-left text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert min-w-[180px]"
+                        className="px-6 py-4 text-left text-sm font-semibold text-[#5f5a55] dark:text-[#b2b6c2] font-albert min-w-[180px]"
                         title={q.title}
                       >
                         {q.title?.length > 25 ? `${q.title.substring(0, 25)}...` : q.title || 'Untitled'}
                       </th>
                     ))}
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert min-w-[140px]">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-[#5f5a55] dark:text-[#b2b6c2] font-albert min-w-[140px]">
                       Submitted
                     </th>
                   </tr>
@@ -422,7 +390,7 @@ export function ResponsesViewer({
                               </div>
                             )}
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                              <p className="text-sm font-semibold text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
                                 {response.userName || 'Unknown'}
                               </p>
                               <p className="text-sm text-[#6b6560] dark:text-[#9ca3af] font-albert truncate">
@@ -436,7 +404,7 @@ export function ResponsesViewer({
                         {data.questionnaire.questions.map(q => (
                           <td
                             key={q.id}
-                            className="px-6 py-4 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                            className="px-6 py-4 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                           >
                             {formatAnswerDisplay(answerMap.get(q.id), q)}
                           </td>

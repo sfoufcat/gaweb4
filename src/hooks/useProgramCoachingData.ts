@@ -105,24 +105,36 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
           });
         }
 
-        // Build events URL
-        const now = new Date().toISOString();
+        // Build events URL for upcoming calls (for nextCall display)
+        const now = new Date();
         const futureDate = new Date();
         futureDate.setMonth(futureDate.getMonth() + 3);
-        const eventsParams = new URLSearchParams({
-          startDate: now,
+        const upcomingEventsParams = new URLSearchParams({
+          startDate: now.toISOString(),
           endDate: futureDate.toISOString(),
           types: 'coaching_1on1',
           status: 'confirmed',
           role: 'all',
         });
 
+        // Build events URL for all calls this month (for credits calculation)
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        const monthEventsParams = new URLSearchParams({
+          startDate: monthStart.toISOString(),
+          endDate: monthEnd.toISOString(),
+          types: 'coaching_1on1',
+          status: 'confirmed',
+          role: 'all',
+        });
+
         // Fetch all data in parallel
-        const [coachingRes, creditsRes, settingsRes, eventsRes] = await Promise.all([
+        const [coachingRes, creditsRes, settingsRes, eventsRes, monthEventsRes] = await Promise.all([
           fetch('/api/coaching/data').catch(() => null),
           fetch('/api/scheduling/credits').catch(() => null),
           fetch('/api/scheduling/call-settings').catch(() => null),
-          fetch(`/api/scheduling/events?${eventsParams}`).catch(() => null),
+          fetch(`/api/scheduling/events?${upcomingEventsParams}`).catch(() => null),
+          fetch(`/api/scheduling/events?${monthEventsParams}`).catch(() => null),
         ]);
 
         // Process coaching data
@@ -149,22 +161,10 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
           }
         }
 
-        // Process events (primary source for nextCall and call count)
-        let scheduledCallsThisMonth = 0;
+        // Process upcoming events (for nextCall display)
         if (eventsRes?.ok) {
           const eventsResult = await eventsRes.json();
           const upcomingEvents = eventsResult.events || [];
-
-          // Count scheduled calls in current calendar month
-          const now = new Date();
-          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-          const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-
-          scheduledCallsThisMonth = upcomingEvents.filter((event: { startDateTime?: string }) => {
-            if (!event.startDateTime) return false;
-            const eventDate = new Date(event.startDateTime);
-            return eventDate >= monthStart && eventDate <= monthEnd;
-          }).length;
 
           if (upcomingEvents.length > 0) {
             const nextEvent = upcomingEvents[0];
@@ -179,16 +179,23 @@ export function useProgramCoachingData(): UseProgramCoachingDataReturn {
           }
         }
 
-        // Process credits - calculate remaining based on scheduled calls
+        // Count all calls this month (past + future)
+        let callsThisMonth = 0;
+        if (monthEventsRes?.ok) {
+          const monthResult = await monthEventsRes.json();
+          callsThisMonth = (monthResult.events || []).length;
+        }
+
+        // Process credits - calculate remaining based on all calls this month
         if (creditsRes?.ok) {
           const creditsResult = await creditsRes.json();
           if (creditsResult.credits) {
             const monthlyAllowance = creditsResult.credits.monthlyAllowance;
-            const creditsRemaining = Math.max(0, monthlyAllowance - scheduledCallsThisMonth);
+            const creditsRemaining = Math.max(0, monthlyAllowance - callsThisMonth);
             setCallCredits({
               creditsRemaining,
               monthlyAllowance,
-              creditsUsedThisMonth: scheduledCallsThisMonth,
+              creditsUsedThisMonth: callsThisMonth,
             });
           }
         }

@@ -21,6 +21,7 @@ export interface PastSessionItem {
   coverImageUrl?: string;
   hasRecording: boolean;
   hasSummary?: boolean;
+  summaryId?: string;
   eventId: string;
   eventType?: 'coaching_1on1' | 'cohort_call' | 'squad_call' | 'intake_call' | 'community_event';
   onViewSummary?: () => void;

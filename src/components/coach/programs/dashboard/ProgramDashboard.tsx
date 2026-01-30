@@ -299,18 +299,7 @@ export function ProgramDashboard({
     // Store hasSummary from the item (already verified by API)
     setSelectedEventHasSummary(item.hasSummary);
 
-    // Create minimal event from item data to show popup immediately
-    const minimalEvent: UnifiedEvent = {
-      id: item.eventId,
-      title: item.title,
-      startDateTime: item.date,
-      eventType: item.eventType || 'coaching_1on1',
-    } as UnifiedEvent;
-
-    setSelectedEvent(minimalEvent);
-    setShowEventDetailPopup(true);
-
-    // Fetch full event data in background to enrich the popup
+    // Fetch full event data first, then show popup
     try {
       const response = await fetch(`/api/events/${item.eventId}`);
       if (response.ok) {
@@ -318,11 +307,23 @@ export function ProgramDashboard({
         const eventData = data.event || data;
         if (eventData?.id && eventData?.startDateTime) {
           setSelectedEvent(eventData);
+          setShowEventDetailPopup(true);
+          return;
         }
       }
     } catch (err) {
       console.error('Failed to fetch event:', err);
     }
+
+    // Fallback: show minimal event if fetch fails
+    const minimalEvent: UnifiedEvent = {
+      id: item.eventId,
+      title: item.title,
+      startDateTime: item.date,
+      eventType: item.eventType || 'coaching_1on1',
+    } as UnifiedEvent;
+    setSelectedEvent(minimalEvent);
+    setShowEventDetailPopup(true);
   }, []);
 
   // Handle summary generated - refresh the dashboard data
@@ -350,9 +351,9 @@ export function ProgramDashboard({
   }, []);
 
   // Handle view summary - fetch summary and open CallSummaryViewModal directly
-  const handleViewSummary = useCallback(async (eventId: string) => {
+  const handleViewSummary = useCallback(async (summaryId: string) => {
     try {
-      const response = await fetch(`/api/coach/call-summaries/${eventId}`);
+      const response = await fetch(`/api/coach/call-summaries/${summaryId}`);
       if (!response.ok) {
         console.error('Failed to fetch summary');
         return;
@@ -375,7 +376,7 @@ export function ProgramDashboard({
       onClick: (e: React.MouseEvent) => handlePastSessionClick(item, { x: e.clientX, y: e.clientY }),
       onSummaryGenerated: handleSummaryGenerated,
       onFillWeek: item.hasSummary ? () => handleFillWeek(item.eventId) : undefined,
-      onViewSummary: item.hasSummary ? () => handleViewSummary(item.eventId) : undefined,
+      onViewSummary: item.hasSummary && item.summaryId ? () => handleViewSummary(item.summaryId!) : undefined,
     }));
   }, [handlePastSessionClick, handleSummaryGenerated, handleFillWeek, handleViewSummary]);
 
@@ -607,6 +608,10 @@ export function ProgramDashboard({
           isHost={true}
           position={popupPosition}
           hasSummaryOverride={selectedEventHasSummary}
+          onViewSummary={(summaryId) => {
+            setShowEventDetailPopup(false);
+            handleViewSummary(summaryId);
+          }}
         />
       )}
 

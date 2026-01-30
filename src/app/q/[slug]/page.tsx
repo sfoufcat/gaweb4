@@ -165,7 +165,7 @@ export default function QuestionnairePage() {
             You have already submitted a response to this questionnaire. Thank you for your participation!
           </p>
           <motion.button
-            onClick={() => router.push('/')}
+            onClick={() => window.location.href = '/'}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full h-14 bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-semibold text-base rounded-2xl border border-[#e8e4df] dark:border-[#262b35] hover:border-[#d1cdc8] dark:hover:border-[#363c48] shadow-sm transition-all"
@@ -252,7 +252,7 @@ export default function QuestionnairePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            onClick={() => router.push('/')}
+            onClick={() => window.location.href = '/'}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full h-14 bg-brand-accent hover:bg-brand-accent/90 text-white font-albert font-semibold text-base rounded-2xl shadow-lg shadow-brand-accent/20 transition-all"

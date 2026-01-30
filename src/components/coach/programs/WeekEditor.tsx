@@ -190,6 +190,8 @@ interface WeekEditorProps {
   onDaysChange?: (days: ProgramDay[]) => void;
   // Callback when a call is scheduled (to refresh events list)
   onCallScheduled?: () => void;
+  // Callback to refresh instance data (after fill-week-from-summary)
+  onInstanceRefresh?: () => void;
 }
 
 // Member info for task completion breakdown
@@ -1004,6 +1006,7 @@ export function WeekEditor({
   includeWeekends = true,
   onDaysChange,
   onCallScheduled,
+  onInstanceRefresh,
 }: WeekEditorProps) {
   // Program editor context for centralized save
   const editorContext = useProgramEditorOptional();
@@ -3768,7 +3771,9 @@ export function WeekEditor({
           eventId={fillWeekEventId || ''}
           summary={fillWeekSummary}
           onFilled={() => {
-            // Refresh the week data after filling
+            // Refresh the instance data to show new weekly tasks
+            onInstanceRefresh?.();
+            // Also refresh events in case anything changed
             onCallScheduled?.();
           }}
         />

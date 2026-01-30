@@ -54,51 +54,89 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
   }, [answers]);
 
   // Evaluate a skip logic rule (handles both old and new formats)
+  // For global rules, questionId can be empty string since conditions have their own questionId
   const evaluateRule = useCallback((
     rule: SkipLogicRule,
-    questionId: string
+    fallbackQuestionId: string = ''
   ): boolean => {
     // Normalize rule to new format
-    const normalizedRule = normalizeSkipLogicRule(rule, questionId);
+    const normalizedRule = normalizeSkipLogicRule(rule, fallbackQuestionId);
 
     if (normalizedRule.conditions.length === 0) return false;
 
     // Apply AND/OR logic
     if (normalizedRule.operator === 'and') {
-      return normalizedRule.conditions.every(c => evaluateCondition(c, questionId));
+      return normalizedRule.conditions.every(c => evaluateCondition(c, fallbackQuestionId));
     } else {
-      return normalizedRule.conditions.some(c => evaluateCondition(c, questionId));
+      return normalizedRule.conditions.some(c => evaluateCondition(c, fallbackQuestionId));
     }
   }, [evaluateCondition]);
 
   // Get visible questions based on skip logic (includes page breaks and info steps)
+  // Now evaluates global skipLogicRules from questionnaire
   const visibleQuestions = useMemo(() => {
     const visible: QuestionnaireQuestion[] = [];
+    const globalRules = questionnaire.skipLogicRules || [];
 
     for (const question of sortedQuestions) {
-      // Check if any previous question's skip logic skips this question
       let isSkipped = false;
 
-      for (const prevQuestion of visible) {
-        if (prevQuestion.skipLogic && prevQuestion.skipLogic.length > 0) {
-          for (const rule of prevQuestion.skipLogic) {
-            const conditionMet = evaluateRule(rule, prevQuestion.id);
+      // Check global skip logic rules first
+      for (const rule of globalRules) {
+        const conditionMet = evaluateRule(rule, '');
 
-            // If condition is met and this question should be skipped
-            if (conditionMet && rule.skipToQuestionId) {
-              // Check if current question is between this question and skip target
-              const currentOrder = question.order;
-              const skipToQuestion = sortedQuestions.find(q => q.id === rule.skipToQuestionId);
+        if (conditionMet && rule.skipToQuestionId) {
+          // Skip to a specific question - skip everything in between
+          const skipToQuestion = sortedQuestions.find(q => q.id === rule.skipToQuestionId);
 
-              if (skipToQuestion && currentOrder > prevQuestion.order && currentOrder < skipToQuestion.order) {
-                isSkipped = true;
-                break;
+          if (skipToQuestion) {
+            // Find the earliest condition question to determine "from" position
+            const conditionQuestionOrders = rule.conditions
+              .map(c => sortedQuestions.find(q => q.id === c.questionId)?.order ?? -1)
+              .filter(o => o >= 0);
+            const fromOrder = conditionQuestionOrders.length > 0 ? Math.max(...conditionQuestionOrders) : -1;
+
+            // Skip if current question is after all condition questions and before skip target
+            if (fromOrder >= 0 && question.order > fromOrder && question.order < skipToQuestion.order) {
+              isSkipped = true;
+              break;
+            }
+          }
+        } else if (conditionMet && rule.skipToQuestionId === null) {
+          // Skip to end - skip all questions after the condition questions
+          const conditionQuestionOrders = rule.conditions
+            .map(c => sortedQuestions.find(q => q.id === c.questionId)?.order ?? -1)
+            .filter(o => o >= 0);
+          const fromOrder = conditionQuestionOrders.length > 0 ? Math.max(...conditionQuestionOrders) : -1;
+
+          if (fromOrder >= 0 && question.order > fromOrder) {
+            isSkipped = true;
+            break;
+          }
+        }
+      }
+
+      // Also check per-question skip logic (legacy support)
+      if (!isSkipped) {
+        for (const prevQuestion of visible) {
+          if (prevQuestion.skipLogic && prevQuestion.skipLogic.length > 0) {
+            for (const rule of prevQuestion.skipLogic) {
+              const conditionMet = evaluateRule(rule, prevQuestion.id);
+
+              if (conditionMet && rule.skipToQuestionId) {
+                const currentOrder = question.order;
+                const skipToQuestion = sortedQuestions.find(q => q.id === rule.skipToQuestionId);
+
+                if (skipToQuestion && currentOrder > prevQuestion.order && currentOrder < skipToQuestion.order) {
+                  isSkipped = true;
+                  break;
+                }
               }
             }
           }
-        }
 
-        if (isSkipped) break;
+          if (isSkipped) break;
+        }
       }
 
       if (!isSkipped) {
@@ -107,7 +145,7 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
     }
 
     return visible;
-  }, [sortedQuestions, evaluateRule]);
+  }, [sortedQuestions, questionnaire.skipLogicRules, evaluateRule]);
 
   // Group questions into pages (split by page_break)
   // Page breaks simply separate questions - no transition screens
@@ -383,7 +421,7 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl px-4 sm:px-6 lg:ml-64 lg:mr-auto">
         {/* Progress bar and counter */}
         <div className="pt-4 pb-2">
           {/* Segmented progress bar */}

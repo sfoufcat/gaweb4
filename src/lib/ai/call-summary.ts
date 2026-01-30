@@ -1318,35 +1318,46 @@ export async function autoFillWeekFromSummary(
       }
     }
 
-    await adminDb.collection('program_instances').doc(context.instanceId).update({
-      weeks,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+    // 12. Save and sync via the instance week API to ensure proper distribution and task sync
+    // This handles: distributing weeklyTasks to days, syncing to user's tasks collection
+    const { updateInstanceWeekWithSync } = await import('@/lib/program-instances');
 
-    console.log(`[Auto-Fill] Filled ${totalTasksAdded} tasks across ${weeksUpdated} weeks from summary ${summaryId}`);
+    for (const weekPlan of fillConfig.weeks) {
+      if (!weeks[weekPlan.weekIndex]) continue;
 
-    // 12. Sync tasks to user's tasks collection for 1:1 enrollments
-    if (context.enrollment && totalTasksAdded > 0) {
-      try {
-        const { syncProgramTasksFromCurrentDay } = await import('@/lib/program-engine');
-        console.log(`[Auto-Fill] Syncing tasks to user ${context.enrollment.userId} for enrollment ${context.enrollment.id}`);
+      const week = weeks[weekPlan.weekIndex];
 
-        const syncResult = await syncProgramTasksFromCurrentDay({
-          userId: context.enrollment.userId,
-          enrollmentId: context.enrollment.id,
-          mode: 'fill-empty',
-        });
-
-        if (syncResult.success) {
-          console.log(`[Auto-Fill] Synced ${syncResult.tasksCreated} tasks to user's Daily Focus`);
-        } else {
-          console.error(`[Auto-Fill] Task sync failed:`, syncResult.errors);
+      // Only update if we have tasks or content to add
+      if ((week.weeklyTasks?.length || 0) > 0 || week.theme || week.description || week.currentFocus?.length || week.notes?.length) {
+        try {
+          await updateInstanceWeekWithSync(
+            context.instanceId,
+            week.weekNumber,
+            {
+              weeklyTasks: week.weeklyTasks?.map(t => ({
+                id: t.id,
+                label: t.label,
+                type: t.type,
+                isPrimary: t.isPrimary,
+                dayTag: typeof t.dayTag === 'number' ? t.dayTag : (t.dayTag as string | undefined),
+              })),
+              theme: week.theme,
+              description: week.description,
+              currentFocus: week.currentFocus,
+              notes: week.notes,
+              distributeTasksNow: true,  // Trigger distribution and sync
+            },
+            orgId
+          );
+          console.log(`[Auto-Fill] Updated and synced week ${week.weekNumber} via instance API`);
+        } catch (syncError) {
+          console.error(`[Auto-Fill] Error syncing week ${week.weekNumber}:`, syncError);
+          // Continue with other weeks even if one fails
         }
-      } catch (syncError) {
-        console.error('[Auto-Fill] Error syncing tasks to user:', syncError);
-        // Don't fail the whole operation if sync fails
       }
     }
+
+    console.log(`[Auto-Fill] Filled ${totalTasksAdded} tasks across ${weeksUpdated} weeks from summary ${summaryId}`);
 
     return {
       success: true,

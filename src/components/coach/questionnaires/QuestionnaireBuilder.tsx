@@ -2,17 +2,19 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls, motion, AnimatePresence } from 'framer-motion';
-import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Send, X, CheckCircle2, BarChart3, ImagePlus, Trash2 } from 'lucide-react';
+import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Send, X, CheckCircle2, BarChart3, ImagePlus, Trash2, ChevronRight } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { QuestionEditor } from './QuestionEditor';
 import { QuestionTypeSelector } from './QuestionTypeSelector';
+import { GlobalSkipLogicEditor } from './GlobalSkipLogicEditor';
 import type {
   Questionnaire,
   QuestionnaireQuestion,
   QuestionnaireQuestionType,
+  SkipLogicRule,
 } from '@/types/questionnaire';
 import { createEmptyQuestion } from '@/types/questionnaire';
 
@@ -22,7 +24,7 @@ interface QuestionnaireBuilderProps {
   onBack: () => void;
   onPreview?: () => void;
   onViewResponses?: () => void;
-  responseCount?: number;
+  newResponseCount?: number;
 }
 
 export function QuestionnaireBuilder({
@@ -31,7 +33,7 @@ export function QuestionnaireBuilder({
   onBack,
   onPreview,
   onViewResponses,
-  responseCount = 0,
+  newResponseCount = 0,
 }: QuestionnaireBuilderProps) {
   const [title, setTitle] = useState(questionnaire.title);
   const [description, setDescription] = useState(questionnaire.description || '');
@@ -42,7 +44,8 @@ export function QuestionnaireBuilder({
   const [allowMultipleResponses, setAllowMultipleResponses] = useState(
     questionnaire.allowMultipleResponses
   );
-  const [programIds, setProgramIds] = useState<string[]>(questionnaire.programIds || []);
+  const [skipLogicRules, setSkipLogicRules] = useState<SkipLogicRule[]>(questionnaire.skipLogicRules || []);
+  const [showSkipLogicEditor, setShowSkipLogicEditor] = useState(false);
   const [coverImageUrl, setCoverImageUrl] = useState(questionnaire.coverImageUrl || '');
   const [uploadingCover, setUploadingCover] = useState(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
@@ -77,10 +80,10 @@ export function QuestionnaireBuilder({
       JSON.stringify(questions) !== JSON.stringify(questionnaire.questions) ||
       isActive !== questionnaire.isActive ||
       allowMultipleResponses !== questionnaire.allowMultipleResponses ||
-      JSON.stringify(programIds) !== JSON.stringify(questionnaire.programIds || []) ||
+      JSON.stringify(skipLogicRules) !== JSON.stringify(questionnaire.skipLogicRules || []) ||
       coverImageUrl !== (questionnaire.coverImageUrl || '');
     setHasUnsavedChanges(hasChanges);
-  }, [title, description, questions, isActive, allowMultipleResponses, programIds, coverImageUrl, questionnaire]);
+  }, [title, description, questions, isActive, allowMultipleResponses, skipLogicRules, coverImageUrl, questionnaire]);
 
   // Determine if this is a draft (not yet published)
   const isDraft = !isActive && !wasActiveOnLoad;
@@ -97,7 +100,7 @@ export function QuestionnaireBuilder({
         questions,
         isActive: isPublishing ? true : isActive,
         allowMultipleResponses,
-        programIds,
+        skipLogicRules,
         coverImageUrl: coverImageUrl || undefined,
       });
       if (isPublishing) {
@@ -270,9 +273,9 @@ export function QuestionnaireBuilder({
                   title="View responses"
                 >
                   <BarChart3 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                  {responseCount > 0 && (
+                  {newResponseCount > 0 && (
                     <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 text-[10px] font-medium bg-brand-accent text-white rounded-full">
-                      {responseCount > 99 ? '99+' : responseCount}
+                      {newResponseCount > 99 ? '99+' : newResponseCount}
                     </span>
                   )}
                 </button>
@@ -357,17 +360,47 @@ export function QuestionnaireBuilder({
           onClose={() => setShowSettings(false)}
           isActive={isActive}
           setIsActive={setIsActive}
-          wasActiveOnLoad={wasActiveOnLoad}
           allowMultipleResponses={allowMultipleResponses}
           setAllowMultipleResponses={setAllowMultipleResponses}
-          programIds={programIds}
-          setProgramIds={setProgramIds}
+          skipLogicRules={skipLogicRules}
+          onOpenSkipLogic={() => { setShowSettings(false); setShowSkipLogicEditor(true); }}
           shareableLink={typeof window !== 'undefined' ? `${window.location.origin}/q/${questionnaire.slug}` : `/q/${questionnaire.slug}`}
           coverImageUrl={coverImageUrl}
           onCoverImageUpload={handleCoverImageUpload}
           onRemoveCoverImage={handleRemoveCoverImage}
           uploadingCover={uploadingCover}
         />
+      )}
+
+      {/* Global Skip Logic Editor Modal */}
+      {isDesktop ? (
+        <Dialog open={showSkipLogicEditor} onOpenChange={setShowSkipLogicEditor}>
+          <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto bg-white dark:bg-[#171b22] border border-[#e1ddd8]/30 dark:border-white/10 rounded-2xl shadow-2xl">
+            <DialogHeader>
+              <DialogTitle className="font-albert text-lg">Skip Logic</DialogTitle>
+            </DialogHeader>
+            <GlobalSkipLogicEditor
+              questions={questions}
+              rules={skipLogicRules}
+              onUpdate={setSkipLogicRules}
+            />
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <Drawer open={showSkipLogicEditor} onOpenChange={setShowSkipLogicEditor}>
+          <DrawerContent className="max-h-[90dvh] bg-white dark:bg-[#171b22]">
+            <div className="p-4 pb-8 overflow-y-auto">
+              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
+                Skip Logic
+              </h3>
+              <GlobalSkipLogicEditor
+                questions={questions}
+                rules={skipLogicRules}
+                onUpdate={setSkipLogicRules}
+              />
+            </div>
+          </DrawerContent>
+        </Drawer>
       )}
 
       {/* Content with Desktop Sidebar */}
@@ -392,7 +425,6 @@ export function QuestionnaireBuilder({
                         onUpdate={updates => handleUpdateQuestion(question.id, updates)}
                         onDelete={() => handleDeleteQuestion(question.id)}
                         onDuplicate={() => handleDuplicateQuestion(question)}
-                        allQuestions={questions}
                         enableLayoutAnimation={hasMounted}
                       />
                     ))}
@@ -435,7 +467,7 @@ export function QuestionnaireBuilder({
 
         {/* Desktop Sidebar */}
         {isDesktop && (
-          <div className="w-80 flex-shrink-0 sticky top-24 self-start bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
+          <div className="w-80 flex-shrink-0 sticky top-32 self-start bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/60 dark:border-[#262b35]/40">
             <div className="p-5 space-y-5">
               {/* Cover Image */}
               <div>
@@ -522,17 +554,25 @@ export function QuestionnaireBuilder({
 
               <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
 
-              {/* Program Association */}
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                  Programs
-                </label>
-                <ProgramSelector
-                  value={programIds}
-                  onChange={setProgramIds}
-                  placeholder="Select programs..."
-                  programsApiEndpoint="/api/coach/org-programs"
-                />
+              {/* Skip Logic */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    Skip Logic
+                  </h4>
+                  {skipLogicRules.length > 0 && (
+                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                      {skipLogicRules.length} rule{skipLogicRules.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowSkipLogicEditor(true)}
+                  className="flex items-center gap-1 text-sm text-brand-accent hover:text-brand-accent/80 transition-colors font-albert"
+                >
+                  {skipLogicRules.length > 0 ? 'Edit' : 'Add'}
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
 
               <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
@@ -591,11 +631,10 @@ function SettingsModal({
   onClose,
   isActive,
   setIsActive,
-  wasActiveOnLoad,
   allowMultipleResponses,
   setAllowMultipleResponses,
-  programIds,
-  setProgramIds,
+  skipLogicRules,
+  onOpenSkipLogic,
   shareableLink,
   coverImageUrl,
   onCoverImageUpload,
@@ -606,11 +645,10 @@ function SettingsModal({
   onClose: () => void;
   isActive: boolean;
   setIsActive: (value: boolean) => void;
-  wasActiveOnLoad: boolean;
   allowMultipleResponses: boolean;
   setAllowMultipleResponses: (value: boolean) => void;
-  programIds: string[];
-  setProgramIds: (value: string[]) => void;
+  skipLogicRules: SkipLogicRule[];
+  onOpenSkipLogic: () => void;
   shareableLink: string;
   coverImageUrl: string;
   onCoverImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -715,17 +753,27 @@ function SettingsModal({
               <Switch checked={allowMultipleResponses} onCheckedChange={setAllowMultipleResponses} />
             </div>
 
-            {/* Program Association */}
+            {/* Skip Logic */}
             <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
-                Programs
-              </label>
-              <ProgramSelector
-                value={programIds}
-                onChange={setProgramIds}
-                placeholder="Select programs for this questionnaire..."
-                programsApiEndpoint="/api/coach/org-programs"
-              />
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    Skip Logic
+                  </h4>
+                  {skipLogicRules.length > 0 && (
+                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                      {skipLogicRules.length} rule{skipLogicRules.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={onOpenSkipLogic}
+                  className="flex items-center gap-1 text-sm text-brand-accent hover:text-brand-accent/80 transition-colors font-albert"
+                >
+                  {skipLogicRules.length > 0 ? 'Edit' : 'Add'}
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Shareable Link */}
@@ -800,14 +848,12 @@ function QuestionItem({
   onUpdate,
   onDelete,
   onDuplicate,
-  allQuestions,
   enableLayoutAnimation = true,
 }: {
   question: QuestionnaireQuestion;
   onUpdate: (updates: Partial<QuestionnaireQuestion>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  allQuestions: QuestionnaireQuestion[];
   enableLayoutAnimation?: boolean;
 }) {
   const dragControls = useDragControls();
@@ -892,7 +938,6 @@ function QuestionItem({
               onUpdate={onUpdate}
               onDelete={onDelete}
               onDuplicate={onDuplicate}
-              allQuestions={allQuestions}
             />
           </div>
         </div>

@@ -221,10 +221,17 @@ export function SessionCard({
       )}
     >
       {/* Header - Always visible */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors cursor-pointer"
       >
         {/* Left icon */}
         <div className="flex-shrink-0">
@@ -322,7 +329,7 @@ export function SessionCard({
             <ChevronDown className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
           </motion.div>
         </div>
-      </button>
+      </div>
 
       {/* Expanded content */}
       <AnimatePresence initial={false}>

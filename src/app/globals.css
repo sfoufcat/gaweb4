@@ -1553,6 +1553,80 @@ div[class*="LoadingIndicator"],
   border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent) !important;
 }
 
+/* Border brand-accent with opacity modifiers */
+.border-brand-accent\/30 {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 30%, transparent);
+}
+.dark .border-brand-accent\/30 {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent) !important;
+}
+.border-brand-accent\/40 {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 40%, transparent);
+}
+.dark .border-brand-accent\/40 {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 40%, transparent) !important;
+}
+.border-brand-accent\/50 {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 50%, transparent);
+}
+.dark .border-brand-accent\/50 {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 50%, transparent) !important;
+}
+.border-brand-accent\/60 {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 60%, transparent);
+}
+.dark .border-brand-accent\/60 {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 60%, transparent) !important;
+}
+
+/* Hover states for brand-accent opacity */
+.hover\:border-brand-accent\/50:hover {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 50%, transparent);
+}
+.dark .hover\:border-brand-accent\/50:hover {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 50%, transparent) !important;
+}
+.hover\:border-brand-accent\/60:hover {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 60%, transparent);
+}
+.dark .hover\:border-brand-accent\/60:hover {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 60%, transparent) !important;
+}
+.group-hover\:border-brand-accent\/60:is(:where(.group):hover *) {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 60%, transparent);
+}
+.dark .group-hover\:border-brand-accent\/60:is(:where(.group):hover *) {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 60%, transparent) !important;
+}
+
+/* Questionnaire input styling */
+.questionnaire-input {
+  border: 1px solid color-mix(in srgb, var(--brand-accent-light, #a07855) 30%, transparent) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.questionnaire-input:focus {
+  border-color: var(--brand-accent-light, #a07855) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-accent-light, #a07855) 10%, transparent) !important;
+}
+.questionnaire-input:focus-visible {
+  border-color: var(--brand-accent-light, #a07855) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-accent-light, #a07855) 10%, transparent) !important;
+}
+.dark .questionnaire-input {
+  border: 1px solid color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.dark .questionnaire-input:focus,
+.dark .questionnaire-input:focus-visible {
+  border-color: var(--brand-accent-dark, #b8896a) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-accent-dark, #b8896a) 10%, transparent) !important;
+}
+
 /* Hover states */
 .hover\:border-brand-accent:hover {
   border-color: var(--brand-accent-light, #a07855);

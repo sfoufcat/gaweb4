@@ -109,7 +109,10 @@ export async function GET() {
     // Demo mode: return demo questionnaires
     const isDemo = await isDemoRequest();
     if (isDemo) {
-      const questionnaires = generateDemoQuestionnaires();
+      const questionnaires = generateDemoQuestionnaires().map(q => ({
+        ...q,
+        newResponseCount: Math.floor(q.responseCount * 0.3), // Demo: 30% are "new"
+      }));
       return demoResponse({
         questionnaires,
         totalCount: questionnaires.length,
@@ -128,15 +131,43 @@ export async function GET() {
 
     console.log(`[COACH_QUESTIONNAIRES_GET] Found ${snapshot.docs.length} questionnaires for org ${organizationId}`);
 
-    const questionnaires = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
-        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
-      };
-    });
+    // Calculate newResponseCount for each questionnaire
+    const questionnaires = await Promise.all(
+      snapshot.docs.map(async doc => {
+        const data = doc.data();
+        const lastViewedAt = data.lastViewedAt?.toDate?.() || data.lastViewedAt;
+        const responseCount = data.responseCount || 0;
+
+        let newResponseCount = responseCount; // Default: all responses are new
+
+        if (lastViewedAt) {
+          try {
+            // Count responses submitted after lastViewedAt
+            // Note: Requires composite index on questionnaire_responses (questionnaireId, submittedAt)
+            const newResponsesSnapshot = await adminDb
+              .collection('questionnaire_responses')
+              .where('questionnaireId', '==', doc.id)
+              .where('submittedAt', '>', lastViewedAt)
+              .count()
+              .get();
+            newResponseCount = newResponsesSnapshot.data().count;
+          } catch (indexError) {
+            // Index may not exist yet - fall back to showing all as new
+            console.warn(`[COACH_QUESTIONNAIRES_GET] Index error for ${doc.id}, showing all responses as new:`, indexError);
+            newResponseCount = responseCount;
+          }
+        }
+
+        return {
+          id: doc.id,
+          ...data,
+          newResponseCount,
+          createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+          lastViewedAt: lastViewedAt?.toISOString?.() || lastViewedAt || null,
+        };
+      })
+    );
 
     return NextResponse.json({
       questionnaires,

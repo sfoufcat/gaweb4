@@ -98,27 +98,33 @@ function SingleChoiceQuestion({
 
   return (
     <div className="space-y-2.5">
-      {options.map((option, index) => (
-        <motion.label
+      {options.map((option) => (
+        <label
           key={option.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.05, duration: 0.3 }}
           className={cn(
             'group flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-200',
-            'bg-white dark:bg-[#171b22] border',
+            'bg-white dark:bg-[#171b22]',
             selectedValue === option.value
-              ? 'border-brand-accent shadow-md shadow-brand-accent/10 ring-1 ring-brand-accent/20'
-              : 'border-[#e8e4df] dark:border-[#262b35] hover:border-[#d1cdc8] dark:hover:border-[#363c48] hover:shadow-sm'
+              ? 'shadow-md shadow-brand-accent/10'
+              : 'hover:shadow-sm'
           )}
+          style={{
+            border: `1px solid var(--brand-accent-light)`,
+            borderColor: selectedValue === option.value
+              ? 'var(--brand-accent-light)'
+              : 'color-mix(in srgb, var(--brand-accent-light) 30%, transparent)'
+          }}
         >
           <div
             className={cn(
               'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 shrink-0',
-              selectedValue === option.value
-                ? 'border-brand-accent bg-brand-accent'
-                : 'border-[#c1bdb8] dark:border-[#4a4f5c] group-hover:border-brand-accent/50'
+              selectedValue === option.value && 'bg-brand-accent'
             )}
+            style={{
+              borderColor: selectedValue === option.value
+                ? 'var(--brand-accent-light)'
+                : 'color-mix(in srgb, var(--brand-accent-light) 40%, transparent)'
+            }}
           >
             <AnimatePresence>
               {selectedValue === option.value && (
@@ -146,7 +152,7 @@ function SingleChoiceQuestion({
             checked={selectedValue === option.value}
             onChange={() => onChange(option.value)}
           />
-        </motion.label>
+        </label>
       ))}
     </div>
   );
@@ -175,30 +181,36 @@ function MultiChoiceQuestion({
 
   return (
     <div className="space-y-2.5">
-      {options.map((option, index) => {
+      {options.map((option) => {
         const isSelected = selectedValues.includes(option.value);
 
         return (
-          <motion.label
+          <label
             key={option.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05, duration: 0.3 }}
             className={cn(
               'group flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-200',
-              'bg-white dark:bg-[#171b22] border',
+              'bg-white dark:bg-[#171b22]',
               isSelected
-                ? 'border-brand-accent shadow-md shadow-brand-accent/10 ring-1 ring-brand-accent/20'
-                : 'border-[#e8e4df] dark:border-[#262b35] hover:border-[#d1cdc8] dark:hover:border-[#363c48] hover:shadow-sm'
+                ? 'shadow-md shadow-brand-accent/10'
+                : 'hover:shadow-sm'
             )}
+            style={{
+              border: `1px solid var(--brand-accent-light)`,
+              borderColor: isSelected
+                ? 'var(--brand-accent-light)'
+                : 'color-mix(in srgb, var(--brand-accent-light) 30%, transparent)'
+            }}
           >
             <div
               className={cn(
                 'w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all duration-200 shrink-0',
-                isSelected
-                  ? 'border-brand-accent bg-brand-accent'
-                  : 'border-[#c1bdb8] dark:border-[#4a4f5c] group-hover:border-brand-accent/50'
+                isSelected && 'bg-brand-accent'
               )}
+              style={{
+                borderColor: isSelected
+                  ? 'var(--brand-accent-light)'
+                  : 'color-mix(in srgb, var(--brand-accent-light) 40%, transparent)'
+              }}
             >
               <AnimatePresence>
                 {isSelected && (
@@ -227,7 +239,7 @@ function MultiChoiceQuestion({
               checked={isSelected}
               onChange={() => toggleOption(option.value)}
             />
-          </motion.label>
+          </label>
         );
       })}
     </div>
@@ -250,7 +262,7 @@ function ShortTextQuestion({
       value={(answer?.value as string) || ''}
       onChange={(e) => onChange(e.target.value)}
       placeholder={question.placeholder || 'Type your answer...'}
-      className="w-full h-14 px-5 text-base font-albert bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] border border-[#e8e4df] dark:border-[#262b35] focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/10 focus:outline-none rounded-2xl transition-all placeholder:text-[#a3a09b] dark:placeholder:text-[#4b5563]"
+      className="w-full h-14 px-5 text-base font-albert bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] focus:ring-2 focus:ring-brand-accent/10 focus:outline-none rounded-2xl transition-all placeholder:text-[#a3a09b] dark:placeholder:text-[#4b5563] questionnaire-input"
     />
   );
 }
@@ -266,12 +278,12 @@ function LongTextQuestion({
   onChange: (value: string) => void;
 }) {
   return (
-    <Textarea
+    <textarea
       value={(answer?.value as string) || ''}
       onChange={(e) => onChange(e.target.value)}
       placeholder={question.placeholder || 'Type your answer...'}
       rows={5}
-      className="text-base font-albert bg-white dark:bg-[#171b22] border border-[#e8e4df] dark:border-[#262b35] focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/10 rounded-2xl resize-none placeholder:text-[#a3a09b] dark:placeholder:text-[#4b5563] p-5"
+      className="w-full text-base font-albert bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] focus:ring-2 focus:ring-brand-accent/10 focus:outline-none rounded-2xl resize-none placeholder:text-[#a3a09b] dark:placeholder:text-[#4b5563] p-5 questionnaire-input"
     />
   );
 }
@@ -295,7 +307,7 @@ function NumberQuestion({
         min={question.minValue}
         max={question.maxValue}
         placeholder={question.placeholder || 'Enter a number...'}
-        className="w-full h-14 px-5 text-base font-albert bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] border border-[#e8e4df] dark:border-[#262b35] focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/10 focus:outline-none rounded-2xl transition-all placeholder:text-[#a3a09b] dark:placeholder:text-[#4b5563]"
+        className="w-full h-14 px-5 text-base font-albert bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] focus:ring-2 focus:ring-brand-accent/10 focus:outline-none rounded-2xl transition-all placeholder:text-[#a3a09b] dark:placeholder:text-[#4b5563] questionnaire-input"
       />
       {(question.minValue !== undefined || question.maxValue !== undefined) && (
         <p className="text-sm text-[#8a857f] dark:text-[#6b7280] font-albert">
@@ -329,23 +341,23 @@ function ScaleQuestion({
   return (
     <div className="space-y-4">
       <div className="flex justify-center gap-2 sm:gap-3 flex-wrap">
-        {scaleValues.map((value, index) => (
-          <motion.button
+        {scaleValues.map((value) => (
+          <button
             key={value}
             type="button"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.03, duration: 0.2 }}
             onClick={() => onChange(value)}
             className={cn(
               'w-12 h-12 sm:w-14 sm:h-14 rounded-xl font-albert font-semibold text-lg transition-all duration-200',
               selectedValue === value
                 ? 'bg-brand-accent text-white scale-110 shadow-lg shadow-brand-accent/30'
-                : 'bg-white dark:bg-[#171b22] text-[#4a4540] dark:text-[#b2b6c2] border border-[#e8e4df] dark:border-[#262b35] hover:border-brand-accent/50 hover:shadow-sm'
+                : 'bg-white dark:bg-[#171b22] text-[#4a4540] dark:text-[#b2b6c2] hover:shadow-sm'
             )}
+            style={selectedValue !== value ? {
+              border: '1px solid color-mix(in srgb, var(--brand-accent-light) 30%, transparent)'
+            } : undefined}
           >
             {value}
-          </motion.button>
+          </button>
         ))}
       </div>
       {question.scaleLabels && (
@@ -426,10 +438,13 @@ function FileUploadQuestion({
           className={cn(
             'flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all',
             'bg-white/50 dark:bg-[#171b22]/50',
-            uploading
-              ? 'border-brand-accent bg-brand-accent/5'
-              : 'border-[#d1cdc8] dark:border-[#363c48] hover:border-brand-accent/50 hover:bg-brand-accent/5'
+            uploading && 'bg-brand-accent/5'
           )}
+          style={{
+            borderColor: uploading
+              ? 'var(--brand-accent-light)'
+              : 'color-mix(in srgb, var(--brand-accent-light) 30%, transparent)'
+          }}
         >
           <div className={cn(
             'w-14 h-14 rounded-2xl flex items-center justify-center transition-colors',
@@ -458,10 +473,9 @@ function FileUploadQuestion({
           />
         </label>
       ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4 p-4 rounded-2xl border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#171b22]"
+        <div
+          className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-[#171b22]"
+          style={{ border: '1px solid color-mix(in srgb, var(--brand-accent-light) 30%, transparent)' }}
         >
           <div className="w-12 h-12 rounded-xl bg-brand-accent/10 flex items-center justify-center shrink-0">
             <File className="w-5 h-5 text-brand-accent" />
@@ -481,7 +495,7 @@ function FileUploadQuestion({
           >
             <X className="w-5 h-5 text-[#8a857f] dark:text-[#6b7280]" />
           </button>
-        </motion.div>
+        </div>
       )}
     </div>
   );
@@ -560,10 +574,13 @@ function MediaUploadQuestion({
           className={cn(
             'flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all',
             'bg-white/50 dark:bg-[#171b22]/50',
-            uploading
-              ? 'border-brand-accent bg-brand-accent/5'
-              : 'border-[#d1cdc8] dark:border-[#363c48] hover:border-brand-accent/50 hover:bg-brand-accent/5'
+            uploading && 'bg-brand-accent/5'
           )}
+          style={{
+            borderColor: uploading
+              ? 'var(--brand-accent-light)'
+              : 'color-mix(in srgb, var(--brand-accent-light) 30%, transparent)'
+          }}
         >
           <div className="flex gap-3">
             <div className={cn(
@@ -603,10 +620,9 @@ function MediaUploadQuestion({
           />
         </label>
       ) : (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative rounded-2xl overflow-hidden border border-[#e8e4df] dark:border-[#262b35]"
+        <div
+          className="relative rounded-2xl overflow-hidden"
+          style={{ border: '1px solid color-mix(in srgb, var(--brand-accent-light) 30%, transparent)' }}
         >
           {mediaType === 'video' ? (
             <video src={mediaUrl} controls className="w-full max-h-80 object-contain bg-black" />
@@ -621,7 +637,7 @@ function MediaUploadQuestion({
           >
             <X className="w-5 h-5 text-white" />
           </button>
-        </motion.div>
+        </div>
       )}
     </div>
   );
@@ -639,11 +655,7 @@ function InfoStep({ question }: { question: QuestionnaireQuestion }) {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       {/* Title - only if present */}
       {hasTitle && (
         <h3 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -663,7 +675,7 @@ function InfoStep({ question }: { question: QuestionnaireQuestion }) {
 
       {/* Media display */}
       {hasMedia && (
-        <div className="rounded-2xl overflow-hidden mt-2 border border-[#e8e4df] dark:border-[#262b35]">
+        <div className="rounded-2xl overflow-hidden mt-2" style={{ border: '1px solid color-mix(in srgb, var(--brand-accent-light) 30%, transparent)' }}>
           {question.mediaType === 'video' ? (
             <video
               src={question.mediaUrl}
@@ -680,6 +692,6 @@ function InfoStep({ question }: { question: QuestionnaireQuestion }) {
           )}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

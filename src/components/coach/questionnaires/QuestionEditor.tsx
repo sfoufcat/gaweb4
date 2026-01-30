@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Trash2, Copy, X, Loader2, MoreVertical, ChevronRight, Workflow } from 'lucide-react';
+import { Trash2, Copy, X, Loader2, MoreVertical } from 'lucide-react';
 import { QuestionOptionEditor } from './QuestionOptionEditor';
-import { SkipLogicEditor } from './SkipLogicEditor';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {
   DropdownMenu,
@@ -11,13 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import {
   Select,
   SelectContent,
@@ -27,17 +19,13 @@ import {
 } from '@/components/ui/select';
 import type {
   QuestionnaireQuestion,
-  QuestionnaireQuestionType,
-  QuestionnaireOption,
 } from '@/types/questionnaire';
-import { getQuestionTypeInfo } from '@/types/questionnaire';
 
 interface QuestionEditorProps {
   question: QuestionnaireQuestion;
   onUpdate: (updates: Partial<QuestionnaireQuestion>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  allQuestions: QuestionnaireQuestion[];
 }
 
 export function QuestionEditor({
@@ -45,13 +33,8 @@ export function QuestionEditor({
   onUpdate,
   onDelete,
   onDuplicate,
-  allQuestions,
 }: QuestionEditorProps) {
-  const [showSkipLogic, setShowSkipLogic] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
-  const hasSkipLogic = question.type === 'single_choice' || question.type === 'multi_choice';
-
-  const typeInfo = getQuestionTypeInfo(question.type);
 
   // Render type-specific configuration
   const renderTypeConfig = () => {
@@ -335,63 +318,6 @@ export function QuestionEditor({
     }
   };
 
-  // Skip logic button element - inline row style like Required
-  const skipLogicButton = (
-    <div className="flex items-center justify-between">
-      <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Skip logic</span>
-      <button
-        onClick={() => setShowSkipLogic(true)}
-        className="flex items-center gap-1 text-xs text-brand-accent hover:text-brand-accent/80 transition-colors font-albert"
-      >
-        {(question.skipLogic?.length || 0) > 0 ? (
-          <span className="bg-brand-accent/10 px-1.5 py-0.5 rounded-full">
-            {question.skipLogic?.length}
-          </span>
-        ) : (
-          <span className="text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent">Add</span>
-        )}
-        <ChevronRight className="w-3.5 h-3.5" />
-      </button>
-    </div>
-  );
-
-  // Skip logic modal - rendered inline to prevent remounting
-  const skipLogicModal = hasSkipLogic && (
-    isDesktop ? (
-      <Dialog open={showSkipLogic} onOpenChange={setShowSkipLogic}>
-        <DialogContent className="sm:max-w-2xl bg-white dark:bg-[#171b22] border border-[#e1ddd8]/30 dark:border-white/10 rounded-2xl shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-albert text-lg">Skip Logic</DialogTitle>
-          </DialogHeader>
-          <div className="p-1">
-            <SkipLogicEditor
-              question={question}
-              allQuestions={allQuestions}
-              onUpdate={skipLogic => onUpdate({ skipLogic })}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-    ) : (
-      <Drawer open={showSkipLogic} onOpenChange={setShowSkipLogic}>
-        <DrawerContent className="max-h-[85dvh] bg-white dark:bg-[#171b22]">
-          <div className="p-4 pb-8">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
-              Skip Logic
-            </h3>
-            <div className="p-1">
-              <SkipLogicEditor
-                question={question}
-                allQuestions={allQuestions}
-                onUpdate={skipLogic => onUpdate({ skipLogic })}
-              />
-            </div>
-          </div>
-        </DrawerContent>
-      </Drawer>
-    )
-  );
-
   // Desktop Layout
   if (isDesktop) {
     return (
@@ -442,11 +368,8 @@ export function QuestionEditor({
             </button>
           </div>
 
-          {/* Skip Logic (desktop) */}
-          {hasSkipLogic && skipLogicButton}
-
           {/* Actions */}
-          <div className="flex items-center gap-1 pt-2 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/30">
+          <div className="flex items-center justify-end gap-1 pt-2 border-t border-[#e1ddd8]/40 dark:border-[#262b35]/30">
             <button
               onClick={onDuplicate}
               className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
@@ -463,9 +386,6 @@ export function QuestionEditor({
             </button>
           </div>
         </div>
-
-        {/* Skip Logic Modal */}
-        {skipLogicModal}
       </div>
     );
   }
@@ -519,17 +439,6 @@ export function QuestionEditor({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[140px]">
-              {hasSkipLogic && (
-                <DropdownMenuItem onClick={() => setShowSkipLogic(true)}>
-                  <Workflow className="w-4 h-4 mr-2" />
-                  Skip logic
-                  {(question.skipLogic?.length || 0) > 0 && (
-                    <span className="ml-auto text-xs bg-brand-accent/10 text-brand-accent px-1.5 py-0.5 rounded-full">
-                      {question.skipLogic?.length}
-                    </span>
-                  )}
-                </DropdownMenuItem>
-              )}
               <DropdownMenuItem onClick={onDuplicate}>
                 <Copy className="w-4 h-4 mr-2" />
                 Duplicate
@@ -545,9 +454,6 @@ export function QuestionEditor({
 
       {/* Type-specific configuration */}
       {renderTypeConfig()}
-
-      {/* Skip Logic Modal */}
-      {skipLogicModal}
     </div>
   );
 }

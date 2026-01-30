@@ -51,6 +51,7 @@ interface PastSessionItem {
   coverImageUrl?: string;
   hasRecording: boolean;
   hasSummary?: boolean;
+  summaryId?: string;
   eventId: string;
   eventType?: 'coaching_1on1' | 'cohort_call' | 'squad_call' | 'intake_call' | 'community_event';
 }
@@ -980,13 +981,15 @@ export async function GET(
       }
 
       for (const { doc, data } of eventsWithSummaryId) {
+        const hasSummary = !!(data.callSummaryId && existingSummaryIds.has(data.callSummaryId));
         pastSessions.push({
           id: doc.id,
           title: data.title || 'Program Session',
           date: data.startDateTime,
           coverImageUrl: data.coverImageUrl,
           hasRecording: !!data.recordingUrl,
-          hasSummary: !!(data.callSummaryId && existingSummaryIds.has(data.callSummaryId)),
+          hasSummary,
+          summaryId: hasSummary ? data.callSummaryId : undefined,
           eventId: doc.id,
           eventType: data.eventType || 'community_event',
         });

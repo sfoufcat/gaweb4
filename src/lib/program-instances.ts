@@ -460,3 +460,200 @@ export async function ensureEnrollmentInstanceExists(
 
   return newInstanceRef.id;
 }
+
+/**
+ * Update an instance week with proper distribution and user task sync.
+ * This is the programmatic equivalent of the PATCH /api/instances/[instanceId]/weeks/[weekNum] endpoint.
+ *
+ * Use this when you need to update week content from server-side code and ensure
+ * tasks are properly distributed to days and synced to users' tasks collection.
+ */
+export async function updateInstanceWeekWithSync(
+  instanceId: string,
+  weekNumber: number,
+  updates: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    weeklyTasks?: Array<{ id?: string; label: string; type?: string; isPrimary?: boolean; dayTag?: string | number; [key: string]: any }>;
+    theme?: string;
+    description?: string;
+    currentFocus?: string[];
+    notes?: string[];
+    distribution?: string;
+    distributeTasksNow?: boolean;
+  },
+  organizationId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get the instance
+    const instanceDoc = await adminDb.collection('program_instances').doc(instanceId).get();
+    if (!instanceDoc.exists) {
+      return { success: false, error: 'Instance not found' };
+    }
+
+    const data = instanceDoc.data();
+    if (data?.organizationId !== organizationId) {
+      return { success: false, error: 'Instance not found in organization' };
+    }
+
+    const weeks = data?.weeks || [];
+    const weekIndex = weeks.findIndex((w: { weekNumber: number }) => w.weekNumber === weekNumber);
+    if (weekIndex === -1) {
+      return { success: false, error: 'Week not found' };
+    }
+
+    // Build updated week
+    const existingWeek = weeks[weekIndex];
+    const updatedWeek = {
+      ...existingWeek,
+      hasLocalChanges: true,
+    };
+
+    // Apply updates
+    if (updates.theme !== undefined) updatedWeek.theme = updates.theme;
+    if (updates.description !== undefined) updatedWeek.description = updates.description;
+    if (updates.currentFocus !== undefined) updatedWeek.currentFocus = updates.currentFocus;
+    if (updates.notes !== undefined) updatedWeek.notes = updates.notes;
+    if (updates.weeklyTasks !== undefined) {
+      // Process tasks to ensure IDs
+      updatedWeek.weeklyTasks = updates.weeklyTasks.map(t => ({
+        ...t,
+        id: t.id || crypto.randomUUID(),
+      }));
+    }
+
+    // Get distribution setting
+    const distribution = updates.distribution || updatedWeek.distribution || 'spread';
+
+    // If distributeTasksNow is true, distribute weekly tasks to days
+    if (updates.distributeTasksNow && updatedWeek.weeklyTasks?.length > 0) {
+      const days = updatedWeek.days || [];
+      const numDays = days.length;
+
+      if (numDays > 0) {
+        // Clear old week-sourced tasks
+        for (const day of days) {
+          day.tasks = (day.tasks || []).filter((t: { source?: string }) => t.source !== 'week');
+        }
+
+        // Distribute tasks using the same logic as the API endpoint
+        const weeklyTasks = updatedWeek.weeklyTasks;
+
+        // Categorize by dayTag
+        const dailyTasks: typeof weeklyTasks = [];
+        const autoTasks: typeof weeklyTasks = [];
+
+        for (const task of weeklyTasks) {
+          if (task.dayTag === 'daily') {
+            dailyTasks.push(task);
+          } else {
+            autoTasks.push(task);
+          }
+        }
+
+        // Daily tasks go to all days
+        for (const task of dailyTasks) {
+          for (const day of days) {
+            day.tasks = [...(day.tasks || []), { ...task, source: 'week' }];
+          }
+        }
+
+        // Auto/spread tasks distributed evenly
+        if (autoTasks.length > 0) {
+          if (distribution === 'spread') {
+            for (let taskIdx = 0; taskIdx < autoTasks.length; taskIdx++) {
+              const targetDayIdx = autoTasks.length === 1
+                ? 0
+                : Math.round(taskIdx * (numDays - 1) / (autoTasks.length - 1));
+              days[targetDayIdx].tasks = [...(days[targetDayIdx].tasks || []), { ...autoTasks[taskIdx], source: 'week' }];
+            }
+          } else if (distribution === 'repeat-daily' || distribution === 'all_days') {
+            for (const task of autoTasks) {
+              for (const day of days) {
+                day.tasks = [...(day.tasks || []), { ...task, source: 'week' }];
+              }
+            }
+          } else {
+            // Default: first day
+            for (const task of autoTasks) {
+              days[0].tasks = [...(days[0].tasks || []), { ...task, source: 'week' }];
+            }
+          }
+        }
+
+        updatedWeek.days = days;
+      }
+    }
+
+    // Save to Firestore
+    const updatedWeeks = [...weeks];
+    updatedWeeks[weekIndex] = updatedWeek;
+
+    await adminDb.collection('program_instances').doc(instanceId).update({
+      weeks: updatedWeeks,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Sync to users' tasks collection for individual instances
+    if (updates.distributeTasksNow && data?.type === 'individual' && data?.userId) {
+      const batch = adminDb.batch();
+      const now = new Date().toISOString();
+      let tasksCreated = 0;
+
+      for (const day of updatedWeek.days || []) {
+        if (!day.calendarDate || typeof day.globalDayIndex !== 'number') continue;
+
+        // Get existing tasks for this instance + day
+        const existingTasksQuery = await adminDb.collection('tasks')
+          .where('userId', '==', data.userId)
+          .where('instanceId', '==', instanceId)
+          .where('dayIndex', '==', day.globalDayIndex)
+          .get();
+
+        const existingTaskIds = new Set(existingTasksQuery.docs.map(doc => doc.data().instanceTaskId));
+
+        // Create new tasks that don't already exist
+        for (const task of day.tasks || []) {
+          if (existingTaskIds.has(task.id)) continue;
+
+          const taskRef = adminDb.collection('tasks').doc();
+          batch.set(taskRef, {
+            userId: data.userId,
+            organizationId: data.organizationId,
+            instanceId,
+            instanceTaskId: task.id,
+            label: task.label,
+            title: task.label,
+            originalTitle: task.label,
+            isPrimary: task.isPrimary || false,
+            type: task.type || 'task',
+            sourceType: 'program',
+            listType: task.isPrimary ? 'focus' : 'backlog',
+            dayIndex: day.globalDayIndex,
+            programDayIndex: day.globalDayIndex,
+            programEnrollmentId: data.enrollmentId,
+            programId: data.programId,
+            date: day.calendarDate,
+            status: 'pending',
+            order: tasksCreated,
+            isPrivate: false,
+            completed: false,
+            completedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          });
+          tasksCreated++;
+        }
+      }
+
+      if (tasksCreated > 0) {
+        await batch.commit();
+        console.log(`[PROGRAM_INSTANCES] Created ${tasksCreated} tasks for user ${data.userId}`);
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[PROGRAM_INSTANCES] updateInstanceWeekWithSync error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}

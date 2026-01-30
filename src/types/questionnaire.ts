@@ -200,6 +200,11 @@ export interface Questionnaire {
   /** Program IDs this questionnaire is associated with (for content gating) */
   programIds?: string[];
 
+  // ---- Skip Logic ----
+
+  /** Global skip logic rules (cross-question logic) */
+  skipLogicRules?: SkipLogicRule[];
+
   // ---- Styling (optional) ----
 
   /** Cover image URL for the questionnaire header */
@@ -211,6 +216,10 @@ export interface Questionnaire {
 
   /** Denormalized count of responses for quick display */
   responseCount: number;
+  /** Count of NEW responses since lastViewedAt (computed, not stored) */
+  newResponseCount?: number;
+  /** ISO timestamp when coach last viewed responses */
+  lastViewedAt?: string;
   /** ISO timestamp of creation */
   createdAt: string;
   /** ISO timestamp of last update */

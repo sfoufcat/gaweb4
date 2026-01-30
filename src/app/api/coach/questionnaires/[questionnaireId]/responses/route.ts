@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { QuestionnaireResponse, Questionnaire } from '@/types/questionnaire';
 
 interface RouteParams {
@@ -161,6 +162,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         ...data,
         submittedAt: data.submittedAt?.toDate?.()?.toISOString?.() || data.submittedAt,
       };
+    });
+
+    // Update lastViewedAt to mark all responses as viewed (reset badge)
+    await adminDb.collection('questionnaires').doc(questionnaireId).update({
+      lastViewedAt: FieldValue.serverTimestamp(),
     });
 
     return NextResponse.json({

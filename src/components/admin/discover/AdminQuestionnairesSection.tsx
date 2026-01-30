@@ -216,7 +216,7 @@ export function AdminQuestionnairesSection({
         onSave={handleSave}
         onBack={handleBackToList}
         onViewResponses={() => handleViewResponses(selectedQuestionnaire)}
-        responseCount={selectedQuestionnaire.responseCount || 0}
+        newResponseCount={selectedQuestionnaire.newResponseCount ?? 0}
       />
     );
   }
@@ -523,10 +523,15 @@ export function AdminQuestionnairesSection({
                           e.stopPropagation();
                           handleViewResponses(questionnaire);
                         }}
-                        className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                        className="relative p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
                         title="View responses"
                       >
                         <BarChart3 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                        {(questionnaire.newResponseCount ?? 0) > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] flex items-center justify-center px-1 text-[9px] font-medium bg-brand-accent text-white rounded-full">
+                            {questionnaire.newResponseCount > 99 ? '99+' : questionnaire.newResponseCount}
+                          </span>
+                        )}
                       </button>
 
                       {/* Edit */}

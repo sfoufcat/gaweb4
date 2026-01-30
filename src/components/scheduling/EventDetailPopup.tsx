@@ -256,61 +256,54 @@ export function EventDetailPopup({
     }
   }, [event.id, isFetchingRecording, onEventUpdated]);
 
-  // Calculate optimal position after popup renders (so we know its size)
+  // Calculate optimal position immediately when opening
   useLayoutEffect(() => {
     if (!isOpen || !position || !isDesktop) {
       setComputedPosition(null);
       return;
     }
 
-    const calculatePosition = () => {
-      const popupWidth = 384; // w-96 = 384px
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const padding = 20; // Minimum distance from viewport edges
+    const popupWidth = 384; // w-96 = 384px
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const padding = 20; // Minimum distance from viewport edges
 
-      // Use actual popup height if available, otherwise estimate
-      const actualHeight = popupRef.current?.offsetHeight || 400;
-      const maxPopupHeight = viewportHeight * 0.7;
-      const popupHeight = Math.min(actualHeight, maxPopupHeight);
+    // Estimate popup height based on content
+    // With recording/video: ~600px, without: ~350px
+    const estimatedHeight = hasRecording ? 600 : 350;
+    const maxPopupHeight = viewportHeight * 0.7; // matches max-h-[70vh]
+    const popupHeight = Math.min(estimatedHeight, maxPopupHeight);
 
-      // Horizontal positioning - center on click point
-      let left = position.x - (popupWidth / 2);
-      if (left + popupWidth > viewportWidth - padding) {
-        left = viewportWidth - popupWidth - padding;
-      }
-      if (left < padding) {
-        left = padding;
-      }
+    // Horizontal positioning - center on click point
+    let left = position.x - (popupWidth / 2);
+    if (left + popupWidth > viewportWidth - padding) {
+      left = viewportWidth - popupWidth - padding;
+    }
+    if (left < padding) {
+      left = padding;
+    }
 
-      // Vertical positioning - prefer below click, but flip above if no space
-      const spaceBelow = viewportHeight - position.y - padding;
-      const spaceAbove = position.y - padding;
+    // Vertical positioning - try to fit below click point first
+    const spaceBelow = viewportHeight - position.y - padding;
+    const spaceAbove = position.y - padding;
 
-      let top: number;
-      if (spaceBelow >= popupHeight) {
-        // Enough space below - position at click point
-        top = position.y;
-      } else if (spaceAbove >= popupHeight) {
-        // Flip to above - position so bottom of popup is at click point
-        top = position.y - popupHeight;
-      } else {
-        // Not enough space either way - center popup vertically on screen
-        top = (viewportHeight - popupHeight) / 2;
-      }
+    let top: number;
+    if (spaceBelow >= popupHeight) {
+      // Enough space below - position at click point
+      top = position.y;
+    } else if (spaceAbove >= popupHeight) {
+      // Enough space above - flip to above click point
+      top = position.y - popupHeight;
+    } else {
+      // Not enough space either way - center vertically
+      top = (viewportHeight - popupHeight) / 2;
+    }
 
-      // Final bounds check - ensure popup stays within viewport
-      top = Math.max(padding, Math.min(top, viewportHeight - popupHeight - padding));
+    // Final bounds check
+    top = Math.max(padding, Math.min(top, viewportHeight - popupHeight - padding));
 
-      setComputedPosition({ top, left });
-    };
-
-    // Calculate immediately and again after a frame to handle async content
-    calculatePosition();
-    const rafId = requestAnimationFrame(calculatePosition);
-
-    return () => cancelAnimationFrame(rafId);
-  }, [isOpen, position, isDesktop]);
+    setComputedPosition({ top, left });
+  }, [isOpen, position, isDesktop, hasRecording]);
 
   // Close on escape key
   useEffect(() => {
@@ -690,10 +683,6 @@ export function EventDetailPopup({
                 />
               )}
 
-              {/* Skeleton while checking summary existence */}
-              {summaryCheckPending && isHost && (
-                <div className="w-full h-11 rounded-xl animate-skeleton-shimmer" />
-              )}
 
               {/* View Summary Button */}
               {hasSummary && onViewSummary && (
@@ -715,6 +704,11 @@ export function EventDetailPopup({
                     onEventUpdated?.();
                   }}
                 />
+              )}
+
+              {/* Skeleton while checking summary existence */}
+              {summaryCheckPending && isHost && (
+                <div className="w-full h-11 rounded-xl animate-skeleton-shimmer" />
               )}
 
               {/* Generate Summary Button (recording exists but no summary, host only) */}
@@ -884,14 +878,16 @@ export function EventDetailPopup({
       {/* Positioned popup */}
       <div
         ref={popupRef}
-        className="fixed z-[61] bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl w-96 max-h-[70vh] flex flex-col overflow-hidden animate-modal-zoom-in"
+        className="fixed z-[61] bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl w-96 flex flex-col overflow-hidden animate-modal-zoom-in"
         style={computedPosition ? {
           top: `${computedPosition.top}px`,
           left: `${computedPosition.left}px`,
+          maxHeight: `calc(100vh - ${computedPosition.top}px - 20px)`,
         } : {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
+          maxHeight: '70vh',
         }}
       >
         {PopupContent}
