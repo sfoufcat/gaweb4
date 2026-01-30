@@ -12,31 +12,93 @@ import {
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
 
 export interface TimePickerProps {
-  /** The selected time value (HH:mm format) */
   value?: string
-  /** Called when the time changes */
   onChange?: (time: string) => void
-  /** Placeholder text when no time is selected */
   placeholder?: string
-  /** Disable the picker */
   disabled?: boolean
-  /** Additional class names for the trigger button */
   className?: string
-  /** z-index class for the dialog (use when inside other modals) */
   zIndex?: string
-  /** Position of the clock icon */
   iconPosition?: 'left' | 'right' | 'none'
 }
 
-// Generate hours (0-23)
-const HOURS = Array.from({ length: 24 }, (_, i) => i)
-// Generate minutes (0, 5, 10, ... 55)
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 1)
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5)
 
-/**
- * A beautiful, modal-based time picker component.
- * Features scrollable hour/minute selection matching DatePicker style.
- */
+function WheelPicker({
+  items,
+  value,
+  onChange,
+  formatItem = (v) => String(v)
+}: {
+  items: number[]
+  value: number
+  onChange: (v: number) => void
+  formatItem?: (v: number) => string
+}) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const itemHeight = 40
+
+  // Scroll to value on mount and when value changes
+  React.useEffect(() => {
+    if (containerRef.current) {
+      const index = items.indexOf(value)
+      if (index !== -1) {
+        containerRef.current.scrollTop = index * itemHeight
+      }
+    }
+  }, [value, items])
+
+  const handleScroll = () => {
+    if (containerRef.current) {
+      const scrollTop = containerRef.current.scrollTop
+      const index = Math.round(scrollTop / itemHeight)
+      const clampedIndex = Math.max(0, Math.min(index, items.length - 1))
+      if (items[clampedIndex] !== value) {
+        onChange(items[clampedIndex])
+      }
+    }
+  }
+
+  return (
+    <div className="relative h-[120px] overflow-hidden">
+      {/* Selection highlight */}
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-10 bg-brand-accent/10 rounded-lg pointer-events-none z-0" />
+
+      {/* Scroll container */}
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="h-full overflow-y-auto snap-y snap-mandatory scrollbar-none relative z-10"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {/* Spacer top */}
+        <div style={{ height: itemHeight }} />
+
+        {items.map((item) => {
+          const isSelected = item === value
+          return (
+            <div
+              key={item}
+              onClick={() => onChange(item)}
+              className={cn(
+                "h-10 flex items-center justify-center snap-center cursor-pointer transition-all",
+                isSelected
+                  ? "text-brand-accent font-semibold text-lg"
+                  : "text-[#a7a39e] text-base"
+              )}
+            >
+              {formatItem(item)}
+            </div>
+          )
+        })}
+
+        {/* Spacer bottom */}
+        <div style={{ height: itemHeight }} />
+      </div>
+    </div>
+  )
+}
+
 export function TimePicker({
   value,
   onChange,
@@ -48,53 +110,36 @@ export function TimePicker({
 }: TimePickerProps) {
   const [open, setOpen] = React.useState(false)
 
-  // Parse current value
-  const [selectedHour, selectedMinute] = React.useMemo(() => {
-    if (!value) return [12, 0]
+  const parsedValue = React.useMemo(() => {
+    if (!value) return { hour: 12, minute: 0, isPM: false }
     const [h, m] = value.split(':').map(Number)
-    return [h ?? 12, m ?? 0]
+    return {
+      hour: h % 12 || 12,
+      minute: Math.round(m / 5) * 5,
+      isPM: h >= 12
+    }
   }, [value])
 
-  // Local state for selection before confirming
-  const [tempHour, setTempHour] = React.useState(selectedHour)
-  const [tempMinute, setTempMinute] = React.useState(selectedMinute)
+  const [selectedHour, setSelectedHour] = React.useState(parsedValue.hour)
+  const [selectedMinute, setSelectedMinute] = React.useState(parsedValue.minute)
+  const [isPM, setIsPM] = React.useState(parsedValue.isPM)
 
-  // Refs for scroll containers
-  const hourRef = React.useRef<HTMLDivElement>(null)
-  const minuteRef = React.useRef<HTMLDivElement>(null)
-
-  // Reset temp values when opening
   React.useEffect(() => {
     if (open) {
-      setTempHour(selectedHour)
-      setTempMinute(selectedMinute)
-      // Scroll to selected values
-      setTimeout(() => {
-        if (hourRef.current) {
-          const hourElement = hourRef.current.querySelector(`[data-hour="${selectedHour}"]`) as HTMLElement
-          if (hourElement) {
-            hourRef.current.scrollTop = hourElement.offsetTop - hourRef.current.clientHeight / 2 + hourElement.clientHeight / 2
-          }
-        }
-        if (minuteRef.current) {
-          const minuteElement = minuteRef.current.querySelector(`[data-minute="${selectedMinute}"]`) as HTMLElement
-          if (minuteElement) {
-            minuteRef.current.scrollTop = minuteElement.offsetTop - minuteRef.current.clientHeight / 2 + minuteElement.clientHeight / 2
-          }
-        }
-      }, 50)
+      setSelectedHour(parsedValue.hour)
+      setSelectedMinute(parsedValue.minute)
+      setIsPM(parsedValue.isPM)
     }
-  }, [open, selectedHour, selectedMinute])
+  }, [open, parsedValue])
 
-  // Handle confirm
   const handleConfirm = () => {
-    const h = String(tempHour).padStart(2, '0')
-    const m = String(tempMinute).padStart(2, '0')
-    onChange?.(`${h}:${m}`)
+    let hour24 = selectedHour
+    if (isPM && selectedHour !== 12) hour24 = selectedHour + 12
+    if (!isPM && selectedHour === 12) hour24 = 0
+    onChange?.(`${String(hour24).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}`)
     setOpen(false)
   }
 
-  // Format display time (12-hour format)
   const displayTime = React.useMemo(() => {
     if (!value) return null
     const [h, m] = value.split(':').map(Number)
@@ -103,16 +148,8 @@ export function TimePicker({
     return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`
   }, [value])
 
-  // Format temp time for preview
-  const tempDisplayTime = React.useMemo(() => {
-    const hour12 = tempHour % 12 || 12
-    const ampm = tempHour < 12 ? 'AM' : 'PM'
-    return `${hour12}:${String(tempMinute).padStart(2, '0')} ${ampm}`
-  }, [tempHour, tempMinute])
-
   return (
     <>
-      {/* Trigger Button */}
       <Button
         type="button"
         variant="outline"
@@ -131,121 +168,73 @@ export function TimePicker({
           className
         )}
       >
-        <span className="font-albert text-sm">
-          {displayTime || placeholder}
-        </span>
+        <span className="font-albert text-sm">{displayTime || placeholder}</span>
         {iconPosition !== 'none' && (
           <Clock className="h-4 w-4 text-current flex-shrink-0" />
         )}
       </Button>
 
-      {/* Time Picker Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="max-w-[300px] p-0 gap-0 rounded-2xl overflow-hidden border-[#e1ddd8] dark:border-[#262b35]"
+          className="w-[260px] p-4 rounded-2xl border-0 shadow-xl bg-white dark:bg-[#171b22]"
           hideCloseButton
           zIndex={zIndex}
         >
           <VisuallyHidden.Root>
-            <DialogTitle>Select a time</DialogTitle>
+            <DialogTitle>Select time</DialogTitle>
           </VisuallyHidden.Root>
 
-          {/* Header with current selection */}
-          <div className="px-4 py-4 border-b border-[#e8e4df] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#11141b]">
-            <div className="text-center">
-              <span className="font-albert text-2xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                {tempDisplayTime}
-              </span>
+          {/* Wheels */}
+          <div className="flex items-center gap-2 mb-4">
+            <WheelPicker
+              items={HOURS}
+              value={selectedHour}
+              onChange={setSelectedHour}
+            />
+            <span className="text-2xl font-light text-[#d1cdc8]">:</span>
+            <WheelPicker
+              items={MINUTES}
+              value={selectedMinute}
+              onChange={setSelectedMinute}
+              formatItem={(v) => String(v).padStart(2, '0')}
+            />
+            {/* AM/PM */}
+            <div className="flex flex-col gap-1 ml-1">
+              <button
+                type="button"
+                onClick={() => setIsPM(false)}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all",
+                  !isPM
+                    ? "bg-brand-accent text-white"
+                    : "text-[#a7a39e] hover:text-[#1a1a1a]"
+                )}
+              >
+                AM
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPM(true)}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all",
+                  isPM
+                    ? "bg-brand-accent text-white"
+                    : "text-[#a7a39e] hover:text-[#1a1a1a]"
+                )}
+              >
+                PM
+              </button>
             </div>
           </div>
 
-          {/* Time Selection */}
-          <div className="flex bg-white dark:bg-[#171b22]">
-            {/* Hours Column */}
-            <div
-              ref={hourRef}
-              className="flex-1 h-[200px] overflow-y-auto border-r border-[#e8e4df] dark:border-[#262b35]"
-            >
-              {HOURS.map((hour) => {
-                const isSelected = tempHour === hour
-                const hour12 = hour % 12 || 12
-                const ampm = hour < 12 ? 'AM' : 'PM'
-                return (
-                  <button
-                    key={hour}
-                    type="button"
-                    data-hour={hour}
-                    onClick={() => setTempHour(hour)}
-                    className={cn(
-                      "w-full py-3 px-4 text-center transition-all duration-150",
-                      "focus:outline-none focus:bg-[#f5f3f0] dark:focus:bg-[#1f242d]",
-                      isSelected && [
-                        "bg-brand-accent text-white font-semibold",
-                      ],
-                      !isSelected && [
-                        "text-[#1a1a1a] dark:text-[#f5f5f8]",
-                        "hover:bg-[#f5f3f0] dark:hover:bg-[#1f242d]",
-                      ]
-                    )}
-                  >
-                    <span className="font-albert text-[15px]">
-                      {hour12} {ampm}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Minutes Column */}
-            <div
-              ref={minuteRef}
-              className="flex-1 h-[200px] overflow-y-auto"
-            >
-              {MINUTES.map((minute) => {
-                const isSelected = tempMinute === minute
-                return (
-                  <button
-                    key={minute}
-                    type="button"
-                    data-minute={minute}
-                    onClick={() => setTempMinute(minute)}
-                    className={cn(
-                      "w-full py-3 px-4 text-center transition-all duration-150",
-                      "focus:outline-none focus:bg-[#f5f3f0] dark:focus:bg-[#1f242d]",
-                      isSelected && [
-                        "bg-brand-accent text-white font-semibold",
-                      ],
-                      !isSelected && [
-                        "text-[#1a1a1a] dark:text-[#f5f5f8]",
-                        "hover:bg-[#f5f3f0] dark:hover:bg-[#1f242d]",
-                      ]
-                    )}
-                  >
-                    <span className="font-albert text-[15px]">
-                      :{String(minute).padStart(2, '0')}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Footer with confirm button */}
-          <div className="px-4 py-3 border-t border-[#e8e4df] dark:border-[#262b35]">
-            <button
-              type="button"
-              onClick={handleConfirm}
-              className={cn(
-                "w-full py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
-                "bg-brand-accent text-white",
-                "hover:opacity-90",
-                "active:scale-[0.98]",
-                "focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-2"
-              )}
-            >
-              Confirm
-            </button>
-          </div>
+          {/* Confirm */}
+          <button
+            type="button"
+            onClick={handleConfirm}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold bg-brand-accent text-white hover:opacity-90 transition-all"
+          >
+            Done
+          </button>
         </DialogContent>
       </Dialog>
     </>

@@ -8,8 +8,9 @@ import {
   FileText,
   Loader2,
   RefreshCw,
+  Sparkles,
   Video,
-  X,
+  Wand2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ interface SessionCardProps {
   onViewSummary?: () => void;
   onSummaryGenerated?: (summaryId: string) => void;
   onRecordingFetched?: () => void;
+  onFillWeek?: () => void;
 }
 
 /**
@@ -45,6 +47,7 @@ export function SessionCard({
   onViewSummary,
   onSummaryGenerated,
   onRecordingFetched,
+  onFillWeek,
 }: SessionCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -159,7 +162,7 @@ export function SessionCard({
   const getLeftIcon = () => {
     switch (sessionState) {
       case 'ready':
-        return <Check className="w-4 h-4 text-green-500" />;
+        return <Check className="w-4 h-4 text-brand-accent" />;
       case 'in-progress':
       case 'finding':
       case 'processing':
@@ -191,22 +194,24 @@ export function SessionCard({
 
   // Card background based on state
   const cardBgClass = useMemo(() => {
-    if (hasSummary) {
-      return 'bg-green-50/80 dark:bg-green-900/20 border-green-200/60 dark:border-green-800/50';
+    const isPast = sessionState === 'ready' || sessionState === 'no-recording' || sessionState === 'finding' || sessionState === 'processing';
+
+    if (isPast && hasRecording) {
+      // Past with recording - very light green
+      return 'bg-green-50/50 dark:bg-green-900/10 border-green-200/30 dark:border-green-800/30';
     }
-    if (isToday) {
-      return 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-200/60 dark:border-blue-800/50';
+    if (isPast && !hasRecording) {
+      // Past without recording - very light amber
+      return 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200/30 dark:border-amber-800/30';
     }
-    if (sessionState === 'finding' || sessionState === 'processing') {
-      return 'bg-slate-50/80 dark:bg-slate-900/20 border-slate-200/60 dark:border-slate-700/50';
-    }
-    return 'bg-white/60 dark:bg-[#171b22]/60 border-[#e1ddd8]/50 dark:border-[#262b35]/50';
-  }, [hasSummary, isToday, sessionState]);
+    // Default (upcoming, today, in-progress)
+    return 'bg-white/75 dark:bg-[#171b22]/75 border-[#e1ddd8]/40 dark:border-[#262b35]/40';
+  }, [sessionState, hasRecording]);
 
   return (
     <div
       className={cn(
-        'rounded-2xl backdrop-blur-xl border shadow-sm overflow-hidden transition-all duration-200 group',
+        'rounded-2xl backdrop-blur-2xl backdrop-saturate-150 border shadow-sm overflow-hidden transition-all duration-200 group',
         cardBgClass,
         isOpen && 'shadow-md'
       )}
@@ -236,16 +241,25 @@ export function SessionCard({
                 • Today
               </span>
             )}
-            {hasSummary && (
-              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                • Summary ready
-              </span>
-            )}
           </div>
         </div>
 
         {/* Right side icons - with more spacing */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Fill Week button - only when summary exists */}
+          {hasSummary && onFillWeek && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onFillWeek();
+              }}
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-accent/10 dark:bg-brand-accent/20 hover:bg-brand-accent/20 dark:hover:bg-brand-accent/30 transition-all hover:scale-105"
+              title="Fill week from summary"
+            >
+              <Wand2 className="w-4 h-4 text-brand-accent" />
+            </button>
+          )}
+
           {/* Summary button/icon */}
           {hasSummary ? (
             <button
@@ -258,8 +272,8 @@ export function SessionCard({
             >
               <IconWithBadge
                 icon={FileText}
-                bgClass="bg-violet-100 dark:bg-violet-900/30"
-                iconClass="text-violet-600 dark:text-violet-400"
+                bgClass="bg-slate-100 dark:bg-slate-800/50"
+                iconClass="text-brand-accent"
               />
             </button>
           ) : hasRecording && sessionState !== 'in-progress' && onSummaryGenerated ? (
@@ -270,19 +284,20 @@ export function SessionCard({
               }}
               disabled={isGeneratingSummary}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all",
-                "bg-violet-100 dark:bg-violet-900/30 hover:bg-violet-200 dark:hover:bg-violet-800/40",
-                "border border-violet-200/50 dark:border-violet-700/50",
+                "flex items-center justify-center w-8 h-8 rounded-lg transition-all",
+                "bg-brand-accent/10 dark:bg-brand-accent/20 hover:bg-brand-accent/20 dark:hover:bg-brand-accent/30",
+                "md:w-auto md:px-3 md:py-1.5 md:gap-1.5",
+                "border border-brand-accent/20 dark:border-brand-accent/30",
                 isGeneratingSummary && "opacity-70"
               )}
               title="Generate summary (1 credit)"
             >
               {isGeneratingSummary ? (
-                <Loader2 className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 animate-spin" />
+                <Loader2 className="w-4 h-4 text-brand-accent animate-spin" />
               ) : (
-                <FileText className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+                <Sparkles className="w-4 h-4 text-brand-accent" />
               )}
-              <span className="text-xs font-medium text-violet-700 dark:text-violet-300 whitespace-nowrap">
+              <span className="hidden md:inline text-xs font-medium text-brand-accent whitespace-nowrap">
                 Get Summary
               </span>
             </button>
@@ -300,18 +315,6 @@ export function SessionCard({
               <Loader2 className="w-4 h-4 text-slate-500 animate-spin" />
             </div>
           ) : null}
-
-          {/* Remove button (shown on hover) */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-            className="flex items-center justify-center w-7 h-7 rounded-lg text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
-            title="Unlink call"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
 
           {/* Chevron - with more left spacing */}
           <motion.div
@@ -446,7 +449,7 @@ export function SessionCard({
 
               {/* Recording ready - show player and generate summary option */}
               {sessionState === 'ready' && event.recordingUrl && (
-                <div className="space-y-2">
+                <div className="space-y-3 py-3">
                   <MediaPlayer
                     src={event.recordingUrl}
                     poster={event.coverImageUrl}
@@ -461,9 +464,9 @@ export function SessionCard({
                       disabled={isGeneratingSummary}
                       className={cn(
                         "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all",
-                        "bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/30",
-                        "border border-violet-200/50 dark:border-violet-700/50",
-                        "text-sm font-medium text-violet-700 dark:text-violet-300",
+                        "bg-brand-accent/5 dark:bg-brand-accent/10 hover:bg-brand-accent/10 dark:hover:bg-brand-accent/20",
+                        "border border-brand-accent/20 dark:border-brand-accent/30",
+                        "text-sm font-medium text-brand-accent",
                         isGeneratingSummary && "opacity-70"
                       )}
                     >

@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import useSWR, { mutate } from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export interface CompactPostPreview {
   id: string;
@@ -34,28 +35,35 @@ export const SIDEBAR_BOOKMARKS_KEY = '/api/feed/bookmarks?limit=5';
 export const SIDEBAR_TRENDING_KEY = '/api/feed/trending?limit=5';
 export const SIDEBAR_PINNED_KEY = '/api/feed/pinned?limit=5';
 
+// Shared mutate reference - will be set by FeedSidebar component
+let sharedMutate: ReturnType<typeof useSWRConfig>['mutate'] | null = null;
+
+export function setSharedMutate(mutate: ReturnType<typeof useSWRConfig>['mutate']) {
+  sharedMutate = mutate;
+}
+
 // Optimistic update helpers for instant sidebar updates
 export function optimisticallyAddBookmark(post: CompactPostPreview) {
-  console.log('[Sidebar] Adding bookmark optimistically:', post.id);
-  mutate(SIDEBAR_BOOKMARKS_KEY, (data: { posts: CompactPostPreview[] } | undefined) => {
-    console.log('[Sidebar] Current data:', data);
+  if (!sharedMutate) {
+    console.warn('[Sidebar] sharedMutate not set, cannot update optimistically');
+    return;
+  }
+  sharedMutate(SIDEBAR_BOOKMARKS_KEY, (data: { posts: CompactPostPreview[] } | undefined) => {
     if (!data) return { posts: [post] };
     // Avoid duplicates, add to front, limit to 5
     const filtered = data.posts.filter(p => p.id !== post.id);
-    const newData = { posts: [post, ...filtered].slice(0, 5) };
-    console.log('[Sidebar] New data:', newData);
-    return newData;
+    return { posts: [post, ...filtered].slice(0, 5) };
   }, { revalidate: false });
 }
 
 export function optimisticallyRemoveBookmark(postId: string) {
-  console.log('[Sidebar] Removing bookmark optimistically:', postId);
-  mutate(SIDEBAR_BOOKMARKS_KEY, (data: { posts: CompactPostPreview[] } | undefined) => {
-    console.log('[Sidebar] Current data:', data);
+  if (!sharedMutate) {
+    console.warn('[Sidebar] sharedMutate not set, cannot update optimistically');
+    return;
+  }
+  sharedMutate(SIDEBAR_BOOKMARKS_KEY, (data: { posts: CompactPostPreview[] } | undefined) => {
     if (!data) return data;
-    const newData = { posts: data.posts.filter(p => p.id !== postId) };
-    console.log('[Sidebar] New data:', newData);
-    return newData;
+    return { posts: data.posts.filter(p => p.id !== postId) };
   }, { revalidate: false });
 }
 
@@ -71,7 +79,10 @@ export function optimisticallyRemoveBookmark(postId: string) {
  * - Trending: Only shows if there are trending posts from the past week
  */
 export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
-  
+  // Set shared mutate for optimistic updates from other components
+  const { mutate } = useSWRConfig();
+  setSharedMutate(mutate);
+
   // Use SWR for pinned posts
   const { data: pinnedData, isLoading: isLoadingPinned } = useSWR<{ posts: CompactPostPreview[] }>(
     SIDEBAR_PINNED_KEY,
@@ -179,20 +190,43 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
                 </div>
               ))}
             </div>
-          ) : bookmarkedPosts.length === 0 ? (
-            // Empty state
-            <div className="py-8 text-center">
-              <p className="text-[14px] text-[#8a857f]">
-                No saved posts yet
-              </p>
-            </div>
           ) : (
-            // Posts list
-            <div className="space-y-1">
-              {bookmarkedPosts.map((post) => (
-                <CompactPostItem key={post.id} post={post} onSelect={onSelectPost} />
-              ))}
-            </div>
+            // Posts list with animations
+            <AnimatePresence mode="popLayout">
+              {bookmarkedPosts.length === 0 ? (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="py-8 text-center"
+                >
+                  <p className="text-[14px] text-[#8a857f]">
+                    No saved posts yet
+                  </p>
+                </motion.div>
+              ) : (
+                <div className="space-y-1">
+                  {bookmarkedPosts.map((post) => (
+                    <motion.div
+                      key={post.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, x: -20 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 30,
+                        opacity: { duration: 0.2 }
+                      }}
+                    >
+                      <CompactPostItem post={post} onSelect={onSelectPost} />
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </AnimatePresence>
           )}
         </div>
       </div>

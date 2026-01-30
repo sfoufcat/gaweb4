@@ -3,6 +3,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format, addDays } from 'date-fns';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { PollFormData } from '@/types/poll';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import {
@@ -63,6 +80,65 @@ function generateId() {
   return `opt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+// Sortable poll option item
+function SortablePollOption({
+  option,
+  updateOption,
+  removeOption,
+}: {
+  option: { id: string; text: string };
+  updateOption: (id: string, text: string) => void;
+  removeOption: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: option.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-white rounded-[20px] px-2 py-3 flex items-center gap-1"
+    >
+      {/* Drag Handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
+      >
+        <GripVerticalIcon />
+      </button>
+      {/* Input */}
+      <input
+        type="text"
+        value={option.text}
+        onChange={(e) => updateOption(option.id, e.target.value)}
+        placeholder="Option"
+        className="flex-1 font-albert font-semibold text-[18px] text-[#1a1a1a] placeholder-[#a7a39e] tracking-[-1px] leading-[1.3] bg-transparent border-none outline-none"
+      />
+      {/* Delete Button */}
+      <button
+        onClick={() => removeOption(option.id)}
+        className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-[#a7a39e] hover:text-[#1a1a1a] transition-colors"
+        aria-label="Remove option"
+      >
+        <CloseIcon className="w-5 h-5" />
+      </button>
+    </div>
+  );
+}
+
 // Shared poll form content component
 function PollFormContent({
   question,
@@ -71,6 +147,7 @@ function PollFormContent({
   updateOption,
   removeOption,
   addOption,
+  reorderOptions,
   dateValue,
   setDateValue,
   timeValue,
@@ -92,6 +169,7 @@ function PollFormContent({
   updateOption: (id: string, text: string) => void;
   removeOption: (id: string) => void;
   addOption: () => void;
+  reorderOptions: (activeId: string, overId: string) => void;
   dateValue: string;
   setDateValue: (v: string) => void;
   timeValue: string;
@@ -107,6 +185,23 @@ function PollFormContent({
   onSubmit: () => void;
   onClose: () => void;
 }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      reorderOptions(active.id as string, over.id as string);
+    }
+  };
   return (
     <>
       {/* Header */}
@@ -147,45 +242,37 @@ function PollFormContent({
           <h2 className="font-albert font-medium text-[24px] text-[#1a1a1a] tracking-[-1.5px] leading-[1.3] mb-3">
             Poll options
           </h2>
-          <div className="flex flex-col gap-2">
-            {options.map((option) => (
-              <div
-                key={option.id}
-                className="bg-white rounded-[20px] px-2 py-3 flex items-center gap-1"
-              >
-                {/* Drag Handle */}
-                <div className="flex-shrink-0 cursor-grab active:cursor-grabbing">
-                  <GripVerticalIcon />
-                </div>
-                {/* Input */}
-                <input
-                  type="text"
-                  value={option.text}
-                  onChange={(e) => updateOption(option.id, e.target.value)}
-                  placeholder="Option"
-                  className="flex-1 font-albert font-semibold text-[18px] text-[#1a1a1a] placeholder-[#a7a39e] tracking-[-1px] leading-[1.3] bg-transparent border-none outline-none"
-                />
-                {/* Delete Button */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={options.map(o => o.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="flex flex-col gap-2">
+                {options.map((option) => (
+                  <SortablePollOption
+                    key={option.id}
+                    option={option}
+                    updateOption={updateOption}
+                    removeOption={removeOption}
+                  />
+                ))}
+
+                {/* Add an option button */}
                 <button
-                  onClick={() => removeOption(option.id)}
-                  className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-[#a7a39e] hover:text-[#1a1a1a] transition-colors"
-                  aria-label="Remove option"
+                  onClick={addOption}
+                  className="bg-[#f3f1ef] rounded-[20px] px-4 py-3 flex items-center justify-center hover:bg-[#eae7e3] transition-colors"
                 >
-                  <CloseIcon className="w-5 h-5" />
+                  <span className="font-albert font-semibold text-[18px] text-[#a7a39e] tracking-[-1px] leading-[1.3]">
+                    + Add option
+                  </span>
                 </button>
               </div>
-            ))}
-
-            {/* Add an option button */}
-            <button
-              onClick={addOption}
-              className="bg-[#f3f1ef] rounded-[20px] px-4 py-3 flex items-center justify-center hover:bg-[#eae7e3] transition-colors"
-            >
-              <span className="font-albert font-semibold text-[18px] text-[#a7a39e] tracking-[-1px] leading-[1.3]">
-                + Add option
-              </span>
-            </button>
-          </div>
+            </SortableContext>
+          </DndContext>
         </div>
 
         {/* Settings Section */}
@@ -305,73 +392,6 @@ function PollFormContent({
   );
 }
 
-// Add Option content component
-function AddOptionContent({
-  newOptionText,
-  setNewOptionText,
-  onAdd,
-  onClose,
-  showCloseButton = false,
-}: {
-  newOptionText: string;
-  setNewOptionText: (v: string) => void;
-  onAdd: () => void;
-  onClose: () => void;
-  showCloseButton?: boolean;
-}) {
-  return (
-    <>
-      {/* Header for desktop dialog */}
-      {showCloseButton && (
-        <div className="px-4 pt-4">
-          <button
-            onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center text-[#1a1a1a] hover:opacity-70 transition-opacity"
-            aria-label="Close"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="px-4 pt-5 md:pt-2 pb-6 space-y-8">
-        <h2 className="font-albert text-[36px] font-normal text-[#1a1a1a] tracking-[-2px] leading-[1.2]">
-          Add an option
-        </h2>
-
-        <input
-          type="text"
-          value={newOptionText}
-          onChange={(e) => setNewOptionText(e.target.value)}
-          placeholder="Option title"
-          autoFocus
-          className="w-full font-geist text-[24px] text-[#1a1a1a] placeholder-[#a7a39e] tracking-[-0.5px] leading-[1.2] bg-transparent border-none outline-none"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && newOptionText.trim()) {
-              onAdd();
-            }
-          }}
-        />
-      </div>
-
-      {/* Add Button */}
-      <div className="px-6 pt-6 pb-10 md:pb-6">
-        <button
-          onClick={onAdd}
-          disabled={!newOptionText.trim()}
-          className={`w-full py-4 rounded-[32px] font-geist font-bold text-[16px] tracking-[-0.5px] transition-all shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] ${
-            newOptionText.trim()
-              ? 'bg-[#2c2520] text-white hover:bg-[#1a1a1a]'
-              : 'bg-[#e1ddd8] text-[#a7a39e] cursor-not-allowed'
-          }`}
-        >
-          Add
-        </button>
-      </div>
-    </>
-  );
-}
 
 export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -437,6 +457,15 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
     setOptions(prev => [...prev, { id: generateId(), text: '' }]);
   }, []);
 
+  // Reorder options after drag
+  const reorderOptions = useCallback((activeId: string, overId: string) => {
+    setOptions(prev => {
+      const oldIndex = prev.findIndex(o => o.id === activeId);
+      const newIndex = prev.findIndex(o => o.id === overId);
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  }, []);
+
   // Submit poll
   const handleSubmit = async () => {
     if (!isValid || isSubmitting) return;
@@ -483,6 +512,7 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
               updateOption={updateOption}
               removeOption={removeOption}
               addOption={addOption}
+              reorderOptions={reorderOptions}
               dateValue={dateValue}
               setDateValue={setDateValue}
               timeValue={timeValue}
@@ -523,6 +553,7 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
           updateOption={updateOption}
           removeOption={removeOption}
           addOption={addOption}
+          reorderOptions={reorderOptions}
           dateValue={dateValue}
           setDateValue={setDateValue}
           timeValue={timeValue}

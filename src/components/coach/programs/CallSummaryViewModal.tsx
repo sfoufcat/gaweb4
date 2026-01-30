@@ -24,7 +24,9 @@ import {
   AlertCircle,
   ListTodo,
   HelpCircle,
+  Wand2,
 } from 'lucide-react';
+import { FillWeekFromSummaryButton } from '@/components/scheduling/FillWeekFromSummaryButton';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { CallSummary, ProgramTaskTemplate } from '@/types';
 
@@ -267,6 +269,14 @@ export function CallSummaryViewModal({
                   ))}
                 </ul>
               </div>
+            )}
+
+            {/* Fill Week from Summary Button */}
+            {summary.eventId && (
+              <FillWeekFromSummaryButton
+                eventId={summary.eventId}
+                className="mt-2"
+              />
             )}
           </div>
         );

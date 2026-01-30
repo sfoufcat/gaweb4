@@ -238,8 +238,10 @@ export function EventDetailPopup({
     const viewportHeight = window.innerHeight;
     const padding = 20; // Minimum distance from viewport edges
 
-    // Calculate max available height (70% of viewport, but leave padding)
-    const maxPopupHeight = Math.min(viewportHeight * 0.7, viewportHeight - padding * 2);
+    // Use actual popup height if available, otherwise estimate
+    const actualHeight = popupRef.current?.offsetHeight || 400;
+    const maxPopupHeight = viewportHeight * 0.7;
+    const popupHeight = Math.min(actualHeight, maxPopupHeight);
 
     // Horizontal positioning - center on click point
     let left = position.x - (popupWidth / 2);
@@ -255,23 +257,23 @@ export function EventDetailPopup({
     const spaceAbove = position.y - padding;
 
     let top: number;
-    if (spaceBelow >= maxPopupHeight) {
-      // Enough space below
+    if (spaceBelow >= popupHeight) {
+      // Enough space below - position at click point
       top = position.y;
-    } else if (spaceAbove >= maxPopupHeight) {
+    } else if (spaceAbove >= popupHeight) {
       // Flip to above - position so bottom of popup is at click point
-      top = position.y - maxPopupHeight;
+      top = position.y - popupHeight;
     } else {
       // Not enough space either way - use whichever has more space
       if (spaceBelow >= spaceAbove) {
-        top = viewportHeight - maxPopupHeight - padding;
+        top = viewportHeight - popupHeight - padding;
       } else {
         top = padding;
       }
     }
 
     // Final bounds check
-    top = Math.max(padding, Math.min(top, viewportHeight - maxPopupHeight - padding));
+    top = Math.max(padding, Math.min(top, viewportHeight - popupHeight - padding));
 
     setComputedPosition({ top, left });
   }, [isOpen, position, isDesktop]);

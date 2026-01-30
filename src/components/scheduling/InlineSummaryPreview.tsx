@@ -73,17 +73,11 @@ export function InlineSummaryPreview({
       className="w-full p-3 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl space-y-2 text-left hover:bg-[#ebe8e4] dark:hover:bg-[#313746] transition-colors"
     >
       {/* Header - clickable */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-center gap-2">
         <FileText className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
         <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
           View Call Summary
         </span>
-        {actionItemsCount > 0 && (
-          <span className="ml-auto px-2 py-0.5 text-xs font-medium bg-[#e8e4df] dark:bg-[#363c49] text-[#5f5a55] dark:text-[#b2b6c2] rounded-full">
-            {actionItemsCount} action{actionItemsCount !== 1 ? 's' : ''}
-          </span>
-        )}
-        <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] ml-auto" />
       </div>
 
       {/* Executive summary preview */}

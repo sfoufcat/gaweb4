@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useComments, type FeedComment } from '@/hooks/useFeed';
 import { getProfileUrl } from '@/lib/utils';
 import {
@@ -207,20 +208,20 @@ export function InlineComments({
   // No comments yet - show input directly
   if (comments.length === 0 && !isLoading) {
     return (
-      <div className="px-4 pt-1 pb-3">
-        <form onSubmit={handleSubmit} className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
+      <div className="px-4 pt-2 pb-4">
+        <form onSubmit={handleSubmit} className="flex items-center gap-3 p-2 rounded-2xl bg-white/60 dark:bg-[#1a1f2a]/60 backdrop-blur-sm border border-[#e8e4df]/50 dark:border-[#262b35]/50 shadow-sm">
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0 ring-2 ring-white/50 dark:ring-[#262b35]/50">
             {user?.imageUrl ? (
               <Image
                 src={user.imageUrl}
                 alt="Your avatar"
-                width={28}
-                height={28}
+                width={32}
+                height={32}
                 className="w-full h-full object-cover"
                 unoptimized
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-[#5f5a55]">
+              <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-[#5f5a55]">
                 {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
               </div>
             )}
@@ -231,58 +232,77 @@ export function InlineComments({
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Write a comment..."
-            className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-accent"
+            className="flex-1 px-4 py-2 rounded-xl bg-[#f5f3f0]/80 dark:bg-[#262b35]/80 text-[14px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] border-0 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-0 transition-shadow"
           />
           <button
             type="submit"
             disabled={!newComment.trim() || isSubmitting}
-            className={`p-1.5 rounded-full transition-colors disabled:opacity-50 ${newComment.trim() ? 'text-brand-accent' : 'text-[#8a857f]'}`}
+            className={`p-2.5 rounded-xl transition-all disabled:opacity-40 ${
+              newComment.trim()
+                ? 'bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20'
+                : 'text-[#8a857f] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35]'
+            }`}
           >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 19V5M5 12l7-7 7 7" />
             </svg>
           </button>
         </form>
         {errorMessage && (
-          <p className="text-[11px] text-red-500 mt-1 ml-9">{errorMessage}</p>
+          <p className="text-[12px] text-red-500 mt-2 ml-2">{errorMessage}</p>
         )}
       </div>
     );
   }
 
   return (
-    <div className="px-4 pt-1 pb-3">
+    <div className="px-4 pt-2 pb-4">
       {/* View all comments link */}
       {hasMoreToShow && (
         <button
           onClick={() => onExpandChange?.(true)}
-          className="text-[13px] text-[#8a857f] hover:text-[#5f5a55] dark:hover:text-[#b5b0ab] mb-2 transition-colors"
+          className="text-[13px] font-medium text-[#8a857f] hover:text-brand-accent mb-3 transition-colors"
         >
           View all {commentCount} comments
         </button>
       )}
 
       {/* Comments list */}
-      <div 
+      <div
         ref={listRef}
-        className={`space-y-2.5 ${expanded ? 'max-h-[300px] overflow-y-auto pr-1' : ''}`}
+        className={`space-y-3 ${expanded ? 'max-h-[300px] overflow-y-auto pr-1' : ''}`}
         onScroll={handleScroll}
       >
-        {visibleComments.map((comment) => (
-          <CommentItem
-            key={comment.id}
-            comment={comment}
-            currentUserId={user?.id}
-            isDeleting={deletingCommentId === comment.id}
-            isEditing={editingCommentId === comment.id}
-            onProfileClick={() => handleProfileClick(comment.authorId)}
-            onDelete={() => handleDeleteComment(comment.id)}
-            onEdit={() => setEditingCommentId(comment.id)}
-            onEditSubmit={(newText) => handleEditComment(comment.id, newText)}
-            onEditCancel={() => setEditingCommentId(null)}
-          />
-        ))}
-        
+        <AnimatePresence mode="popLayout">
+          {visibleComments.map((comment) => (
+            <motion.div
+              key={comment.id}
+              layout
+              initial={{ opacity: 0, y: -8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -16, scale: 0.96 }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 28,
+                opacity: { duration: 0.15 }
+              }}
+            >
+              <CommentItem
+                comment={comment}
+                currentUserId={user?.id}
+                isDeleting={deletingCommentId === comment.id}
+                isEditing={editingCommentId === comment.id}
+                onProfileClick={() => handleProfileClick(comment.authorId)}
+                onDelete={() => handleDeleteComment(comment.id)}
+                onEdit={() => setEditingCommentId(comment.id)}
+                onEditSubmit={(newText) => handleEditComment(comment.id, newText)}
+                onEditCancel={() => setEditingCommentId(null)}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
         {/* Loading more indicator */}
         {isValidating && expanded && (
           <div className="flex justify-center py-1">
@@ -293,19 +313,19 @@ export function InlineComments({
 
       {/* Comment input (always shown when expanded, or when there are some comments) */}
       {(expanded || comments.length > 0) && (
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 mt-3">
-          <div className="w-7 h-7 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
+        <form onSubmit={handleSubmit} className="flex items-center gap-3 mt-4 p-2 rounded-2xl bg-white/60 dark:bg-[#1a1f2a]/60 backdrop-blur-sm border border-[#e8e4df]/50 dark:border-[#262b35]/50 shadow-sm">
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0 ring-2 ring-white/50 dark:ring-[#262b35]/50">
             {user?.imageUrl ? (
               <Image
                 src={user.imageUrl}
                 alt="Your avatar"
-                width={28}
-                height={28}
+                width={32}
+                height={32}
                 className="w-full h-full object-cover"
                 unoptimized
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-[#5f5a55]">
+              <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-[#5f5a55]">
                 {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
               </div>
             )}
@@ -316,15 +336,19 @@ export function InlineComments({
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Write a comment..."
-            className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-accent"
+            className="flex-1 px-4 py-2 rounded-xl bg-[#f5f3f0]/80 dark:bg-[#262b35]/80 text-[14px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] border-0 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-0 transition-shadow"
           />
           <button
             type="submit"
             disabled={!newComment.trim() || isSubmitting}
-            className={`p-1.5 rounded-full transition-colors disabled:opacity-50 ${newComment.trim() ? 'text-brand-accent' : 'text-[#8a857f]'}`}
+            className={`p-2.5 rounded-xl transition-all disabled:opacity-40 ${
+              newComment.trim()
+                ? 'bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20'
+                : 'text-[#8a857f] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35]'
+            }`}
           >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 19V5M5 12l7-7 7 7" />
             </svg>
           </button>
         </form>
@@ -332,14 +356,14 @@ export function InlineComments({
       
       {/* Error message */}
       {errorMessage && (
-        <p className="text-[11px] text-red-500 mt-1 ml-9">{errorMessage}</p>
+        <p className="text-[12px] text-red-500 mt-2 ml-2">{errorMessage}</p>
       )}
 
       {/* Collapse button when expanded */}
       {expanded && comments.length > 2 && (
         <button
           onClick={() => onExpandChange?.(false)}
-          className="text-[13px] text-[#8a857f] hover:text-[#5f5a55] dark:hover:text-[#b5b0ab] mt-2 transition-colors"
+          className="text-[13px] font-medium text-[#8a857f] hover:text-brand-accent mt-3 transition-colors"
         >
           Show less
         </button>
@@ -415,23 +439,23 @@ function CommentItem({
   };
 
   return (
-    <div className={`flex gap-2 group ${isDeleting ? 'opacity-50' : ''}`}>
+    <div className={`flex gap-3 group p-2 -mx-2 rounded-xl transition-all ${isDeleting ? 'opacity-40 scale-98' : 'hover:bg-[#f5f3f0]/50 dark:hover:bg-[#262b35]/30'}`}>
       {/* Avatar */}
       <button
         onClick={onProfileClick}
-        className="w-7 h-7 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0 hover:opacity-80 transition-opacity"
+        className="w-8 h-8 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0 hover:opacity-80 transition-opacity ring-2 ring-white/30 dark:ring-[#262b35]/30"
       >
         {authorImage ? (
           <Image
             src={authorImage}
             alt={authorName}
-            width={28}
-            height={28}
+            width={32}
+            height={32}
             className="w-full h-full object-cover"
             unoptimized
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-[#5f5a55] dark:text-[#b5b0ab]">
+          <div className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-[#5f5a55] dark:text-[#b5b0ab]">
             {authorInitials}
           </div>
         )}
@@ -447,12 +471,12 @@ function CommentItem({
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-accent"
+              className="flex-1 px-4 py-2 rounded-xl bg-[#f5f3f0]/80 dark:bg-[#262b35]/80 text-[14px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] border-0 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-0 transition-shadow"
             />
             <button
               type="submit"
               disabled={!editText.trim()}
-              className={`p-1.5 rounded-full transition-colors disabled:opacity-50 ${editText.trim() ? 'text-brand-accent' : 'text-[#8a857f]'}`}
+              className={`p-2 rounded-xl transition-all disabled:opacity-40 ${editText.trim() ? 'bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20' : 'text-[#8a857f]'}`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -461,7 +485,7 @@ function CommentItem({
             <button
               type="button"
               onClick={onEditCancel}
-              className="p-1.5 rounded-full transition-colors text-[#8a857f] hover:text-[#5f5a55]"
+              className="p-2 rounded-xl transition-all text-[#8a857f] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35]"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -470,18 +494,18 @@ function CommentItem({
           </form>
         ) : (
           <>
-            <div className="inline">
+            <div className="inline leading-relaxed">
               <button
                 onClick={onProfileClick}
-                className="font-semibold text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] hover:underline"
+                className="font-semibold text-[14px] text-[#1a1a1a] dark:text-[#faf8f6] hover:underline"
               >
                 {authorName}
               </button>
-              <span className="text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] ml-1.5">
+              <span className="text-[14px] text-[#3a3a3a] dark:text-[#e5e3e0] ml-1.5">
                 {comment.text}
               </span>
             </div>
-            <p className="text-[11px] text-[#8a857f] mt-0.5">
+            <p className="text-[12px] text-[#8a857f] mt-1">
               {timeAgo}{wasEdited && ' · Edited'}
             </p>
           </>
@@ -493,7 +517,7 @@ function CommentItem({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-all"
+              className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-white/60 dark:hover:bg-[#262b35]/60 transition-all"
               disabled={isDeleting}
             >
               <svg className="w-4 h-4 text-[#8a857f]" fill="currentColor" viewBox="0 0 24 24">
@@ -503,13 +527,13 @@ function CommentItem({
               </svg>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            align="end" 
-            className="w-32 bg-white dark:bg-[#1a1f2a] rounded-xl border border-[#e8e4df] dark:border-[#262b35]"
+          <DropdownMenuContent
+            align="end"
+            className="w-36 bg-white/95 dark:bg-[#1a1f2a]/95 backdrop-blur-md rounded-xl border border-[#e8e4df]/50 dark:border-[#262b35]/50 shadow-lg"
           >
             <DropdownMenuItem
               onClick={onEdit}
-              className="px-3 py-2 text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] cursor-pointer flex items-center gap-2"
+              className="px-3 py-2.5 text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] cursor-pointer flex items-center gap-2 rounded-lg mx-1"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -518,7 +542,7 @@ function CommentItem({
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={onDelete}
-              className="px-3 py-2 text-[13px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer flex items-center gap-2"
+              className="px-3 py-2.5 text-[13px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer flex items-center gap-2 rounded-lg mx-1"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

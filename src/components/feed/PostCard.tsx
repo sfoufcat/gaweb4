@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { formatDistanceToNow, format } from 'date-fns';
-import { mutate } from 'swr';
+import { useSWRConfig } from 'swr';
 import { DeleteConfirmationModal } from './ConfirmationModal';
 import { InlineComments } from './InlineComments';
 import { SIDEBAR_BOOKMARKS_KEY, optimisticallyAddBookmark, optimisticallyRemoveBookmark } from './FeedSidebar';
@@ -48,6 +48,7 @@ export function PostCard({
 }: PostCardProps) {
   const router = useRouter();
   const { user } = useUser();
+  const { mutate } = useSWRConfig();
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -295,7 +296,7 @@ export function PostCard({
   const isEmbedded = variant === 'embedded';
   
   return (
-    <article className={isEmbedded ? '' : 'bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] hover-lift'}>
+    <article className={isEmbedded ? '' : 'bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] transition-shadow duration-200 hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.3)]'}>
       {/* Pinned indicator + Menu (combined row when hideMetadata is true) */}
       {post.pinnedToFeed && post.hideMetadata && (
         <div className={`flex items-center justify-between ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`}>
@@ -683,20 +684,22 @@ export function PostCard({
           stickyActionBar ? 'sticky bottom-0 bg-white dark:bg-[#171b22] z-10' : ''
         }`}>
           <div className="flex items-center gap-1">
-            {/* Like */}
+            {/* Like - Modern rounded heart */}
             <button
               onClick={handleLike}
               disabled={isLiking}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-all"
             >
               <svg
-                className={`w-5 h-5 transition-colors ${likeAnimating ? 'animate-heart-pop' : ''} ${post.hasLiked ? 'text-brand-accent fill-brand-accent' : ''}`}
-                fill={post.hasLiked ? 'currentColor' : 'none'}
+                className={`w-[22px] h-[22px] transition-all ${likeAnimating ? 'animate-heart-pop' : ''} ${post.hasLiked ? 'text-brand-accent' : 'text-[#8a857f]'}`}
                 viewBox="0 0 24 24"
+                fill={post.hasLiked ? 'currentColor' : 'none'}
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={post.hasLiked ? 0 : 1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
               {post.likeCount > 0 && (
                 <span className={`text-[13px] font-medium ${post.hasLiked ? 'text-brand-accent' : 'text-[#8a857f]'}`}>
@@ -705,13 +708,13 @@ export function PostCard({
               )}
             </button>
 
-            {/* Comment */}
+            {/* Comment - Modern rounded bubble */}
             <button
               onClick={() => setShowComments(!showComments)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors ${showComments ? 'text-brand-accent' : 'text-[#8a857f]'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-all ${showComments ? 'text-brand-accent' : 'text-[#8a857f]'}`}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill={showComments ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={showComments ? 0 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
               </svg>
               {post.commentCount > 0 && (
                 <span className="text-[13px] font-medium">

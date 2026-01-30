@@ -30,6 +30,7 @@ import { DayPreviewPopup } from './DayPreviewPopup';
 import { ScheduleCallModal } from '@/components/scheduling';
 import { CreateEventModal } from '@/components/scheduling/CreateEventModal';
 import { GenerateSummaryButton } from '@/components/scheduling/GenerateSummaryButton';
+import { FillWeekPreviewModal } from '@/components/scheduling/FillWeekPreviewModal';
 import { InlineRecordingUpload } from '@/components/scheduling/InlineRecordingUpload';
 import { MediaPlayer } from '@/components/video/MediaPlayer';
 // Audio utilities for duration detection
@@ -1254,6 +1255,11 @@ export function WeekEditor({
   // Summary view modal state - separate open state from data to prevent re-render loops
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingSummary, setViewingSummary] = useState<CallSummary | null>(null);
+
+  // Fill week preview modal state
+  const [isFillWeekModalOpen, setIsFillWeekModalOpen] = useState(false);
+  const [fillWeekEventId, setFillWeekEventId] = useState<string | null>(null);
+  const [fillWeekSummary, setFillWeekSummary] = useState<CallSummary | null>(null);
 
   // Credit purchase modal state (for insufficient credits error)
   const [showCreditModal, setShowCreditModal] = useState(false);
@@ -3599,6 +3605,13 @@ export function WeekEditor({
                           onSummaryGenerated?.(summaryId);
                         }}
                         onRecordingFetched={() => onCallScheduled?.()}
+                        onFillWeek={() => {
+                          if (summaryForEvent) {
+                            setFillWeekEventId(eventId);
+                            setFillWeekSummary(summaryForEvent);
+                            setIsFillWeekModalOpen(true);
+                          }
+                        }}
                       />
                     );
                   })}
@@ -3741,6 +3754,22 @@ export function WeekEditor({
             setRecordingStatus('idle');
             // Reset bypass flag since credits were purchased
             editorContext?.setBypassBeforeUnload(false);
+          }}
+        />
+
+        {/* Fill Week Preview Modal */}
+        <FillWeekPreviewModal
+          isOpen={isFillWeekModalOpen}
+          onClose={() => {
+            setIsFillWeekModalOpen(false);
+            setFillWeekEventId(null);
+            setFillWeekSummary(null);
+          }}
+          eventId={fillWeekEventId || ''}
+          summary={fillWeekSummary}
+          onFilled={() => {
+            // Refresh the week data after filling
+            onCallScheduled?.();
           }}
         />
           </>
