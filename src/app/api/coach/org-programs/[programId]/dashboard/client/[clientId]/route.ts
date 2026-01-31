@@ -36,10 +36,31 @@ interface ArticleProgress {
   completedAt?: string;
 }
 
-interface EngagementItem {
-  contentId: string;
-  title: string;
-  count: number;
+// New engagement metrics interfaces
+interface TaskVelocity {
+  completed: number;
+  total: number;
+  rate: number;
+  trend: 'up' | 'down' | 'stable';
+}
+
+interface ResponseTimeMetric {
+  avgHours: number | null;
+  sameDayPercent: number;
+  bucket: 'same_day' | 'next_day' | 'delayed' | 'no_data';
+}
+
+interface ConsistencyMetric {
+  currentStreak: number;
+  lastActiveDate: string | null;
+  daysSinceActive: number;
+  level: 'high' | 'moderate' | 'low' | 'inactive';
+}
+
+interface EngagementTrend {
+  direction: 'improving' | 'stable' | 'declining';
+  percentChange: number;
+  warning: boolean;
 }
 
 interface UpcomingItem {
@@ -57,6 +78,7 @@ interface PastSessionItem {
   hasRecording: boolean;
   hasSummary?: boolean;
   summaryId?: string;
+  hasFilledFromSummary?: boolean;
   eventId: string;
   eventType?: 'coaching_1on1' | 'cohort_call' | 'squad_call' | 'intake_call' | 'community_event';
 }
@@ -85,11 +107,10 @@ interface ClientDashboardData {
     articles: ArticleProgress[];
   };
   engagement: {
-    reWatched: EngagementItem[];
-    reRead: EngagementItem[];
-    mostActiveDays: string[];
-    mostActiveHours: string;
-    pattern?: string;
+    taskVelocity: TaskVelocity;
+    responseTime: ResponseTimeMetric;
+    consistency: ConsistencyMetric;
+    trend: EngagementTrend;
   };
   upcoming: UpcomingItem[];
   pastSessions: PastSessionItem[];
@@ -406,74 +427,149 @@ export async function GET(
       });
     }
 
-    // Calculate engagement insights
-    const reWatched: EngagementItem[] = contentProgress
-      .filter((p) => p.contentType === 'course_lesson' && (p.completionCount || 0) > 1)
-      .map((p) => ({
-        contentId: p.contentId,
-        title: `Lesson ${p.lessonId?.slice(0, 8) || ''}`,
-        count: p.completionCount || 1,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
+    // ========================================
+    // NEW ENGAGEMENT METRICS (accurate, measurable)
+    // ========================================
 
-    const reRead: EngagementItem[] = contentProgress
-      .filter((p) => p.contentType === 'article' && (p.completionCount || 0) > 1)
-      .map((p) => ({
-        contentId: p.contentId,
-        title: `Article ${p.contentId.slice(0, 8)}`,
-        count: p.completionCount || 1,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
+    // Fetch tasks for engagement metrics (last 14 days)
+    const now = new Date();
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Analyze activity patterns from progress timestamps
-    const activityDays = new Map<string, number>();
-    const activityHours = new Map<number, number>();
+    const tasksSnapshot = await adminDb
+      .collection('tasks')
+      .where('userId', '==', clientId)
+      .where('organizationId', '==', organizationId)
+      .where('date', '>=', fourteenDaysAgo.toISOString().split('T')[0])
+      .get();
 
-    contentProgress.forEach((p) => {
-      if (p.lastAccessedAt) {
-        const date = new Date(p.lastAccessedAt);
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-        const hour = date.getHours();
-
-        activityDays.set(dayName, (activityDays.get(dayName) || 0) + 1);
-        activityHours.set(hour, (activityHours.get(hour) || 0) + 1);
-      }
-    });
-
-    const mostActiveDays = Array.from(activityDays.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 2)
-      .map(([day]) => day);
-
-    const mostActiveHourEntry = Array.from(activityHours.entries()).sort(
-      (a, b) => b[1] - a[1]
-    )[0];
-    const mostActiveHours = mostActiveHourEntry
-      ? `${mostActiveHourEntry[0]}:00-${mostActiveHourEntry[0] + 1}:00`
-      : 'N/A';
-
-    // Generate pattern insight
-    let pattern: string | undefined;
-    if (reWatched.length > 0) {
-      pattern = 'Revisits foundational content before assessments';
-    } else if (mostActiveDays.length > 0) {
-      pattern = `Most active on ${mostActiveDays.join(' and ')}`;
+    interface TaskData {
+      id: string;
+      date: string;
+      status: string;
+      createdAt?: string;
+      completedAt?: string;
     }
 
-    // Get streak from userAlignmentSummary
+    const tasks: TaskData[] = tasksSnapshot.docs.map(d => ({
+      id: d.id,
+      ...d.data()
+    } as TaskData));
+
+    // Split into this week vs last week
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+    const thisWeekTasks = tasks.filter(t => t.date >= sevenDaysAgoStr);
+    const lastWeekTasks = tasks.filter(t => t.date < sevenDaysAgoStr);
+
+    // 1. Task Velocity - completed vs total this week
+    const thisWeekCompleted = thisWeekTasks.filter(t => t.status === 'completed').length;
+    const thisWeekTotal = thisWeekTasks.length;
+    const velocityRate = thisWeekTotal > 0 ? Math.round((thisWeekCompleted / thisWeekTotal) * 100) : 0;
+
+    const lastWeekCompleted = lastWeekTasks.filter(t => t.status === 'completed').length;
+    const velocityTrend: 'up' | 'down' | 'stable' =
+      thisWeekCompleted > lastWeekCompleted ? 'up' :
+      thisWeekCompleted < lastWeekCompleted ? 'down' : 'stable';
+
+    const taskVelocity: TaskVelocity = {
+      completed: thisWeekCompleted,
+      total: thisWeekTotal,
+      rate: velocityRate,
+      trend: velocityTrend,
+    };
+
+    // 2. Response Time - how quickly tasks are completed after creation
+    const completedWithTimes = tasks.filter(t =>
+      t.completedAt && t.createdAt && t.status === 'completed'
+    );
+
+    let avgResponseHours: number | null = null;
+    let sameDayCount = 0;
+
+    if (completedWithTimes.length > 0) {
+      const responseTimes = completedWithTimes.map(t => {
+        const created = new Date(t.createdAt!).getTime();
+        const completed = new Date(t.completedAt!).getTime();
+        const hours = (completed - created) / (1000 * 60 * 60);
+        if (hours < 24) sameDayCount++;
+        return hours;
+      });
+      avgResponseHours = Math.round(
+        responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length * 10
+      ) / 10;
+    }
+
+    const sameDayPercent = completedWithTimes.length > 0
+      ? Math.round((sameDayCount / completedWithTimes.length) * 100)
+      : 0;
+
+    const responseTimeBucket: ResponseTimeMetric['bucket'] =
+      avgResponseHours === null ? 'no_data' :
+      avgResponseHours < 24 ? 'same_day' :
+      avgResponseHours < 48 ? 'next_day' : 'delayed';
+
+    const responseTime: ResponseTimeMetric = {
+      avgHours: avgResponseHours,
+      sameDayPercent,
+      bucket: responseTimeBucket,
+    };
+
+    // 3. Engagement Trend - week over week comparison
+    const lastWeekTotal = lastWeekTasks.length;
+    let trendPercent = 0;
+    if (lastWeekCompleted > 0) {
+      trendPercent = Math.round(((thisWeekCompleted / lastWeekCompleted) - 1) * 100);
+    } else if (thisWeekCompleted > 0) {
+      trendPercent = 100; // Went from 0 to something
+    }
+
+    const trendDirection: EngagementTrend['direction'] =
+      trendPercent > 10 ? 'improving' :
+      trendPercent < -10 ? 'declining' : 'stable';
+
+    const engagementTrend: EngagementTrend = {
+      direction: trendDirection,
+      percentChange: trendPercent,
+      warning: trendPercent <= -30, // 30% decline triggers warning
+    };
+
+    // 4. Consistency - streak and last active date
     let currentStreak = 0;
+    let lastAlignedDate: string | null = null;
     try {
       const summaryDocId = `${organizationId}_${clientId}`;
       const summaryDoc = await adminDb.collection('userAlignmentSummary').doc(summaryDocId).get();
       if (summaryDoc.exists) {
         const summaryData = summaryDoc.data();
         currentStreak = summaryData?.currentStreak ?? 0;
+        lastAlignedDate = summaryData?.lastAlignedDate ?? null;
       }
     } catch (err) {
       console.warn('[CLIENT_DASHBOARD] Failed to fetch streak:', err);
     }
+
+    // Calculate days since last active
+    let daysSinceActive = -1;
+    if (lastAlignedDate) {
+      const lastActive = new Date(lastAlignedDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      lastActive.setHours(0, 0, 0, 0);
+      daysSinceActive = Math.floor((today.getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    const consistencyLevel: ConsistencyMetric['level'] =
+      currentStreak >= 7 ? 'high' :
+      currentStreak >= 3 ? 'moderate' :
+      daysSinceActive > 7 ? 'inactive' : 'low';
+
+    const consistency: ConsistencyMetric = {
+      currentStreak,
+      lastActiveDate: lastAlignedDate,
+      daysSinceActive,
+      level: consistencyLevel,
+    };
+
     const bestStreak = currentStreak; // Best streak would need historical tracking
 
     // Get calls (simplified - would need to query events)
@@ -542,8 +638,19 @@ export async function GET(
         });
       }
 
+      // Build a set of summary IDs that have been used to fill weeks
+      const filledFromSummaryIds = new Set<string>();
+      if (instance?.weeks) {
+        for (const week of instance.weeks) {
+          if (week.fillSource?.type === 'call_summary' && week.fillSource.sourceId) {
+            filledFromSummaryIds.add(week.fillSource.sourceId);
+          }
+        }
+      }
+
       for (const { doc, data } of eventsToProcess) {
         const hasSummary = !!(data.callSummaryId && existingSummaryIds.has(data.callSummaryId));
+        const hasFilledFromSummary = hasSummary && data.callSummaryId ? filledFromSummaryIds.has(data.callSummaryId) : false;
         pastSessions.push({
           id: doc.id,
           title: data.title || 'Coaching Call',
@@ -552,6 +659,7 @@ export async function GET(
           hasRecording: !!data.recordingUrl,
           hasSummary,
           summaryId: hasSummary ? data.callSummaryId : undefined,
+          hasFilledFromSummary,
           eventId: doc.id,
           eventType: data.eventType || 'coaching_1on1',
         });
@@ -585,11 +693,10 @@ export async function GET(
       weekProgress,
       currentWeekContent,
       engagement: {
-        reWatched,
-        reRead,
-        mostActiveDays,
-        mostActiveHours,
-        pattern,
+        taskVelocity,
+        responseTime,
+        consistency,
+        trend: engagementTrend,
       },
       upcoming,
       pastSessions,

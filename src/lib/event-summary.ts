@@ -124,7 +124,7 @@ export async function generateSummaryForEvent(
     const creditsNeeded = calculateCreditsUsed(durationSeconds);
 
     // Check credits available
-    const { available, remainingMinutes } = await checkCreditsAvailable(
+    const { available, remainingCredits } = await checkCreditsAvailable(
       organizationId,
       creditsNeeded
     );
@@ -138,7 +138,7 @@ export async function generateSummaryForEvent(
       });
       return {
         success: false,
-        error: `Insufficient credits: need ${creditsNeeded}, have ${remainingMinutes}`,
+        error: `Insufficient credits: need ${creditsNeeded}, have ${remainingCredits}`,
       };
     }
 

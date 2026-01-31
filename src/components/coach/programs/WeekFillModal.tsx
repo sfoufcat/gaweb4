@@ -621,8 +621,8 @@ export function WeekFillModal({
         (event: UnifiedEvent) => {
           // Try to match by eventId first, then by callId as fallback
           let summaryId = eventIdToSummary.get(event.id)?.id;
-          if (!summaryId && event.streamCallId) {
-            summaryId = callIdToSummary.get(event.streamCallId)?.id;
+          if (!summaryId && event.externalMeetingId) {
+            summaryId = callIdToSummary.get(event.externalMeetingId)?.id;
           }
           // Also check if event already has callSummaryId set directly
           // (this is the most reliable indicator as it's set when summary is created)
@@ -862,7 +862,13 @@ export function WeekFillModal({
       }));
 
     // Use weekContent if available (pre-generated during summary creation)
-    const weekContent = summary.weekContent || {};
+    const weekContent = (summary.weekContent || {}) as {
+      goals?: string[];
+      currentFocus?: string[];
+      notes?: string[];
+      theme?: string;
+      description?: string;
+    };
 
     return {
       tasks,

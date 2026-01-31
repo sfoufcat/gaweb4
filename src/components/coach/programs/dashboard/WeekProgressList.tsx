@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, CheckCircle, Circle, Clock } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface WeekProgressItem {
@@ -16,124 +16,130 @@ interface WeekProgressListProps {
   className?: string;
 }
 
-export function WeekProgressList({ weeks, currentWeek, className }: WeekProgressListProps) {
+export function WeekProgressList({ weeks, currentWeek = 1, className }: WeekProgressListProps) {
   if (weeks.length === 0) {
     return (
-      <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6', className)}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-            <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            Week Progress
-          </h3>
-        </div>
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            No weeks available
-          </p>
-        </div>
+      <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-5', className)}>
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] text-center py-4">
+          No program data
+        </p>
       </div>
     );
   }
 
+  const totalWeeks = weeks.length;
+  const completedWeeks = weeks.filter(w => w.status === 'completed').length;
+  const currentWeekData = weeks.find(w => w.weekNumber === currentWeek);
+  const currentWeekProgress = currentWeekData?.progressPercent ?? 0;
+
+  // Calculate if they're on track
+  // Expected: they should have completed (currentWeek - 1) weeks fully
+  // Plus some progress in current week based on day of week
+  const expectedCompletedWeeks = currentWeek - 1;
+  const isOnTrack = completedWeeks >= expectedCompletedWeeks && currentWeekProgress >= 30;
+  const isBehind = completedWeeks < expectedCompletedWeeks || (completedWeeks === expectedCompletedWeeks && currentWeekProgress < 20);
+  const isAhead = completedWeeks > expectedCompletedWeeks;
+
+  // Status config
+  const statusConfig = isAhead ? {
+    label: 'Ahead',
+    color: 'text-emerald-600 dark:text-emerald-400',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
+    borderColor: 'border-emerald-200 dark:border-emerald-800/30',
+    icon: CheckCircle2,
+    iconColor: 'text-emerald-500',
+  } : isBehind ? {
+    label: 'Behind',
+    color: 'text-amber-600 dark:text-amber-400',
+    bgColor: 'bg-amber-50 dark:bg-amber-900/20',
+    borderColor: 'border-amber-200 dark:border-amber-800/30',
+    icon: AlertCircle,
+    iconColor: 'text-amber-500',
+  } : {
+    label: 'On track',
+    color: 'text-blue-600 dark:text-blue-400',
+    bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+    borderColor: 'border-blue-200 dark:border-blue-800/30',
+    icon: Clock,
+    iconColor: 'text-blue-500',
+  };
+
+  const StatusIcon = statusConfig.icon;
+
   return (
-    <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6', className)}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-            <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+    <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-5', className)}>
+      {/* Main content - two sections side by side */}
+      <div className="flex items-stretch gap-4">
+        {/* Left: Current position */}
+        <div className="flex-1">
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] mb-1">Program Progress</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              Week {currentWeek}
+            </span>
+            <span className="text-sm text-[#8c8c8c] dark:text-[#7d8190]">
+              of {totalWeeks}
+            </span>
           </div>
-          <div>
-            <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              Week Progress
-            </h3>
-            {currentWeek && (
-              <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                Currently on Week {currentWeek}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* Week pills grid */}
-      <div className="flex flex-wrap gap-2">
-        {weeks.map((week) => {
-          const isCompleted = week.status === 'completed';
-          const isCurrent = week.status === 'current';
-          const isFuture = week.status === 'future';
-
-          return (
+          {/* Mini progress bar */}
+          <div className="mt-3 h-2 bg-[#f0ede9] dark:bg-[#262b35] rounded-full overflow-hidden">
             <div
-              key={week.weekNumber}
-              className={cn(
-                'relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 transition-all',
-                isCompleted && 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800',
-                isCurrent && 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800',
-                isFuture && 'bg-[#faf8f6] dark:bg-[#11141b] border-[#e1ddd8] dark:border-[#262b35]'
-              )}
-            >
-              {/* Status icon */}
-              <div className="absolute -top-1.5 -right-1.5">
-                {isCompleted && (
-                  <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
-                    <CheckCircle className="w-3 h-3 text-white" />
-                  </div>
-                )}
-                {isCurrent && (
-                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shadow-sm animate-pulse">
-                    <Clock className="w-3 h-3 text-white" />
-                  </div>
-                )}
-                {isFuture && (
-                  <div className="w-5 h-5 rounded-full bg-[#e1ddd8] dark:bg-[#262b35] flex items-center justify-center">
-                    <Circle className="w-3 h-3 text-[#a7a39e] dark:text-[#5f6470]" />
-                  </div>
-                )}
-              </div>
+              className="h-full bg-blue-500 rounded-full transition-all"
+              style={{ width: `${(currentWeek / totalWeeks) * 100}%` }}
+            />
+          </div>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] mt-1">
+            {completedWeeks} week{completedWeeks !== 1 ? 's' : ''} completed
+          </p>
+        </div>
 
-              {/* Week number */}
-              <span
-                className={cn(
-                  'text-sm font-bold font-albert',
-                  isCompleted && 'text-emerald-700 dark:text-emerald-400',
-                  isCurrent && 'text-blue-700 dark:text-blue-400',
-                  isFuture && 'text-[#a7a39e] dark:text-[#5f6470]'
-                )}
-              >
-                W{week.weekNumber}
-              </span>
+        {/* Divider */}
+        <div className="w-px bg-[#e1ddd8] dark:bg-[#262b35]" />
 
-              {/* Progress percent */}
-              <span
-                className={cn(
-                  'text-[10px] font-medium',
-                  isCompleted && 'text-emerald-600 dark:text-emerald-500',
-                  isCurrent && 'text-blue-600 dark:text-blue-500',
-                  isFuture && 'text-[#c4c0bc] dark:text-[#4a4f5a]'
-                )}
-              >
-                {week.progressPercent}%
+        {/* Right: Status badge + this week's progress */}
+        <div className="flex-1">
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] mb-1">This Week</p>
+
+          {/* Status badge */}
+          <div className={cn(
+            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border',
+            statusConfig.bgColor,
+            statusConfig.borderColor
+          )}>
+            <StatusIcon className={cn('w-4 h-4', statusConfig.iconColor)} />
+            <span className={cn('text-sm font-medium', statusConfig.color)}>
+              {statusConfig.label}
+            </span>
+          </div>
+
+          {/* This week's completion */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">Completion</span>
+              <span className={cn(
+                'text-sm font-medium',
+                currentWeekProgress >= 80 ? 'text-emerald-600 dark:text-emerald-400' :
+                currentWeekProgress >= 50 ? 'text-blue-600 dark:text-blue-400' :
+                currentWeekProgress >= 20 ? 'text-amber-600 dark:text-amber-400' :
+                'text-[#8c8c8c] dark:text-[#7d8190]'
+              )}>
+                {currentWeekProgress}%
               </span>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-[#f0ede9] dark:border-[#1e222a]">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-emerald-500" />
-          <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Completed</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-blue-500" />
-          <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Current</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#e1ddd8] dark:bg-[#262b35]" />
-          <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Upcoming</span>
+            <div className="h-2 bg-[#f0ede9] dark:bg-[#262b35] rounded-full overflow-hidden">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all',
+                  currentWeekProgress >= 80 ? 'bg-emerald-500' :
+                  currentWeekProgress >= 50 ? 'bg-blue-500' :
+                  currentWeekProgress >= 20 ? 'bg-amber-500' :
+                  'bg-[#c4c0bc] dark:bg-[#4a4f5a]'
+                )}
+                style={{ width: `${currentWeekProgress}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

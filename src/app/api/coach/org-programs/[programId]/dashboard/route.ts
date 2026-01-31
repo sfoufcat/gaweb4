@@ -52,6 +52,7 @@ interface PastSessionItem {
   hasRecording: boolean;
   hasSummary?: boolean;
   summaryId?: string;
+  hasFilledFromSummary?: boolean;
   eventId: string;
   eventType?: 'coaching_1on1' | 'cohort_call' | 'squad_call' | 'intake_call' | 'community_event';
 }
@@ -980,8 +981,38 @@ export async function GET(
         });
       }
 
+      // Build a set of summary IDs that have been used to fill weeks
+      const filledFromSummaryIds = new Set<string>();
+
+      // If we have a single instance loaded, check its weeks
+      if (instance?.weeks) {
+        for (const week of instance.weeks) {
+          if (week.fillSource?.type === 'call_summary' && week.fillSource.sourceId) {
+            filledFromSummaryIds.add(week.fillSource.sourceId);
+          }
+        }
+      } else if (allInstanceIds.length > 0) {
+        // For "All Clients" view, load all instances to check fillSource
+        const instanceDocs = await adminDb.getAll(
+          ...allInstanceIds.map(id => adminDb.collection('program_instances').doc(id))
+        );
+        for (const doc of instanceDocs) {
+          if (doc.exists) {
+            const instanceData = doc.data() as ProgramInstance;
+            if (instanceData.weeks) {
+              for (const week of instanceData.weeks) {
+                if (week.fillSource?.type === 'call_summary' && week.fillSource.sourceId) {
+                  filledFromSummaryIds.add(week.fillSource.sourceId);
+                }
+              }
+            }
+          }
+        }
+      }
+
       for (const { doc, data } of eventsWithSummaryId) {
         const hasSummary = !!(data.callSummaryId && existingSummaryIds.has(data.callSummaryId));
+        const hasFilledFromSummary = hasSummary && data.callSummaryId ? filledFromSummaryIds.has(data.callSummaryId) : false;
         pastSessions.push({
           id: doc.id,
           title: data.title || 'Program Session',
@@ -990,6 +1021,7 @@ export async function GET(
           hasRecording: !!data.recordingUrl,
           hasSummary,
           summaryId: hasSummary ? data.callSummaryId : undefined,
+          hasFilledFromSummary,
           eventId: doc.id,
           eventType: data.eventType || 'community_event',
         });

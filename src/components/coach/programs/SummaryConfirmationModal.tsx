@@ -24,12 +24,14 @@ interface SummaryConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  isLoading?: boolean;
 }
 
 export function SummaryConfirmationModal({
   isOpen,
   onClose,
   onConfirm,
+  isLoading,
 }: SummaryConfirmationModalProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const { data: creditsData } = useOrgCredits(isOpen);
@@ -47,10 +49,11 @@ export function SummaryConfirmationModal({
       <button
         type="button"
         onClick={onConfirm}
-        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-brand-accent text-white font-sans font-medium text-[14px] hover:bg-brand-accent/90 transition-colors"
+        disabled={isLoading}
+        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-brand-accent text-white font-sans font-medium text-[14px] hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Sparkles className="w-4 h-4" />
-        Get Summary
+        {isLoading ? 'Generating...' : 'Get Summary'}
       </button>
     </div>
   );

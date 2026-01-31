@@ -621,8 +621,30 @@ export function AdminCoursesSection({
         onCategoryChange={(cat) => updateSettingsCourse('category', cat)}
         programIds={settingsCourse?.programIds}
         onProgramIdsChange={(ids) => updateSettingsCourse('programIds', ids)}
-        pricing={settingsCourse?.pricing || { priceInCents: null, currency: 'usd', purchaseType: 'popup', isPublic: true }}
-        onPricingChange={(pricing) => updateSettingsCourse('pricing', pricing)}
+        pricing={{ priceInCents: settingsCourse?.priceInCents ?? null, currency: settingsCourse?.currency || 'usd', purchaseType: (settingsCourse?.purchaseType as 'popup' | 'landing_page') || 'popup', isPublic: settingsCourse?.isPublic !== false }}
+        onPricingChange={(pricing) => {
+          if (!settingsCourse) return;
+          const updated = {
+            ...settingsCourse,
+            priceInCents: pricing.priceInCents ?? undefined,
+            currency: pricing.currency,
+            purchaseType: pricing.purchaseType,
+            isPublic: pricing.isPublic,
+          };
+          setSettingsCourse(updated);
+          fetch(`${apiEndpoint}/${settingsCourse.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              priceInCents: pricing.priceInCents,
+              currency: pricing.currency,
+              purchaseType: pricing.purchaseType,
+              isPublic: pricing.isPublic,
+            }),
+          }).then(() => {
+            setCourses(prev => prev.map(c => c.id === settingsCourse.id ? updated : c));
+          }).catch(err => console.error('Failed to save pricing:', err));
+        }}
         featured={settingsCourse?.featured}
         onFeaturedChange={(featured) => updateSettingsCourse('featured', featured)}
         trending={settingsCourse?.trending}

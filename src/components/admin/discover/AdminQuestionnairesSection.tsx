@@ -529,7 +529,7 @@ export function AdminQuestionnairesSection({
                         <BarChart3 className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                         {(questionnaire.newResponseCount ?? 0) > 0 && (
                           <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] flex items-center justify-center px-1 text-[9px] font-medium bg-brand-accent text-white rounded-full">
-                            {questionnaire.newResponseCount > 99 ? '99+' : questionnaire.newResponseCount}
+                            {(questionnaire.newResponseCount ?? 0) > 99 ? '99+' : questionnaire.newResponseCount}
                           </span>
                         )}
                       </button>

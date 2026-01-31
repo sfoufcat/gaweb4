@@ -69,7 +69,8 @@ export async function GET(request: NextRequest) {
     const squadId = searchParams.get('squadId');
     const programId = searchParams.get('programId');
     const cohortId = searchParams.get('cohortId');
-    const status = searchParams.get('status') as EventStatus | null;
+    const statusParam = searchParams.get('status');
+    const status = statusParam === 'all' ? 'all' : (statusParam as EventStatus | null);
     const upcoming = searchParams.get('upcoming') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const includeInstances = searchParams.get('includeInstances') !== 'false';

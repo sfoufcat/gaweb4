@@ -3,7 +3,8 @@
 import type { Task } from '@/types';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface TaskSheetManageProps {
@@ -134,6 +135,9 @@ export function TaskSheetManage({
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-[500px] p-0" hideCloseButton>
+          <VisuallyHidden>
+            <DialogTitle>Manage focus</DialogTitle>
+          </VisuallyHidden>
           {/* Close button */}
           <button
             onClick={onClose}

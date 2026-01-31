@@ -149,7 +149,7 @@ export async function POST(
     const creditsNeeded = calculateCreditsUsed(durationSeconds);
 
     // Check credits available
-    const { available, remainingMinutes } = await checkCreditsAvailable(
+    const { available, remainingCredits } = await checkCreditsAvailable(
       organizationId,
       creditsNeeded
     );
@@ -159,7 +159,7 @@ export async function POST(
         {
           error: 'Insufficient credits',
           creditsRequired: creditsNeeded,
-          creditsAvailable: remainingMinutes,
+          creditsAvailable: remainingCredits,
         },
         { status: 402 }
       );

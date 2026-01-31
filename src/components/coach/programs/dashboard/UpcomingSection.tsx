@@ -22,6 +22,7 @@ export interface PastSessionItem {
   hasRecording: boolean;
   hasSummary?: boolean;
   summaryId?: string;
+  hasFilledFromSummary?: boolean;
   eventId: string;
   eventType?: 'coaching_1on1' | 'cohort_call' | 'squad_call' | 'intake_call' | 'community_event';
   onViewSummary?: () => void;
@@ -127,10 +128,10 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
         <AnimatePresence mode="wait" initial={false}>
           <motion.button
             key={showPast ? 'upcoming' : 'past'}
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.15 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={() => {
               if (showPast) {
                 setShowPast(false);
@@ -150,9 +151,9 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
         {showPast ? (
           <motion.div
             key="past"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="space-y-2"
           >
@@ -211,10 +212,13 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
                           e.stopPropagation();
                           item.onFillWeek?.();
                         }}
-                        className="p-1.5 rounded-lg bg-brand-accent/5 hover:bg-brand-accent/10 transition-colors"
-                        title="Fill week from summary"
+                        className="relative p-1.5 rounded-lg bg-brand-accent/5 hover:bg-brand-accent/10 transition-colors"
+                        title={item.hasFilledFromSummary ? "Week filled from summary" : "Fill week from summary"}
                       >
                         <Wand2 className="w-4 h-4 text-brand-accent" />
+                        {item.hasFilledFromSummary && (
+                          <Check className="w-2.5 h-2.5 text-green-500 absolute -bottom-0.5 -right-0.5" />
+                        )}
                       </button>
                     )}
 
@@ -287,9 +291,9 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
         ) : (
           <motion.div
             key="upcoming"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="space-y-2"
           >

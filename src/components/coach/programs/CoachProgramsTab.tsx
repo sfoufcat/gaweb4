@@ -5493,7 +5493,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       onSummaryGenerated={refetchCallSummaries}
                       onSummaryDeleted={refetchCallSummaries}
                       onCallScheduled={refetchEvents}
-                      onInstanceRefresh={refreshInstance}
+                      onInstanceRefresh={async () => { await refreshInstance(); }}
                       includeWeekends={selectedProgram?.includeWeekends !== false}
                       onDaysChange={async (updatedDays) => {
                         // When dayTag changes, save the updated days

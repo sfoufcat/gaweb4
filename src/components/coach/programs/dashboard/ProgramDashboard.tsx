@@ -81,11 +81,28 @@ interface ClientDashboardData {
     }>;
   };
   engagement: {
-    reWatched: Array<{ contentId: string; title: string; count: number }>;
-    reRead: Array<{ contentId: string; title: string; count: number }>;
-    mostActiveDays: string[];
-    mostActiveHours: string;
-    pattern?: string;
+    taskVelocity: {
+      completed: number;
+      total: number;
+      rate: number;
+      trend: 'up' | 'down' | 'stable';
+    };
+    responseTime: {
+      avgHours: number | null;
+      sameDayPercent: number;
+      bucket: 'same_day' | 'next_day' | 'delayed' | 'no_data';
+    };
+    consistency: {
+      currentStreak: number;
+      lastActiveDate: string | null;
+      daysSinceActive: number;
+      level: 'high' | 'moderate' | 'low' | 'inactive';
+    };
+    trend: {
+      direction: 'improving' | 'stable' | 'declining';
+      percentChange: number;
+      warning: boolean;
+    };
   };
   upcoming: UpcomingItem[];
   pastSessions?: PastSessionItem[];
@@ -441,11 +458,10 @@ export function ProgramDashboard({
               articles={clientData.currentWeekContent.articles}
             />
             <EngagementInsights
-              reWatched={clientData.engagement.reWatched}
-              reRead={clientData.engagement.reRead}
-              mostActiveDays={clientData.engagement.mostActiveDays}
-              mostActiveHours={clientData.engagement.mostActiveHours}
-              pattern={clientData.engagement.pattern}
+              taskVelocity={clientData.engagement.taskVelocity}
+              responseTime={clientData.engagement.responseTime}
+              consistency={clientData.engagement.consistency}
+              trend={clientData.engagement.trend}
             />
           </div>
         </div>
