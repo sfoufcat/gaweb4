@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 import type { QuestionnaireQuestion, SkipLogicRule, SkipLogicCondition } from '@/types/questionnaire';
 import { useState, useRef, useEffect } from 'react';
 
@@ -456,10 +456,9 @@ function TargetQuestionSelector({
                 key={q.id}
                 className="flex items-center gap-3 px-3 py-2 hover:bg-[#faf9f7] dark:hover:bg-[#1a1f28] cursor-pointer"
               >
-                <Checkbox
+                <BrandedCheckbox
                   checked={isSelected}
-                  onCheckedChange={() => onToggle(q.id)}
-                  className="border-[#e1ddd8] dark:border-[#262b35]"
+                  onChange={() => onToggle(q.id)}
                 />
                 <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                   Q{index + 1}: {q.title || 'Untitled'}

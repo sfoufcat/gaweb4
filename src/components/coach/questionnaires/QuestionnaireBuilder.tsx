@@ -372,12 +372,12 @@ export function QuestionnaireBuilder({
         />
       )}
 
-      {/* Global Skip Logic Editor Modal */}
+      {/* Global Conditional Logic Editor Modal */}
       {isDesktop ? (
         <Dialog open={showSkipLogicEditor} onOpenChange={setShowSkipLogicEditor}>
           <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto bg-white dark:bg-[#171b22] border border-[#e1ddd8]/30 dark:border-white/10 rounded-2xl shadow-2xl">
             <DialogHeader>
-              <DialogTitle className="font-albert text-lg">Skip Logic</DialogTitle>
+              <DialogTitle className="font-albert text-lg">Conditional Logic</DialogTitle>
             </DialogHeader>
             <GlobalSkipLogicEditor
               questions={questions}
@@ -391,7 +391,7 @@ export function QuestionnaireBuilder({
           <DrawerContent className="max-h-[90dvh] bg-white dark:bg-[#171b22]">
             <div className="p-4 pb-8 overflow-y-auto">
               <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
-                Skip Logic
+                Conditional Logic
               </h3>
               <GlobalSkipLogicEditor
                 questions={questions}
@@ -554,11 +554,11 @@ export function QuestionnaireBuilder({
 
               <hr className="border-[#e1ddd8] dark:border-[#262b35]" />
 
-              {/* Skip Logic */}
+              {/* Conditional Logic */}
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    Skip Logic
+                    Conditional Logic
                   </h4>
                   {skipLogicRules.length > 0 && (
                     <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
@@ -753,12 +753,12 @@ function SettingsModal({
               <Switch checked={allowMultipleResponses} onCheckedChange={setAllowMultipleResponses} />
             </div>
 
-            {/* Skip Logic */}
+            {/* Conditional Logic */}
             <div className="pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]/50">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    Skip Logic
+                    Conditional Logic
                   </h4>
                   {skipLogicRules.length > 0 && (
                     <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
