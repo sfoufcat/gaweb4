@@ -1,20 +1,21 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  FileText, 
-  Heart, 
-  MessageCircle, 
-  Users, 
+import {
+  FileText,
+  Heart,
+  Users,
   Calendar,
   TrendingUp,
   AlertCircle,
   ChevronDown,
-  ArrowUpDown,
   Eye,
 } from 'lucide-react';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateDemoFeedAnalytics } from '@/lib/demo-data';
+import { ExpandableSearch } from '@/components/ui/expandable-search';
+import { AnalyticsDateDropdown } from './AnalyticsDateDropdown';
+import { AnalyticsSortDropdown, type SortDirection } from './AnalyticsSortDropdown';
 
 interface PosterStats {
   userId: string;
@@ -46,11 +47,16 @@ interface FeedAnalyticsTabProps {
 }
 
 type SortField = 'postCount' | 'lastPostAt' | 'totalEngagement';
-type SortDirection = 'asc' | 'desc';
+
+const SORT_OPTIONS: { value: SortField; label: string }[] = [
+  { value: 'postCount', label: 'Posts' },
+  { value: 'lastPostAt', label: 'Date' },
+  { value: 'totalEngagement', label: 'Engagement' },
+];
 
 export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedAnalyticsTabProps) {
   const { isDemoMode } = useDemoMode();
-  
+
   const [posters, setPosters] = useState<PosterStats[]>([]);
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
   const [summary, setSummary] = useState<FeedSummary>({
@@ -68,7 +74,8 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
   const [sortField, setSortField] = useState<SortField>('postCount');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [days, setDays] = useState(30);
-  
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Demo data (memoized)
   const demoData = useMemo(() => generateDemoFeedAnalytics(), []);
 
@@ -78,7 +85,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
       setLoading(false);
       return;
     }
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -110,7 +117,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
       setLoading(false);
     }
   }, [apiBasePath, days, isDemoMode]);
-  
+
   // Use demo data when in demo mode
   const displayPosters: PosterStats[] = useMemo(() => {
     if (isDemoMode) {
@@ -118,14 +125,14 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
     }
     return posters;
   }, [isDemoMode, demoData.posters, posters]);
-  
+
   const displayDailyStats: DailyStats[] = useMemo(() => {
     if (isDemoMode) {
       return demoData.dailyStats;
     }
     return dailyStats;
   }, [isDemoMode, demoData.dailyStats, dailyStats]);
-  
+
   const displaySummary: FeedSummary = useMemo(() => {
     if (isDemoMode) {
       return demoData.summary;
@@ -137,18 +144,24 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
     fetchFeedStats();
   }, [fetchFeedStats]);
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
+  const handleSortChange = (field: SortField, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
   };
 
-  const sortedPosters = [...displayPosters].sort((a, b) => {
+  // Filter posters by search query
+  const filteredPosters = useMemo(() => {
+    if (!searchQuery) return displayPosters;
+    const query = searchQuery.toLowerCase();
+    return displayPosters.filter(poster =>
+      poster.name.toLowerCase().includes(query) ||
+      poster.email.toLowerCase().includes(query)
+    );
+  }, [displayPosters, searchQuery]);
+
+  const sortedPosters = [...filteredPosters].sort((a, b) => {
     let comparison = 0;
-    
+
     switch (sortField) {
       case 'postCount':
         comparison = a.postCount - b.postCount;
@@ -162,7 +175,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
         comparison = a.totalEngagement - b.totalEngagement;
         break;
     }
-    
+
     return sortDirection === 'asc' ? comparison : -comparison;
   });
 
@@ -171,7 +184,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
     const date = new Date(dateStr);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -209,23 +222,18 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
         </div>
       )}
 
-      {/* Period Selector */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header with Controls */}
+      <div className="flex items-center justify-between gap-4 mb-4">
         <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
           Feed Analytics
         </h3>
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-[#5f5a55]" />
-          <select
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-            className="px-3 py-1.5 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-albert"
-          >
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={60}>Last 60 days</option>
-            <option value={90}>Last 90 days</option>
-          </select>
+          <ExpandableSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search posters..."
+          />
+          <AnalyticsDateDropdown value={days} onChange={setDays} />
         </div>
       </div>
 
@@ -243,10 +251,10 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
           </div>
         </div>
       )}
-      
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="w-5 h-5 text-brand-accent" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Posts</span>
@@ -257,7 +265,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">In period</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5 text-emerald-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Engagement</span>
@@ -270,7 +278,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
           </p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-blue-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Active Posters</span>
@@ -281,7 +289,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Members posting</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Heart className="w-5 h-5 text-red-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Avg Engagement</span>
@@ -296,76 +304,49 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
       {/* Sections */}
       <div className="space-y-4">
         {/* Top Posters Section */}
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl overflow-hidden">
           <button
             onClick={() => setExpandedSection(expandedSection === 'posters' ? null : 'posters')}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#faf8f6]/50 dark:hover:bg-[#1a1f2a]/50 transition-colors"
           >
             <div className="flex items-center gap-3">
               <Users className="w-5 h-5 text-brand-accent" />
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Top Posters</h3>
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({displayPosters.length})</span>
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({filteredPosters.length})</span>
             </div>
             <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'posters' ? 'rotate-180' : ''}`} />
           </button>
-          
-          <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
+
+          <div className={`border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 overflow-hidden transition-all duration-200 ease-out ${
             expandedSection === 'posters' ? 'max-h-[600px] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0'
           }`}>
-            {displayPosters.length === 0 ? (
+            {filteredPosters.length === 0 ? (
               <div className="px-4 py-8 text-center text-[#5f5a55] dark:text-[#b2b6c2]">
-                No posts in this period
+                {searchQuery ? 'No posters match your search' : 'No posts in this period'}
               </div>
             ) : (
               <>
-                {/* Sort Controls */}
-                <div className="px-4 py-2 bg-[#faf8f6] dark:bg-[#11141b] border-b border-[#e1ddd8] dark:border-[#262b35] flex gap-2">
-                  <button
-                    onClick={() => handleSort('postCount')}
-                    className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
-                      sortField === 'postCount' 
-                        ? 'bg-brand-accent text-white' 
-                        : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
-                    }`}
-                  >
-                    <ArrowUpDown className="w-3 h-3" />
-                    Posts
-                  </button>
-                  <button
-                    onClick={() => handleSort('lastPostAt')}
-                    className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
-                      sortField === 'lastPostAt' 
-                        ? 'bg-brand-accent text-white' 
-                        : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
-                    }`}
-                  >
-                    <ArrowUpDown className="w-3 h-3" />
-                    Date
-                  </button>
-                  <button
-                    onClick={() => handleSort('totalEngagement')}
-                    className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
-                      sortField === 'totalEngagement' 
-                        ? 'bg-brand-accent text-white' 
-                        : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
-                    }`}
-                  >
-                    <ArrowUpDown className="w-3 h-3" />
-                    Engagement
-                  </button>
+                {/* Sort Dropdown */}
+                <div className="px-4 py-2 bg-[#faf8f6]/50 dark:bg-[#11141b]/50 border-b border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex justify-end">
+                  <AnalyticsSortDropdown
+                    options={SORT_OPTIONS}
+                    value={sortField}
+                    direction={sortDirection}
+                    onChange={handleSortChange}
+                  />
                 </div>
 
-                <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-                  {sortedPosters.map((poster, index) => (
-                    <div 
-                      key={poster.userId} 
-                      className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+                <div className="divide-y divide-[#e1ddd8]/40 dark:divide-[#262b35]/40">
+                  {sortedPosters.map((poster) => (
+                    <div
+                      key={poster.userId}
+                      className="px-4 py-3 hover:bg-[#faf8f6]/50 dark:hover:bg-[#1a1f2a]/50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           {poster.avatarUrl ? (
-                            <img 
-                              src={poster.avatarUrl} 
+                            <img
+                              src={poster.avatarUrl}
                               alt={poster.name}
                               className="w-8 h-8 rounded-full object-cover"
                             />
@@ -398,10 +379,10 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
         </div>
 
         {/* Daily Activity Section */}
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl overflow-hidden">
           <button
             onClick={() => setExpandedSection(expandedSection === 'daily' ? null : 'daily')}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#faf8f6]/50 dark:hover:bg-[#1a1f2a]/50 transition-colors"
           >
             <div className="flex items-center gap-3">
               <Calendar className="w-5 h-5 text-blue-500" />
@@ -410,8 +391,8 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
             </div>
             <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'daily' ? 'rotate-180' : ''}`} />
           </button>
-          
-          <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
+
+          <div className={`border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 overflow-hidden transition-all duration-200 ease-out ${
             expandedSection === 'daily' ? 'max-h-[600px] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0'
           }`}>
             {displayDailyStats.length === 0 ? (
@@ -419,11 +400,11 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
                 No activity data available
               </div>
             ) : (
-              <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-                {displayDailyStats.map((day, index) => (
-                  <div 
-                    key={day.date} 
-                    className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+              <div className="divide-y divide-[#e1ddd8]/40 dark:divide-[#262b35]/40">
+                {displayDailyStats.map((day) => (
+                  <div
+                    key={day.date}
+                    className="px-4 py-3 hover:bg-[#faf8f6]/50 dark:hover:bg-[#1a1f2a]/50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -444,12 +425,12 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
                           </p>
                         </div>
                       </div>
-                      {/* Simple bar visualization */}
-                      <div className="w-24 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                        <div 
+                      {/* Progress bar */}
+                      <div className="w-24 h-2 bg-[#e1ddd8]/60 dark:bg-[#262b35]/60 rounded-full overflow-hidden">
+                        <div
                           className="h-full bg-brand-accent rounded-full transition-all duration-300"
-                          style={{ 
-                            width: `${Math.min(100, (day.postCount / Math.max(1, Math.max(...displayDailyStats.map(d => d.postCount)))) * 100)}%` 
+                          style={{
+                            width: `${Math.min(100, (day.postCount / Math.max(1, Math.max(...displayDailyStats.map(d => d.postCount)))) * 100)}%`
                           }}
                         />
                       </div>
@@ -464,4 +445,3 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
     </div>
   );
 }
-

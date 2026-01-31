@@ -10,7 +10,9 @@ import {
 } from '@/components/ui/select';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import type { QuestionnaireQuestion, SkipLogicRule, SkipLogicCondition } from '@/types/questionnaire';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface GlobalSkipLogicEditorProps {
   questions: QuestionnaireQuestion[];
@@ -382,7 +384,7 @@ export function GlobalSkipLogicEditor({
   );
 }
 
-// Multi-select dropdown for target questions
+// Multi-select dropdown for target questions with portal and auto-flip
 function TargetQuestionSelector({
   questions,
   allQuestions,
@@ -397,21 +399,70 @@ function TargetQuestionSelector({
   getQuestionLabel: (id: string, truncate?: boolean) => string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [flipUp, setFlipUp] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Calculate position and determine if should flip
+  useLayoutEffect(() => {
+    if (!isOpen || !triggerRef.current) return;
+
+    const updatePosition = () => {
+      const rect = triggerRef.current!.getBoundingClientRect();
+      const dropdownHeight = 240; // max-h-60 = 15rem = 240px
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const shouldFlip = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+
+      setFlipUp(shouldFlip);
+      setPosition({
+        top: shouldFlip ? rect.top - 4 : rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [isOpen]);
 
   // Close on outside click
   useEffect(() => {
+    if (!isOpen) return;
+
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        triggerRef.current && !triggerRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setIsOpen(false);
+    }
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={triggerRef}>
       {/* Selected tags display */}
       <div
         onClick={() => setIsOpen(!isOpen)}
@@ -445,28 +496,48 @@ function TargetQuestionSelector({
         )}
       </div>
 
-      {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute z-50 mt-1 w-full max-h-60 overflow-auto bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
-          {questions.map(q => {
-            const isSelected = selectedIds.includes(q.id);
-            const index = allQuestions.indexOf(q);
-            return (
-              <label
-                key={q.id}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-[#faf9f7] dark:hover:bg-[#1a1f28] cursor-pointer"
-              >
-                <BrandedCheckbox
-                  checked={isSelected}
-                  onChange={() => onToggle(q.id)}
-                />
-                <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  Q{index + 1}: {q.title || 'Untitled'}
-                </span>
-              </label>
-            );
-          })}
-        </div>
+      {/* Dropdown via portal */}
+      {typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              ref={dropdownRef}
+              initial={{ opacity: 0, scale: 0.95, y: flipUp ? 8 : -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: flipUp ? 8 : -8 }}
+              transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+              style={{
+                position: 'fixed',
+                top: flipUp ? 'auto' : position.top,
+                bottom: flipUp ? window.innerHeight - position.top : 'auto',
+                left: position.left,
+                width: position.width,
+                transformOrigin: flipUp ? 'bottom' : 'top',
+              }}
+              className="z-[9999] max-h-60 overflow-auto bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-xl"
+            >
+              {questions.map(q => {
+                const isSelected = selectedIds.includes(q.id);
+                const index = allQuestions.indexOf(q);
+                return (
+                  <label
+                    key={q.id}
+                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#faf9f7] dark:hover:bg-[#1a1f28] cursor-pointer transition-colors"
+                  >
+                    <BrandedCheckbox
+                      checked={isSelected}
+                      onChange={() => onToggle(q.id)}
+                    />
+                    <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      Q{index + 1}: {q.title || 'Untitled'}
+                    </span>
+                  </label>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
     </div>
   );

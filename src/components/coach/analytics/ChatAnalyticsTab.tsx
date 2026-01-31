@@ -8,7 +8,6 @@ import {
   TrendingUp,
   AlertCircle,
   ChevronDown,
-  ArrowUpDown,
   Hash,
   Eye,
   Megaphone,
@@ -18,6 +17,9 @@ import {
 } from 'lucide-react';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateDemoChatAnalytics } from '@/lib/demo-data';
+import { ExpandableSearch } from '@/components/ui/expandable-search';
+import { AnalyticsDateDropdown } from './AnalyticsDateDropdown';
+import { AnalyticsSortDropdown, type SortDirection } from './AnalyticsSortDropdown';
 
 interface ChannelStats {
   channelId: string;
@@ -31,10 +33,9 @@ interface ChannelStats {
   lastMessageAt: string | null;
   createdAt: string | null;
   image?: string;
-  icon?: string; // Icon identifier for org channels (e.g., 'megaphone', 'chat', 'sparkles')
+  icon?: string;
 }
 
-// Map icon string identifiers to Lucide icons
 const CHANNEL_ICON_MAP: Record<string, LucideIcon> = {
   megaphone: Megaphone,
   chat: MessageSquare,
@@ -101,11 +102,16 @@ interface ChatAnalyticsTabProps {
 }
 
 type SortField = 'messageCount' | 'lastMessageAt' | 'memberCount';
-type SortDirection = 'asc' | 'desc';
+
+const SORT_OPTIONS: { value: SortField; label: string }[] = [
+  { value: 'messageCount', label: 'Messages' },
+  { value: 'lastMessageAt', label: 'Last Active' },
+  { value: 'memberCount', label: 'Members' },
+];
 
 export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatAnalyticsTabProps) {
   const { isDemoMode } = useDemoMode();
-  
+
   const [channels, setChannels] = useState<ChannelStats[]>([]);
   const [dailyStats, setDailyStats] = useState<DailyChatStats[]>([]);
   const [summary, setSummary] = useState<ChatSummary>({
@@ -122,17 +128,16 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
   const [sortField, setSortField] = useState<SortField>('messageCount');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [days, setDays] = useState(30);
-  
-  // Demo data (memoized)
+  const [searchQuery, setSearchQuery] = useState('');
+
   const demoData = useMemo(() => generateDemoChatAnalytics(), []);
 
   const fetchChatStats = useCallback(async () => {
-    // Skip API call in demo mode
     if (isDemoMode) {
       setLoading(false);
       return;
     }
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -167,22 +172,21 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
   useEffect(() => {
     fetchChatStats();
   }, [fetchChatStats]);
-  
-  // Use demo data when in demo mode
+
   const displayChannels: ChannelStats[] = useMemo(() => {
     if (isDemoMode) {
       return demoData.channels;
     }
     return channels;
   }, [isDemoMode, demoData.channels, channels]);
-  
+
   const displayDailyStats: DailyChatStats[] = useMemo(() => {
     if (isDemoMode) {
       return demoData.dailyStats;
     }
     return dailyStats;
   }, [isDemoMode, demoData.dailyStats, dailyStats]);
-  
+
   const displaySummary: ChatSummary = useMemo(() => {
     if (isDemoMode) {
       return demoData.summary;
@@ -190,18 +194,24 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
     return summary;
   }, [isDemoMode, demoData.summary, summary]);
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
+  const handleSortChange = (field: SortField, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
   };
 
-  const sortedChannels = [...displayChannels].sort((a, b) => {
+  // Filter channels by search
+  const filteredChannels = useMemo(() => {
+    if (!searchQuery) return displayChannels;
+    const query = searchQuery.toLowerCase();
+    return displayChannels.filter(channel =>
+      channel.name.toLowerCase().includes(query) ||
+      channel.squadName?.toLowerCase().includes(query)
+    );
+  }, [displayChannels, searchQuery]);
+
+  const sortedChannels = [...filteredChannels].sort((a, b) => {
     let comparison = 0;
-    
+
     switch (sortField) {
       case 'messageCount':
         comparison = a.messageCount - b.messageCount;
@@ -215,7 +225,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
         comparison = a.memberCount - b.memberCount;
         break;
     }
-    
+
     return sortDirection === 'asc' ? comparison : -comparison;
   });
 
@@ -224,7 +234,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
     const date = new Date(dateStr);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -262,23 +272,18 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
         </div>
       )}
 
-      {/* Period Selector */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header with Controls */}
+      <div className="flex items-center justify-between gap-4 mb-4">
         <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
           Chat Analytics
         </h3>
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-[#5f5a55]" />
-          <select
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-            className="px-3 py-1.5 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-albert"
-          >
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={60}>Last 60 days</option>
-            <option value={90}>Last 90 days</option>
-          </select>
+          <ExpandableSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search channels..."
+          />
+          <AnalyticsDateDropdown value={days} onChange={setDays} />
         </div>
       </div>
 
@@ -296,10 +301,10 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
           </div>
         </div>
       )}
-      
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Hash className="w-5 h-5 text-brand-accent" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Channels</span>
@@ -310,7 +315,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{displaySummary.squadChannels} squad chats</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5 text-emerald-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Active</span>
@@ -321,7 +326,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">With messages</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <MessageCircle className="w-5 h-5 text-blue-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Messages</span>
@@ -332,7 +337,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Total in channels</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 ">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-purple-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Avg Messages</span>
@@ -347,70 +352,43 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
       {/* Sections */}
       <div className="space-y-4">
         {/* Channels Section */}
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl overflow-hidden">
           <button
             onClick={() => setExpandedSection(expandedSection === 'channels' ? null : 'channels')}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#faf8f6]/50 dark:hover:bg-[#1a1f2a]/50 transition-colors"
           >
             <div className="flex items-center gap-3">
               <Hash className="w-5 h-5 text-brand-accent" />
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Chat Channels</h3>
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({displayChannels.length})</span>
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({filteredChannels.length})</span>
             </div>
             <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'channels' ? 'rotate-180' : ''}`} />
           </button>
-          
-          <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
+
+          <div className={`border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 overflow-hidden transition-all duration-200 ease-out ${
             expandedSection === 'channels' ? 'max-h-[600px] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0'
           }`}>
-            {displayChannels.length === 0 ? (
+            {filteredChannels.length === 0 ? (
               <div className="px-4 py-8 text-center text-[#5f5a55] dark:text-[#b2b6c2]">
-                No chat channels found
+                {searchQuery ? 'No channels match your search' : 'No chat channels found'}
               </div>
             ) : (
               <>
-                {/* Sort Controls */}
-                <div className="px-4 py-2 bg-[#faf8f6] dark:bg-[#11141b] border-b border-[#e1ddd8] dark:border-[#262b35] flex gap-2">
-                  <button
-                    onClick={() => handleSort('messageCount')}
-                    className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
-                      sortField === 'messageCount' 
-                        ? 'bg-brand-accent text-white' 
-                        : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
-                    }`}
-                  >
-                    <ArrowUpDown className="w-3 h-3" />
-                    Messages
-                  </button>
-                  <button
-                    onClick={() => handleSort('lastMessageAt')}
-                    className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
-                      sortField === 'lastMessageAt' 
-                        ? 'bg-brand-accent text-white' 
-                        : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
-                    }`}
-                  >
-                    <ArrowUpDown className="w-3 h-3" />
-                    Last Active
-                  </button>
-                  <button
-                    onClick={() => handleSort('memberCount')}
-                    className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
-                      sortField === 'memberCount' 
-                        ? 'bg-brand-accent text-white' 
-                        : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
-                    }`}
-                  >
-                    <ArrowUpDown className="w-3 h-3" />
-                    Members
-                  </button>
+                {/* Sort Dropdown */}
+                <div className="px-4 py-2 bg-[#faf8f6]/50 dark:bg-[#11141b]/50 border-b border-[#e1ddd8]/40 dark:border-[#262b35]/40 flex justify-end">
+                  <AnalyticsSortDropdown
+                    options={SORT_OPTIONS}
+                    value={sortField}
+                    direction={sortDirection}
+                    onChange={handleSortChange}
+                  />
                 </div>
 
-                <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-                  {sortedChannels.map((channel, index) => (
+                <div className="divide-y divide-[#e1ddd8]/40 dark:divide-[#262b35]/40">
+                  {sortedChannels.map((channel) => (
                     <div
                       key={channel.channelId}
-                      className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+                      className="px-4 py-3 hover:bg-[#faf8f6]/50 dark:hover:bg-[#1a1f2a]/50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -418,15 +396,14 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
                             <img
                               src={channel.image}
                               alt={channel.name}
-                              className="w-10 h-10 rounded-lg object-cover"
+                              className="w-10 h-10 rounded-full object-cover"
                             />
                           ) : (() => {
-                            // Get the appropriate icon component
                             const IconComponent = channel.icon
                               ? CHANNEL_ICON_MAP[channel.icon] || Hash
                               : Hash;
                             return (
-                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center text-white">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center text-white">
                                 <IconComponent className="w-5 h-5" />
                               </div>
                             );
@@ -462,10 +439,10 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
         </div>
 
         {/* Daily Activity Section */}
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-xl overflow-hidden">
           <button
             onClick={() => setExpandedSection(expandedSection === 'daily' ? null : 'daily')}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#faf8f6]/50 dark:hover:bg-[#1a1f2a]/50 transition-colors"
           >
             <div className="flex items-center gap-3">
               <Calendar className="w-5 h-5 text-blue-500" />
@@ -474,8 +451,8 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
             </div>
             <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'daily' ? 'rotate-180' : ''}`} />
           </button>
-          
-          <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
+
+          <div className={`border-t border-[#e1ddd8]/40 dark:border-[#262b35]/40 overflow-hidden transition-all duration-200 ease-out ${
             expandedSection === 'daily' ? 'max-h-[600px] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0'
           }`}>
             {displayDailyStats.length === 0 ? (
@@ -483,11 +460,11 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
                 No activity data available
               </div>
             ) : (
-              <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-                {displayDailyStats.map((day, index) => (
-                  <div 
-                    key={day.date} 
-                    className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+              <div className="divide-y divide-[#e1ddd8]/40 dark:divide-[#262b35]/40">
+                {displayDailyStats.map((day) => (
+                  <div
+                    key={day.date}
+                    className="px-4 py-3 hover:bg-[#faf8f6]/50 dark:hover:bg-[#1a1f2a]/50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -508,12 +485,12 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
                           </p>
                         </div>
                       </div>
-                      {/* Simple bar visualization */}
-                      <div className="w-24 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                          style={{ 
-                            width: `${Math.min(100, (day.activeChannels / Math.max(1, Math.max(...displayDailyStats.map(d => d.activeChannels)))) * 100)}%` 
+                      {/* Progress bar */}
+                      <div className="w-24 h-2 bg-[#e1ddd8]/60 dark:bg-[#262b35]/60 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand-accent rounded-full transition-all duration-300"
+                          style={{
+                            width: `${Math.min(100, (day.activeChannels / Math.max(1, Math.max(...displayDailyStats.map(d => d.activeChannels)))) * 100)}%`
                           }}
                         />
                       </div>
@@ -528,4 +505,3 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
     </div>
   );
 }
-

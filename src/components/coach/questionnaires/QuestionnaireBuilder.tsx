@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls, motion, AnimatePresence } from 'framer-motion';
 import { Plus, GripVertical, ArrowLeft, Settings, Copy, Check, Send, X, CheckCircle2, BarChart3, ImagePlus, Trash2, ChevronRight } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { QuestionEditor } from './QuestionEditor';
@@ -390,9 +390,9 @@ export function QuestionnaireBuilder({
         <Drawer open={showSkipLogicEditor} onOpenChange={setShowSkipLogicEditor}>
           <DrawerContent className="max-h-[90dvh] bg-white dark:bg-[#171b22]">
             <div className="p-4 pb-8 overflow-y-auto">
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
+              <DrawerTitle className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
                 Conditional Logic
-              </h3>
+              </DrawerTitle>
               <GlobalSkipLogicEditor
                 questions={questions}
                 rules={skipLogicRules}
