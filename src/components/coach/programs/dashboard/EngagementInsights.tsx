@@ -31,18 +31,24 @@ interface EngagementTrend {
 }
 
 interface EngagementInsightsProps {
-  taskVelocity: TaskVelocity;
-  responseTime: ResponseTimeMetric;
-  consistency: ConsistencyMetric;
-  trend: EngagementTrend;
+  taskVelocity?: TaskVelocity;
+  responseTime?: ResponseTimeMetric;
+  consistency?: ConsistencyMetric;
+  trend?: EngagementTrend;
   className?: string;
 }
 
+// Default values for when data is missing
+const defaultTaskVelocity: TaskVelocity = { completed: 0, total: 0, rate: 0, trend: 'stable' };
+const defaultResponseTime: ResponseTimeMetric = { avgHours: null, sameDayPercent: 0, bucket: 'no_data' };
+const defaultConsistency: ConsistencyMetric = { currentStreak: 0, lastActiveDate: null, daysSinceActive: -1, level: 'inactive' };
+const defaultTrend: EngagementTrend = { direction: 'stable', percentChange: 0, warning: false };
+
 export function EngagementInsights({
-  taskVelocity,
-  responseTime,
-  consistency,
-  trend,
+  taskVelocity = defaultTaskVelocity,
+  responseTime = defaultResponseTime,
+  consistency = defaultConsistency,
+  trend = defaultTrend,
   className,
 }: EngagementInsightsProps) {
   // Format response time display
