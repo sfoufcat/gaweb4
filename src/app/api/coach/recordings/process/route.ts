@@ -15,10 +15,10 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { transcribeCallWithGroq, checkCreditsAvailable, deductCredits, refundCredits } from '@/lib/platform-transcription';
-import { processCallSummary } from '@/lib/ai/call-summary';
+import { processCallSummary, autoFillWeekFromSummary } from '@/lib/ai/call-summary';
 import { extractTextFromPdfBuffer } from '@/lib/pdf-extraction';
 import { uploadToBunnyStorage } from '@/lib/bunny-storage';
-import type { UserRole, OrgRole, ClerkPublicMetadata, UploadedRecording } from '@/types';
+import type { UserRole, OrgRole, ClerkPublicMetadata, UploadedRecording, Program, ProgramEnrollment, ProgramInstance } from '@/types';
 
 // Helper to check if file is a PDF
 const isPdf = (fileName: string): boolean => fileName.toLowerCase().endsWith('.pdf');
@@ -397,6 +397,17 @@ async function processRecording(
       await linkSummaryToEvent(eventId, summaryResult.summaryId);
     }
 
+    // Check if program has autoGenerateSummary enabled - if so, auto-fill week
+    if (programId && summaryResult.summaryId) {
+      await tryAutoFillFromProgramSetting(
+        orgId,
+        programId,
+        programEnrollmentId,
+        cohortContext,
+        summaryResult.summaryId
+      );
+    }
+
     console.log(`[RECORDING_PROCESS] Completed processing ${recordingId}`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -569,6 +580,17 @@ async function processPdfUpload(
       await linkSummaryToEvent(eventId, summaryResult.summaryId);
     }
 
+    // Check if program has autoGenerateSummary enabled - if so, auto-fill week
+    if (programId && summaryResult.summaryId) {
+      await tryAutoFillFromProgramSetting(
+        orgId,
+        programId,
+        programEnrollmentId,
+        cohortContext,
+        summaryResult.summaryId
+      );
+    }
+
     console.log(`[RECORDING_PROCESS] Completed processing PDF ${recordingId}`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -674,5 +696,137 @@ async function linkSummaryToEvent(
   } catch (error) {
     console.error(`[RECORDING_PROCESS] Failed to link summary to event:`, error);
     // Don't throw - the summary was still created successfully
+  }
+}
+
+/**
+ * Check if program has autoGenerateSummary enabled and trigger auto-fill if so
+ */
+async function tryAutoFillFromProgramSetting(
+  orgId: string,
+  programId: string,
+  enrollmentId: string | null,
+  cohortContext: CohortContext | null,
+  summaryId: string
+): Promise<void> {
+  try {
+    // Check program setting
+    const programDoc = await adminDb.collection('programs').doc(programId).get();
+    const program = programDoc.data() as Program | undefined;
+
+    if (!program?.autoGenerateSummary) {
+      return; // Auto-fill not enabled for this program
+    }
+
+    console.log(`[RECORDING_PROCESS] Program ${programId} has autoGenerateSummary enabled, triggering auto-fill`);
+
+    // Find the instance ID
+    let instanceId: string | undefined;
+    let enrollment: ProgramEnrollment | undefined;
+
+    if (enrollmentId) {
+      // Individual program - find instance by enrollment
+      const enrollmentDoc = await adminDb.collection('program_enrollments').doc(enrollmentId).get();
+      if (enrollmentDoc.exists) {
+        enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+      }
+
+      const instanceQuery = await adminDb
+        .collection('program_instances')
+        .where('enrollmentId', '==', enrollmentId)
+        .where('programId', '==', programId)
+        .limit(1)
+        .get();
+
+      if (!instanceQuery.empty) {
+        instanceId = instanceQuery.docs[0].id;
+      }
+    } else if (cohortContext?.cohortId) {
+      // Group program - find instance by cohort
+      const instanceQuery = await adminDb
+        .collection('program_instances')
+        .where('cohortId', '==', cohortContext.cohortId)
+        .where('programId', '==', programId)
+        .limit(1)
+        .get();
+
+      if (!instanceQuery.empty) {
+        instanceId = instanceQuery.docs[0].id;
+      }
+    }
+
+    if (!instanceId) {
+      console.log(`[RECORDING_PROCESS] No instance found for auto-fill`);
+      return;
+    }
+
+    // Get instance to determine current week
+    const instanceDoc = await adminDb.collection('program_instances').doc(instanceId).get();
+    const instance = instanceDoc.data() as ProgramInstance | undefined;
+
+    // Calculate current week index based on enrollment start date
+    let weekIndex = 0;
+    if (enrollment?.startedAt) {
+      const startDate = new Date(enrollment.startedAt);
+      const now = new Date();
+      const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      weekIndex = Math.floor(daysSinceStart / 7);
+      // Clamp to valid range
+      if (instance?.weeks) {
+        weekIndex = Math.min(weekIndex, instance.weeks.length - 1);
+        weekIndex = Math.max(weekIndex, 0);
+      }
+    }
+
+    // Determine auto-fill target
+    // Rules:
+    // 1. If next call exists → fill until next call
+    // 2. If no next call → day-of-week logic: Mon-Wed = current week, Thu-Fri = next week
+    let autoFillTarget: 'current' | 'next' | 'until_call' = 'until_call';
+
+    // Check if there's a next call scheduled
+    const now = new Date();
+    const nextCallQuery = await adminDb
+      .collection('events')
+      .where('programId', '==', programId)
+      .where('startDateTime', '>', now.toISOString())
+      .where('status', '==', 'confirmed')
+      .orderBy('startDateTime', 'asc')
+      .limit(1)
+      .get();
+
+    if (nextCallQuery.empty) {
+      // No next call - use day-of-week logic
+      const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+      autoFillTarget =
+        dayOfWeek >= 4 && dayOfWeek <= 5 ? 'next' : // Thu-Fri
+        'current'; // Mon-Wed and weekends default to current
+      console.log(`[RECORDING_PROCESS] No next call found, using day-of-week logic: ${autoFillTarget}`);
+    } else {
+      console.log(`[RECORDING_PROCESS] Next call found, using until_call target`);
+    }
+
+    // Trigger auto-fill
+    const fillResult = await autoFillWeekFromSummary(
+      orgId,
+      summaryId,
+      {
+        programId,
+        instanceId,
+        weekIndex,
+        autoFillTarget,
+        cohortId: cohortContext?.cohortId,
+        enrollment,
+      }
+    );
+
+    if (fillResult.success) {
+      console.log(`[RECORDING_PROCESS] Auto-filled ${fillResult.daysUpdated} days, ${fillResult.weeksUpdated} weeks from summary ${summaryId}`);
+    } else {
+      console.error(`[RECORDING_PROCESS] Auto-fill failed:`, fillResult.error);
+    }
+  } catch (error) {
+    console.error(`[RECORDING_PROCESS] Error in tryAutoFillFromProgramSetting:`, error);
+    // Don't throw - auto-fill is a secondary operation
   }
 }

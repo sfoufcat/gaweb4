@@ -231,7 +231,24 @@ async function fetchEventRecording(event: UnifiedEvent): Promise<ProcessingResul
   console.log(`[CRON_RECORDINGS] Saved recording URL for event ${eventId}`);
 
   // Check if auto-summary generation is enabled
-  if (event.autoGenerateSummary) {
+  // Priority: event-level setting > program-level setting
+  let shouldAutoGenerate = event.autoGenerateSummary;
+
+  // If not set on event, check program-level setting
+  if (shouldAutoGenerate === undefined && event.programId) {
+    try {
+      const programDoc = await adminDb.collection('programs').doc(event.programId).get();
+      const program = programDoc.data();
+      if (program?.autoGenerateSummary) {
+        shouldAutoGenerate = true;
+        console.log(`[CRON_RECORDINGS] Program-level autoGenerateSummary enabled for event ${eventId}`);
+      }
+    } catch (err) {
+      console.error(`[CRON_RECORDINGS] Error checking program settings:`, err);
+    }
+  }
+
+  if (shouldAutoGenerate) {
     console.log(`[CRON_RECORDINGS] Auto-summary enabled for event ${eventId}, triggering generation`);
     const summaryResult = await generateSummaryForEvent(eventId, true);
     return {

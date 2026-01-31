@@ -209,8 +209,24 @@ export async function generateSummaryForEvent(
 
       console.log(`[GENERATE_SUMMARY] Successfully generated summary for event ${eventId}`);
 
-      // Auto-fill week from summary if enabled
-      if (event.autoFillWeek && event.instanceId && event.programId) {
+      // Auto-fill week from summary if enabled (event-level or program-level setting)
+      let shouldAutoFill = event.autoFillWeek;
+
+      // Check program-level autoGenerateSummary (which also enables auto-fill)
+      if (!shouldAutoFill && event.programId) {
+        try {
+          const programDoc = await adminDb.collection('programs').doc(event.programId).get();
+          const program = programDoc.data();
+          if (program?.autoGenerateSummary) {
+            shouldAutoFill = true;
+            console.log(`[GENERATE_SUMMARY] Program-level autoGenerateSummary enables auto-fill for event ${eventId}`);
+          }
+        } catch (err) {
+          console.error(`[GENERATE_SUMMARY] Error checking program settings:`, err);
+        }
+      }
+
+      if (shouldAutoFill && event.instanceId && event.programId) {
         try {
           // Get enrollment data if available
           let enrollment: ProgramEnrollment | undefined;

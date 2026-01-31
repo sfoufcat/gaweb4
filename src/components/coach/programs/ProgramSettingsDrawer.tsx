@@ -27,6 +27,7 @@ import {
   Check,
   Image as ImageIcon,
   Info,
+  Sparkles,
 } from 'lucide-react';
 import {
   Drawer,
@@ -67,6 +68,7 @@ interface ProgramFormData {
   dailyFocusSlots: number;
   taskDistribution: TaskDistribution;
   includeWeekends: boolean;
+  autoGenerateSummary: boolean;
   coachId?: string;
   clientCommunityEnabled: boolean;
   completionConfig: {
@@ -113,6 +115,7 @@ export function ProgramSettingsDrawer({
     dailyFocusSlots: 2,
     taskDistribution: 'spread',
     includeWeekends: true,
+    autoGenerateSummary: false,
     coachId: undefined,
     clientCommunityEnabled: false,
     completionConfig: {
@@ -145,6 +148,7 @@ export function ProgramSettingsDrawer({
         dailyFocusSlots: program.dailyFocusSlots ?? 2,
         taskDistribution: program.taskDistribution || 'spread',
         includeWeekends: program.includeWeekends !== false,
+        autoGenerateSummary: program.autoGenerateSummary || false,
         coachId: program.coachId,
         clientCommunityEnabled: program.clientCommunityEnabled || false,
         completionConfig: {
@@ -492,6 +496,11 @@ export function ProgramSettingsDrawer({
                     placeholder="297"
                     className="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#8c8c8c] focus:outline-none focus:border-brand-accent transition-colors"
                   />
+                  {!canAcceptPayments && (
+                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-2">
+                      Connect Stripe to accept payments. You can still add prepaid clients manually.
+                    </p>
+                  )}
                 </motion.div>
               </motion.div>
             )}
@@ -524,8 +533,69 @@ export function ProgramSettingsDrawer({
               </div>
             </div>
 
+            {/* Auto-generate summaries toggle */}
+            <div className="py-3">
+              <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                Auto-generate summaries
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => updateField('autoGenerateSummary', false)}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                    !formData.autoGenerateSummary
+                      ? 'border-brand-accent bg-brand-accent/5'
+                      : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                  }`}
+                >
+                  <div className="relative w-4 h-4">
+                    <Sparkles className={`w-4 h-4 ${
+                      !formData.autoGenerateSummary ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                    }`} />
+                    <div className={`absolute inset-0 flex items-center justify-center ${
+                      !formData.autoGenerateSummary ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                    }`}>
+                      <div className="w-5 h-0.5 bg-current rotate-45 -translate-x-0.5" />
+                    </div>
+                  </div>
+                  <span className={`text-sm font-semibold font-albert ${
+                    !formData.autoGenerateSummary ? 'text-brand-accent' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                  }`}>
+                    Off
+                  </span>
+                  {!formData.autoGenerateSummary && (
+                    <Check className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => updateField('autoGenerateSummary', true)}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                    formData.autoGenerateSummary
+                      ? 'border-brand-accent bg-brand-accent/5'
+                      : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                  }`}
+                >
+                  <Sparkles className={`w-4 h-4 ${
+                    formData.autoGenerateSummary ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                  }`} />
+                  <span className={`text-sm font-semibold font-albert ${
+                    formData.autoGenerateSummary ? 'text-brand-accent' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                  }`}>
+                    On
+                  </span>
+                  <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">(1 credit)</span>
+                  {formData.autoGenerateSummary && (
+                    <Check className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-2">
+                Generates call summaries and adds tasks to upcoming program days automatically
+              </p>
+            </div>
+
             <div>
-              <label className="block text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+              <label className="block text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                 Task Distribution
               </label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

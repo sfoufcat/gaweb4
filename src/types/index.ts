@@ -832,6 +832,9 @@ export interface Program {
   taskDistribution?: TaskDistribution; // How tasks are distributed: 'repeat-daily' | 'spread' (default: 'spread')
   /** @deprecated Use taskDistribution instead */
   weeklyTaskDistribution?: WeeklyTaskDistribution;
+
+  // Auto-summary settings
+  autoGenerateSummary?: boolean; // Auto-generate call summaries and fill program weeks (uses 1 credit per call)
   scheduleMode?: ProgramScheduleMode; // What content types are in the schedule
   primaryCourseIds?: string[]; // Main courses that form the schedule backbone
   hasModules?: boolean; // True if using program_modules collection for hierarchy
