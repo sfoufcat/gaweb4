@@ -539,7 +539,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                   </h2>
                   <button
                     onClick={onClose}
-                    className="p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] transition-colors"
+                    className="hidden sm:block p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] transition-colors"
                     aria-label="Close"
                   >
                     <X className="w-5 h-5 text-text-secondary" />
@@ -1221,7 +1221,7 @@ function DemoChatSheetContent({ onClose }: { onClose: () => void }) {
         </h2>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] transition-colors"
+          className="hidden sm:block p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] transition-colors"
         >
           <X className="w-5 h-5 text-text-secondary" />
         </button>

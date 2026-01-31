@@ -134,7 +134,7 @@ function SavedCardsSelection({
         <button
           type="button"
           onClick={onCancel}
-          className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+          className="hidden sm:block p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
         >
           <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
         </button>
@@ -337,7 +337,7 @@ function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, basePriceIn
         <button
           type="button"
           onClick={onCancel}
-          className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+          className="hidden sm:block p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
         >
           <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
         </button>

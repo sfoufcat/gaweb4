@@ -177,7 +177,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
           </h3>
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/10 rounded-lg transition-colors"
+            className="hidden sm:block p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/10 rounded-lg transition-colors"
           >
             <X className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
           </button>

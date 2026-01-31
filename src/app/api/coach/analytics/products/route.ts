@@ -54,14 +54,15 @@ interface ContentAnalytics {
 
 export async function GET(request: NextRequest) {
   try {
-    // Demo mode: return demo data
-    const demoData = await withDemoMode('analytics-products');
-    if (demoData) return demoData;
-    
-    const { organizationId } = await requireCoachWithOrg();
     const { searchParams } = new URL(request.url);
-    const typeFilter = searchParams.get('type') || 'all';
     const daysParam = searchParams.get('days');
+
+    // Demo mode: return demo data with days param
+    const demoData = await withDemoMode('analytics-products', daysParam ? { days: daysParam } : undefined);
+    if (demoData) return demoData;
+
+    const { organizationId } = await requireCoachWithOrg();
+    const typeFilter = searchParams.get('type') || 'all';
     const sinceDateParam = searchParams.get('sinceDate'); // ISO date string YYYY-MM-DD
     const days = daysParam ? parseInt(daysParam, 10) : 0; // 0 = all time
 

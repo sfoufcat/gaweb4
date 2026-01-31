@@ -167,6 +167,7 @@ function InvoiceSettingsSkeleton() {
             <div>
               <div className="h-4 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-1.5" />
               <div className="h-10 w-full bg-[#e1ddd8] dark:bg-[#262b35] rounded-xl animate-pulse" />
+              <div className="h-3 w-40 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mt-1.5" />
             </div>
             <div className="flex items-center justify-between py-2">
               <div>
@@ -178,9 +179,26 @@ function InvoiceSettingsSkeleton() {
           </div>
           <div>
             <div className="h-4 w-24 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-1.5" />
-            <div className="h-24 w-full bg-[#e1ddd8] dark:bg-[#262b35] rounded-xl animate-pulse" />
+            <div className="h-[88px] w-full bg-[#e1ddd8] dark:bg-[#262b35] rounded-xl animate-pulse" />
+            <div className="h-3 w-48 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mt-1.5" />
           </div>
         </div>
+      </div>
+      {/* Tax Settings skeleton */}
+      <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
+        <div className="h-6 w-28 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-2" />
+        <div className="h-4 w-48 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-5" />
+        <div className="flex items-center justify-between py-2">
+          <div>
+            <div className="h-4 w-20 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-1" />
+            <div className="h-3 w-36 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+          </div>
+          <div className="h-6 w-11 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
+        </div>
+      </div>
+      {/* Save button skeleton */}
+      <div className="flex justify-end">
+        <div className="h-10 w-[120px] bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
       </div>
     </div>
   );

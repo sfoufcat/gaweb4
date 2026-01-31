@@ -221,9 +221,10 @@ export function SendDMModal({ recipients, onClose, onSuccess, channelId }: SendD
                       </p>
                     </div>
                   </div>
+                  {/* Hide X on mobile - drawer has swipe handle */}
                   <button
                     onClick={onClose}
-                    className="text-[#8a857f] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors p-1 rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35]"
+                    className="hidden sm:block text-[#8a857f] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors p-1 rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35]"
                     aria-label="Close"
                   >
                     <X className="w-5 h-5" />
@@ -343,7 +344,7 @@ export function SendDMModal({ recipients, onClose, onSuccess, channelId }: SendD
                           value={message}
                           onChange={handleMessageChange}
                           placeholder="Type your message here..."
-                          className="w-full px-4 py-3 rounded-xl border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8a857f] font-albert text-[15px] resize-none focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 min-h-[120px]"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8a857f] font-albert text-[15px] resize-none focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent min-h-[120px]"
                           disabled={isSending}
                         />
                         <div className="flex justify-between mt-2">

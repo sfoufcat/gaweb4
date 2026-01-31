@@ -158,11 +158,9 @@ export function EngagementInsights({
             <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
               {timeToComplete.display}
             </span>
-            {taskVelocity.total - taskVelocity.completed > 0 && (
-              <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                ({taskVelocity.total - taskVelocity.completed} task{taskVelocity.total - taskVelocity.completed !== 1 ? 's' : ''})
-              </span>
-            )}
+            <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+              on avg {taskVelocity.total - taskVelocity.completed > 0 && `(${taskVelocity.total - taskVelocity.completed} task${taskVelocity.total - taskVelocity.completed !== 1 ? 's' : ''})`}
+            </span>
           </div>
         </div>
 

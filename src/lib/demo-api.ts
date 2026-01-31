@@ -294,8 +294,9 @@ export const demoHandlers = {
     return demoResponse(data);
   },
   
-  'analytics-products': () => {
-    const data = generateDemoProductAnalytics();
+  'analytics-products': (daysParam?: string) => {
+    const days = daysParam ? parseInt(daysParam, 10) : undefined;
+    const data = generateDemoProductAnalytics(days);
     return demoResponse(data);
   },
   

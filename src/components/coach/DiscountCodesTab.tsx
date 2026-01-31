@@ -7,6 +7,7 @@ import { Dialog as HeadlessDialog, Transition } from '@headlessui/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerScrollArea } from '@/components/ui/drawer';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { DiscountCode, DiscountType, DiscountApplicableTo, DiscountContentType, Program, Squad } from '@/types';
 
@@ -706,7 +707,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                 onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s/g, '') })}
                 placeholder="e.g., SAVE20"
                 disabled={!!editingCode}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-mono font-albert disabled:opacity-50"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-mono font-albert disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent"
               />
             </div>
 
@@ -720,7 +721,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g., Summer Sale"
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent"
               />
             </div>
 
@@ -730,15 +731,19 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                 <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
                   Type
                 </label>
-                <select
+                <Select
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as DiscountType })}
+                  onValueChange={(value) => setFormData({ ...formData, type: value as DiscountType })}
                   disabled={!!editingCode && editingCode.useCount > 0}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert disabled:opacity-50"
                 >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed Amount ($)</option>
-                </select>
+                  <SelectTrigger className="w-full border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">Percentage (%)</SelectItem>
+                    <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
@@ -751,16 +756,16 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                   <input
                     type="number"
                     value={formData.type === 'fixed' ? formData.value / 100 : formData.value}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      value: formData.type === 'fixed' 
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      value: formData.type === 'fixed'
                         ? Math.round(parseFloat(e.target.value || '0') * 100)
                         : parseInt(e.target.value || '0')
                     })}
                     min="0"
                     max={formData.type === 'percentage' ? 100 : undefined}
                     disabled={!!editingCode && editingCode.useCount > 0}
-                    className="w-full pl-8 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert disabled:opacity-50"
+                    className="w-full pl-8 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent"
                   />
                 </div>
               </div>
@@ -771,10 +776,9 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
               <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
                 Applies To
               </label>
-              <select
+              <Select
                 value={formData.applicableTo}
-                onChange={(e) => {
-                  const newValue = e.target.value as DiscountApplicableTo;
+                onValueChange={(newValue: DiscountApplicableTo) => {
                   setFormData({
                     ...formData,
                     applicableTo: newValue,
@@ -785,14 +789,18 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                     contentTypes: (newValue === 'custom' || newValue === 'content') ? formData.contentTypes : [],
                   });
                 }}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
               >
-                <option value="all">All Products</option>
-                <option value="programs">Programs Only</option>
-                <option value="squads">Squads Only</option>
-                <option value="content">Content Only</option>
-                <option value="custom">Custom Selection</option>
-              </select>
+                <SelectTrigger className="w-full border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Products</SelectItem>
+                  <SelectItem value="programs">Programs Only</SelectItem>
+                  <SelectItem value="squads">Squads Only</SelectItem>
+                  <SelectItem value="content">Content Only</SelectItem>
+                  <SelectItem value="custom">Custom Selection</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Custom Selection Multi-Select - also show for content selection */}
@@ -859,7 +867,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Search..."
-                            className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8]"
+                            className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent"
                           />
                         </div>
                       </div>
@@ -969,7 +977,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                   onChange={(e) => setFormData({ ...formData, maxUses: e.target.value ? parseInt(e.target.value) : '' })}
                   placeholder="Unlimited"
                   min="1"
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent"
                 />
               </div>
               <div>

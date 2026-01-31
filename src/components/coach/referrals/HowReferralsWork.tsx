@@ -62,7 +62,7 @@ export function HowReferralsWork({ defaultOpen = false }: HowReferralsWorkProps)
               What rewards can you offer?
             </h4>
             <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
-              Optional: free days, free program access, or discount codes for successful referrals
+              Optional: free product access, discount codes, or cash rewards for successful referrals
             </p>
           </div>
         </div>

@@ -1374,22 +1374,30 @@ export interface DemoProductSummary {
   totalEnrollments: number;
   totalMembers: number;
   totalRevenue: number;
+  avgRevenuePerClient: number;
+  payingCustomerCount: number;
 }
 
-export function generateDemoProductAnalytics(): {
+export function generateDemoProductAnalytics(days?: number): {
   programs: DemoProductProgram[];
   squads: DemoProductSquad[];
   content: DemoProductContent[];
   summary: DemoProductSummary;
 } {
   const random = seededRandom(1000);
-  
-  // Generate programs
+
+  // Revenue multiplier based on time period
+  // All time: $1.1M, 30 days: ~$85K, 7 days: ~$18K, today: ~$2.5K
+  const revenueMultiplier = days === 1 ? 0.0023 : days === 7 ? 0.016 : days === 30 ? 0.077 : 1;
+
+  // Generate programs with more realistic revenue (~$1.1M all time)
   const programs: DemoProductProgram[] = PROGRAM_DATA.map((prog, i) => {
-    const enrolled = 15 + Math.floor(random() * 50);
+    const enrolled = 8 + Math.floor(random() * 20); // 8-28 enrollees
     const completed = Math.floor(enrolled * (0.3 + random() * 0.3));
-    const active = Math.max(0, enrolled - completed - Math.floor(random() * 5));
-    
+    const active = Math.max(0, enrolled - completed - Math.floor(random() * 3));
+    // Scale down prices for more realistic totals
+    const adjustedRevenue = Math.round(enrolled * prog.priceInCents * 0.15 * revenueMultiplier);
+
     return {
       id: `demo-prog-${i + 1}`,
       name: prog.name,
@@ -1397,11 +1405,11 @@ export function generateDemoProductAnalytics(): {
       enrolledCount: enrolled,
       activeEnrollments: active,
       completedEnrollments: completed,
-      totalRevenue: enrolled * prog.priceInCents,
+      totalRevenue: adjustedRevenue,
       createdAt: randomPastDate(180).toISOString(),
     };
   });
-  
+
   // Generate squads
   const squads: DemoProductSquad[] = SQUAD_NAMES.slice(0, 5).map((squadInfo, i) => ({
     id: `demo-squad-${i + 1}`,
@@ -1412,34 +1420,37 @@ export function generateDemoProductAnalytics(): {
     programName: i < 3 ? DEMO_PROGRAMS[i % DEMO_PROGRAMS.length].name : undefined,
     createdAt: randomPastDate(120).toISOString(),
   }));
-  
+
   // Generate content items
   const contentTypes: DemoProductContent['type'][] = ['course', 'article', 'event', 'download', 'link'];
   const contentTitles = [
     'Ultimate Guide to Success', 'Productivity Masterclass', 'Live Q&A Session',
     'Strategy Workbook', 'Resource Library', 'Bonus Training Video',
   ];
-  
+
   const content: DemoProductContent[] = contentTitles.slice(0, 5).map((title, i) => {
-    const purchasers = Math.floor(random() * 30);
-    const price = (1 + Math.floor(random() * 10)) * 1000;
-    
+    const purchasers = 5 + Math.floor(random() * 15);
+    const price = (2 + Math.floor(random() * 5)) * 1000; // $20-$70
+
     return {
       id: `demo-content-${i + 1}`,
       type: contentTypes[i % contentTypes.length],
       title,
       purchaserCount: purchasers,
-      totalRevenue: purchasers * price,
+      totalRevenue: Math.round(purchasers * price * revenueMultiplier),
       priceInCents: price,
       createdAt: randomPastDate(90).toISOString(),
     };
   });
-  
+
   const totalEnrollments = programs.reduce((sum, p) => sum + p.enrolledCount, 0);
   const totalMembers = squads.reduce((sum, s) => sum + s.memberCount, 0);
   const totalRevenue = programs.reduce((sum, p) => sum + p.totalRevenue, 0) +
                        content.reduce((sum, c) => sum + c.totalRevenue, 0);
-  
+  // Paying customers = enrollees + content purchasers (rough estimate with some overlap)
+  const payingCustomerCount = Math.round(totalEnrollments * 0.8);
+  const avgRevenuePerClient = payingCustomerCount > 0 ? Math.round(totalRevenue / payingCustomerCount) : 0;
+
   return {
     programs,
     squads,
@@ -1451,6 +1462,8 @@ export function generateDemoProductAnalytics(): {
       totalEnrollments,
       totalMembers,
       totalRevenue,
+      avgRevenuePerClient,
+      payingCustomerCount,
     },
   };
 }

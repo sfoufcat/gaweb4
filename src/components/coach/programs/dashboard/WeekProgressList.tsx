@@ -138,7 +138,7 @@ export function WeekProgressList({
         </div>
       </div>
 
-      {/* 2x2 Metrics Grid */}
+      {/* Metrics Grid */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         {/* Program Timeline */}
         <div className="p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a]">
@@ -180,117 +180,55 @@ export function WeekProgressList({
               of {totalWeeks}
             </span>
           </div>
-          {/* Week dots - use displayWeeks (the actual weeks array) for dots */}
-          <div className="flex gap-0.5 mt-2 flex-wrap">
-            {weeks.slice(0, Math.min(displayWeeks, 12)).map((week) => (
-              <div
-                key={week.weekNumber}
-                className={cn(
-                  'w-2 h-2 rounded-full transition-colors',
-                  week.status === 'completed' && 'bg-emerald-500',
-                  week.status === 'current' && 'bg-violet-500',
-                  week.status === 'future' && 'bg-[#d9d5d0] dark:bg-[#3a3f4a]',
-                )}
-              />
-            ))}
-            {displayWeeks > 12 && (
-              <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] ml-1">
-                +{displayWeeks - 12}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* This Week's Tasks */}
-        <div className="p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a]">
-          <div className="flex items-center gap-2 mb-2">
-            <ListChecks className="w-4 h-4 text-blue-500" />
-            <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">This Week</span>
-          </div>
-          {thisWeekTasks && thisWeekTasks.total > 0 ? (
-            <>
-              <div className="flex items-baseline gap-1.5 mb-2">
-                <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {thisWeekTasks.completed}/{thisWeekTasks.total}
-                </span>
-                <span className={cn(
-                  'text-xs font-medium',
-                  taskCompletionPercent >= 80 ? 'text-emerald-600 dark:text-emerald-400' :
-                  taskCompletionPercent >= 50 ? 'text-amber-600 dark:text-amber-400' :
-                  'text-[#8c8c8c] dark:text-[#7d8190]'
-                )}>
-                  {taskCompletionPercent}%
-                </span>
-              </div>
-              {/* Task progress bar */}
-              <div className="h-1.5 bg-[#e8e5e1] dark:bg-[#262b35] rounded-full overflow-hidden">
+          {/* Week dots with days remaining */}
+          <div className="flex items-center gap-2 mt-2">
+            <div className="flex gap-0.5 flex-shrink-0">
+              {weeks.slice(0, Math.min(displayWeeks, 12)).map((week) => (
                 <div
+                  key={week.weekNumber}
                   className={cn(
-                    'h-full rounded-full transition-all',
-                    taskCompletionPercent >= 80 ? 'bg-emerald-500' :
-                    taskCompletionPercent >= 50 ? 'bg-amber-500' :
-                    undefined
+                    'w-2 h-2 rounded-full transition-colors',
+                    week.status === 'completed' && 'bg-emerald-500',
+                    week.status === 'current' && 'bg-violet-500',
+                    week.status === 'future' && 'bg-[#d9d5d0] dark:bg-[#3a3f4a]',
                   )}
-                  style={{
-                    width: `${taskCompletionPercent}%`,
-                    ...(taskCompletionPercent < 50 ? { backgroundColor: accentColor } : {}),
-                  }}
                 />
-              </div>
-            </>
-          ) : (
-            <span className="text-sm text-[#8c8c8c] dark:text-[#7d8190]">
-              No tasks
-            </span>
-          )}
-        </div>
+              ))}
+              {displayWeeks > 12 && (
+                <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] ml-1">
+                  +{displayWeeks - 12}
+                </span>
+              )}
+            </div>
+            {/* Days remaining */}
+            {(() => {
+              let daysRemaining: number | null = null;
+              let isEstimate = false;
 
-        {/* Days Remaining in Program */}
-        <div className="p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a]">
-          <div className="flex items-center gap-2 mb-2">
-            <Timer className="w-4 h-4 text-orange-500" />
-            <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">Time Left</span>
+              if (programEndDate) {
+                const endDate = new Date(programEndDate);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                endDate.setHours(0, 0, 0, 0);
+                daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+              } else {
+                const weeksRemaining = totalWeeks - currentWeek;
+                if (weeksRemaining > 0) {
+                  daysRemaining = weeksRemaining * 7;
+                  isEstimate = true;
+                }
+              }
+
+              if (daysRemaining !== null && daysRemaining > 0) {
+                return (
+                  <span className="text-[11.5px] sm:text-[12.5px] font-medium text-[#5f5a55] dark:text-[#a0a4b0] ml-auto whitespace-nowrap">
+                    {isEstimate ? '~' : ''}{daysRemaining}d left
+                  </span>
+                );
+              }
+              return null;
+            })()}
           </div>
-          {(() => {
-            // Calculate days remaining in program from programEndDate
-            if (programEndDate) {
-              const endDate = new Date(programEndDate);
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              endDate.setHours(0, 0, 0, 0);
-              const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
-              return (
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    {daysRemaining}
-                  </span>
-                  <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                    day{daysRemaining !== 1 ? 's' : ''} left
-                  </span>
-                </div>
-              );
-            }
-            // Fallback: estimate from weeks remaining
-            const weeksRemaining = totalWeeks - currentWeek;
-            const estimatedDays = weeksRemaining * 5; // 5 working days per week
-            if (estimatedDays > 0) {
-              return (
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                    ~{estimatedDays}
-                  </span>
-                  <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
-                    days left
-                  </span>
-                </div>
-              );
-            }
-            return (
-              <span className="text-sm text-[#8c8c8c] dark:text-[#7d8190]">
-                —
-              </span>
-            );
-          })()}
         </div>
       </div>
 
@@ -301,7 +239,7 @@ export function WeekProgressList({
             Week Tasks
           </p>
           <div className="space-y-1.5">
-            {thisWeekTasks.tasks.slice(0, 4).map((task) => (
+            {thisWeekTasks.tasks.slice(0, 3).map((task, index) => (
               <div key={task.id} className="flex items-center gap-2">
                 <CircleDot className={cn(
                   'w-3.5 h-3.5 flex-shrink-0',
@@ -310,20 +248,20 @@ export function WeekProgressList({
                     : 'text-[#c4c0bc] dark:text-[#4a4f5a]'
                 )} />
                 <span className={cn(
-                  'text-sm truncate',
+                  'text-sm truncate flex-1',
                   task.completed
                     ? 'text-[#8c8c8c] dark:text-[#7d8190] line-through'
                     : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
                 )}>
                   {task.label}
                 </span>
+                {index === 2 && thisWeekTasks.tasks.length > 3 && (
+                  <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] whitespace-nowrap">
+                    +{thisWeekTasks.tasks.length - 3} more
+                  </span>
+                )}
               </div>
             ))}
-            {thisWeekTasks.tasks.length > 4 && (
-              <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] pl-5">
-                +{thisWeekTasks.tasks.length - 4} more
-              </p>
-            )}
           </div>
         </div>
       )}

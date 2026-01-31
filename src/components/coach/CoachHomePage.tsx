@@ -339,68 +339,61 @@ function SecondaryStat({
   const content = (
     <div className={cn(
       'glass-card group p-4 rounded-[20px]',
-      isAlert && 'bg-rose-50/50 dark:bg-rose-950/20',
+      isAlert && 'bg-emerald-50/50 dark:bg-emerald-950/20',
       href && 'cursor-pointer'
     )}>
-      <div className={cn(
-        'p-2 rounded-lg w-fit',
-        isAlert
-          ? 'bg-rose-100/80 dark:bg-rose-900/30'
-          : 'bg-brand-accent/10'
-      )}>
-        <Icon className={cn(
-          'w-4 h-4',
-          isAlert ? 'text-rose-600 dark:text-rose-400' : 'text-brand-accent'
-        )} />
+      {/* Icon row - alert has engagement badge on right */}
+      <div className="flex items-center justify-between">
+        <div className={cn(
+          'p-2 rounded-lg w-fit',
+          isAlert
+            ? 'bg-emerald-100/80 dark:bg-emerald-900/30'
+            : 'bg-brand-accent/10'
+        )}>
+          <Icon className={cn(
+            'w-4 h-4',
+            isAlert ? 'text-emerald-600 dark:text-emerald-400' : 'text-brand-accent'
+          )} />
+        </div>
+        {isAlert && (
+          <p className="text-xs font-semibold font-albert flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+            Engagement <TrendingUp className="w-3 h-3" />
+          </p>
+        )}
       </div>
 
-      {isAlert ? (
-        // Alert variant: horizontal layout with value left, label right
-        <div className="flex items-end justify-between mt-3">
-          <p className="text-2xl font-bold font-albert tracking-tight text-rose-700 dark:text-rose-300">
-            {value}
-          </p>
-          <div className="text-right">
-            <p className="text-sm font-medium font-albert text-rose-600/80 dark:text-rose-400/80">
-              {label}
-            </p>
-            <p className="text-xs font-semibold font-albert flex items-center justify-end gap-1 text-rose-500/80 dark:text-rose-500/60">
-              Engagement <TrendingDown className="w-3 h-3" />
-            </p>
-          </div>
-        </div>
-      ) : (
-        // Default variant: vertical layout
-        <>
-          <p className={cn(
-            'text-2xl font-bold font-albert tracking-tight mt-3',
-            'text-[#1a1a1a] dark:text-[#f5f5f8]'
-          )}>
-            {value}
-          </p>
+      {/* Value */}
+      <p className={cn(
+        'text-2xl font-bold font-albert tracking-tight mt-3',
+        isAlert ? 'text-emerald-700 dark:text-emerald-300' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+      )}>
+        {value}
+      </p>
 
-          <div className="flex items-center justify-between mt-1">
-            <p className="text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-              {label}
-            </p>
-            {(subValue || trend !== undefined) && (
-              <p className={cn(
-                'text-xs font-semibold font-albert flex items-center gap-1',
-                trend !== undefined
-                  ? isPositiveTrend
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-rose-600 dark:text-rose-400'
-                  : 'text-[#a7a39e]'
-              )}>
-                {trend !== undefined && (
-                  isPositiveTrend ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />
-                )}
-                {subValue || (trend !== undefined ? `${isPositiveTrend ? '+' : ''}${trend}%` : '')}
-              </p>
+      {/* Label row */}
+      <div className="flex items-center justify-between mt-1">
+        <p className={cn(
+          'text-sm font-medium font-albert',
+          isAlert ? 'text-emerald-600/80 dark:text-emerald-400/80' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+        )}>
+          {label}
+        </p>
+        {!isAlert && (subValue || trend !== undefined) && (
+          <p className={cn(
+            'text-xs font-semibold font-albert flex items-center gap-1',
+            trend !== undefined
+              ? isPositiveTrend
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-600 dark:text-rose-400'
+              : 'text-[#a7a39e]'
+          )}>
+            {trend !== undefined && (
+              isPositiveTrend ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />
             )}
-          </div>
-        </>
-      )}
+            {subValue || (trend !== undefined ? `${isPositiveTrend ? '+' : ''}${trend}%` : '')}
+          </p>
+        )}
+      </div>
     </div>
   );
 
@@ -1913,10 +1906,10 @@ export function CoachHomePage() {
                   atRiskCount > 0 ? (
                     <SecondaryStat
                       key="risk"
-                      label="Requires Review"
+                      label="Clients Need Review"
                       value={atRiskCount}
                       subValue="Low engagement"
-                      icon={AlertTriangle}
+                      icon={Users}
                       href="/coach?tab=clients"
                       variant="alert"
                     />
@@ -1950,10 +1943,10 @@ export function CoachHomePage() {
               />
               {atRiskCount > 0 ? (
                 <SecondaryStat
-                  label="Requires Review"
+                  label="Clients Need Review"
                   value={atRiskCount}
                   subValue="Low engagement"
-                  icon={AlertTriangle}
+                  icon={Users}
                   href="/coach?tab=clients"
                   variant="alert"
                 />

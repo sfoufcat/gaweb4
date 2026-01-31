@@ -16,20 +16,22 @@ import { isDemoRequest } from '@/lib/demo-api';
 export async function GET() {
   try {
     // Demo mode: return mock data
+    // Goal: $1M, started 6 months ago, deadline in 30 days
+    // Current revenue is ~$1.1M so they've achieved ~110% of goal
     if (await isDemoRequest()) {
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
       return NextResponse.json({
-        revenueGoal: 10000,
+        revenueGoal: 1000000, // $1M goal
         revenueGoalDeadline: thirtyDaysFromNow.toISOString().split('T')[0],
-        revenueGoalStartDate: thirtyDaysAgo.toISOString().split('T')[0],
-        goalSetAt: thirtyDaysAgo.toISOString(),
-        goalAchievedCelebrated: false,
+        revenueGoalStartDate: sixMonthsAgo.toISOString().split('T')[0],
+        goalSetAt: sixMonthsAgo.toISOString(),
+        goalAchievedCelebrated: true, // Already celebrated since they achieved it
         // Legacy fields for backwards compatibility
-        monthlyRevenueGoal: 10000,
+        monthlyRevenueGoal: 1000000,
         targetClients: null,
       });
     }
