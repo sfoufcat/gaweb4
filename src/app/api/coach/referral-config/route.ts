@@ -135,15 +135,12 @@ export async function GET(request: NextRequest) {
         const resourceType = resourceTypes[idx];
         for (const doc of snapshot.docs) {
           const data = doc.data();
-          // Only include published resources
-          if (data.status === 'published' || data.published) {
-            configs.push({
-              targetType: resourceType,
-              targetId: doc.id,
-              targetName: data.title || data.name,
-              referralConfig: data.referralConfig || null,
-            });
-          }
+          configs.push({
+            targetType: resourceType,
+            targetId: doc.id,
+            targetName: data.title || data.name,
+            referralConfig: data.referralConfig || null,
+          });
         }
       });
     }

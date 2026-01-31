@@ -353,39 +353,54 @@ function SecondaryStat({
           isAlert ? 'text-rose-600 dark:text-rose-400' : 'text-brand-accent'
         )} />
       </div>
-      
-      <p className={cn(
-        'text-2xl font-bold font-albert tracking-tight mt-3',
-        isAlert ? 'text-rose-700 dark:text-rose-300' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-      )}>
-        {value}
-      </p>
-      
-      <div className="flex items-center justify-between mt-1">
-        <p className={cn(
-          'text-sm font-medium font-albert',
-          isAlert ? 'text-rose-600/80 dark:text-rose-400/80' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
-        )}>
-          {label}
-        </p>
-        {(subValue || trend !== undefined) && (
-          <p className={cn(
-            'text-xs font-semibold font-albert flex items-center gap-1',
-            isAlert
-              ? 'text-rose-500/80 dark:text-rose-500/60'
-              : trend !== undefined
-                ? isPositiveTrend
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-rose-600 dark:text-rose-400'
-                : 'text-[#a7a39e]'
-          )}>
-            {trend !== undefined && (
-              isPositiveTrend ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />
-            )}
-            {subValue || (trend !== undefined ? `${isPositiveTrend ? '+' : ''}${trend}%` : '')}
+
+      {isAlert ? (
+        // Alert variant: horizontal layout with value left, label right
+        <div className="flex items-end justify-between mt-3">
+          <p className="text-2xl font-bold font-albert tracking-tight text-rose-700 dark:text-rose-300">
+            {value}
           </p>
-        )}
-      </div>
+          <div className="text-right">
+            <p className="text-sm font-medium font-albert text-rose-600/80 dark:text-rose-400/80">
+              {label}
+            </p>
+            <p className="text-xs font-semibold font-albert flex items-center justify-end gap-1 text-rose-500/80 dark:text-rose-500/60">
+              Engagement <TrendingDown className="w-3 h-3" />
+            </p>
+          </div>
+        </div>
+      ) : (
+        // Default variant: vertical layout
+        <>
+          <p className={cn(
+            'text-2xl font-bold font-albert tracking-tight mt-3',
+            'text-[#1a1a1a] dark:text-[#f5f5f8]'
+          )}>
+            {value}
+          </p>
+
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-sm font-medium font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
+              {label}
+            </p>
+            {(subValue || trend !== undefined) && (
+              <p className={cn(
+                'text-xs font-semibold font-albert flex items-center gap-1',
+                trend !== undefined
+                  ? isPositiveTrend
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-rose-600 dark:text-rose-400'
+                  : 'text-[#a7a39e]'
+              )}>
+                {trend !== undefined && (
+                  isPositiveTrend ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />
+                )}
+                {subValue || (trend !== undefined ? `${isPositiveTrend ? '+' : ''}${trend}%` : '')}
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Gift, BookOpen, Percent, DollarSign, AlertTriangle, Loader2 } from 'lucide-react';
 import {
   Select,
@@ -325,11 +326,27 @@ export function ReferralRewardSelector({
         </div>
       </div>
 
-      {/* Reward Configuration */}
-      {value && (
-        <div className="p-4 bg-[#f8f6f4] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-          {/* Free Product Configuration */}
-          {value.type === 'free_program' && (
+      {/* Reward Configuration - Animated expand/collapse */}
+      <AnimatePresence mode="wait">
+        {value && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="p-4 bg-[#f8f6f4] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] relative">
+              <AnimatePresence mode="wait">
+                {/* Free Product Configuration */}
+                {value?.type === 'free_program' && (
+                  <motion.div
+                    key="free_program"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
             <div>
               <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                 Select Product to Grant
@@ -461,10 +478,18 @@ export function ReferralRewardSelector({
                 The referrer will get free access to this product when their friend enrolls
               </p>
             </div>
-          )}
+                  </motion.div>
+                )}
 
-          {/* Discount Code Configuration */}
-          {value.type === 'discount_code' && (
+                {/* Discount Code Configuration */}
+                {value?.type === 'discount_code' && (
+                  <motion.div
+                    key="discount_code"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
@@ -473,9 +498,9 @@ export function ReferralRewardSelector({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => onChange({ ...value, discountType: 'percentage' })}
+                    onClick={() => value && onChange({ ...value, discountType: 'percentage' })}
                     className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 transition-all ${
-                      value.discountType === 'percentage'
+                      value?.discountType === 'percentage'
                         ? 'border-brand-accent bg-brand-accent/5'
                         : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b]'
                     }`}
@@ -485,9 +510,9 @@ export function ReferralRewardSelector({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onChange({ ...value, discountType: 'fixed' })}
+                    onClick={() => value && onChange({ ...value, discountType: 'fixed' })}
                     className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 transition-all ${
-                      value.discountType === 'fixed'
+                      value?.discountType === 'fixed'
                         ? 'border-brand-accent bg-brand-accent/5'
                         : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b]'
                     }`}
@@ -503,19 +528,20 @@ export function ReferralRewardSelector({
                   Discount Value
                 </label>
                 <div className="flex items-center gap-2">
-                  {value.discountType === 'fixed' && (
+                  {value?.discountType === 'fixed' && (
                     <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">$</span>
                   )}
                   <input
                     type="number"
                     min={1}
-                    max={value.discountType === 'percentage' ? 100 : 10000}
+                    max={value?.discountType === 'percentage' ? 100 : 10000}
                     value={
-                      value.discountType === 'fixed'
-                        ? ((value.discountValue || 0) / 100).toFixed(2)
-                        : value.discountValue || 20
+                      value?.discountType === 'fixed'
+                        ? ((value?.discountValue || 0) / 100).toFixed(2)
+                        : value?.discountValue || 20
                     }
                     onChange={(e) => {
+                      if (!value) return;
                       const val = parseFloat(e.target.value) || 0;
                       onChange({
                         ...value,
@@ -527,7 +553,7 @@ export function ReferralRewardSelector({
                     }}
                     className="w-28 px-4 py-2.5 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                   />
-                  {value.discountType === 'percentage' && (
+                  {value?.discountType === 'percentage' && (
                     <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">%</span>
                   )}
                 </div>
@@ -536,10 +562,18 @@ export function ReferralRewardSelector({
                 </p>
               </div>
             </div>
-          )}
+                  </motion.div>
+                )}
 
-          {/* Cash Reward Configuration */}
-          {value.type === 'monetary' && (
+                {/* Cash Reward Configuration */}
+                {value?.type === 'monetary' && (
+                  <motion.div
+                    key="monetary"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
@@ -552,8 +586,9 @@ export function ReferralRewardSelector({
                     min={1}
                     max={10000}
                     step="0.01"
-                    value={((value.monetaryAmount || 0) / 100).toFixed(2)}
+                    value={((value?.monetaryAmount || 0) / 100).toFixed(2)}
                     onChange={(e) => {
+                      if (!value) return;
                       const val = parseFloat(e.target.value) || 0;
                       onChange({
                         ...value,
@@ -574,9 +609,13 @@ export function ReferralRewardSelector({
                 </p>
               </div>
             </div>
-          )}
-        </div>
-      )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

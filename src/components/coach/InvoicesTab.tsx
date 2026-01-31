@@ -85,6 +85,140 @@ export function InvoicesTab({ onSubtabChange, initialSubtab }: InvoicesTabProps)
 }
 
 // ============================================================================
+// SKELETON LOADERS
+// ============================================================================
+
+function InvoicesTableSkeleton() {
+  return (
+    <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#1e222a]">
+              {['Invoice', 'Description', 'Type', 'Amount', 'Status', 'Date', 'Actions'].map((h) => (
+                <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[#6b6560] dark:text-[#8b9299]">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <tr key={i} className="border-b border-[#e1ddd8] dark:border-[#262b35] last:border-0">
+                <td className="px-4 py-3">
+                  <div className="h-4 w-28 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="h-4 w-40 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-1" />
+                  <div className="h-3 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="h-5 w-16 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <div className="h-4 w-16 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse ml-auto" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="h-5 w-16 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="h-4 w-20 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2 justify-end">
+                    <div className="h-8 w-8 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                    <div className="h-8 w-8 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function InvoiceSettingsSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[1, 2].map((i) => (
+          <div key={i} className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
+            <div className="h-6 w-40 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-2" />
+            <div className="h-4 w-56 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-5" />
+            <div className="space-y-4">
+              {[1, 2, 3].map((j) => (
+                <div key={j}>
+                  <div className="h-4 w-24 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-1.5" />
+                  <div className="h-10 w-full bg-[#e1ddd8] dark:bg-[#262b35] rounded-xl animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Invoice Settings skeleton */}
+      <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
+        <div className="h-6 w-36 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-2" />
+        <div className="h-4 w-52 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-5" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <div className="h-4 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-1.5" />
+              <div className="h-10 w-full bg-[#e1ddd8] dark:bg-[#262b35] rounded-xl animate-pulse" />
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <div className="h-4 w-28 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-1" />
+                <div className="h-3 w-44 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+              </div>
+              <div className="h-6 w-11 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
+            </div>
+          </div>
+          <div>
+            <div className="h-4 w-24 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-1.5" />
+            <div className="h-24 w-full bg-[#e1ddd8] dark:bg-[#262b35] rounded-xl animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StripeConnectSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 bg-[#e1ddd8] dark:bg-[#262b35] rounded-xl animate-pulse flex-shrink-0" />
+          <div className="flex-1">
+            <div className="h-6 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-2" />
+            <div className="h-4 w-72 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+            <div className="mt-4">
+              <div className="h-6 w-24 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full animate-pulse" />
+            </div>
+            <div className="mt-6 flex gap-3">
+              <div className="h-10 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
+              <div className="h-10 w-40 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Info card skeleton */}
+      <div className="bg-[#e1ddd8]/30 dark:bg-[#262b35]/30 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+        <div className="h-5 w-28 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-3" />
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-4 w-64 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // INVOICES LIST PANEL
 // ============================================================================
 
@@ -122,7 +256,16 @@ function InvoicesListPanel({ isDemoMode, openSignupModal }: InvoicesListPanelPro
         const res = await fetch('/api/coaching/clients');
         if (res.ok) {
           const data = await res.json();
-          setClients(data.clients || []);
+          // Map nested user data to flat structure expected by InvoiceClientSelector
+          const mappedClients = (data.clients || []).map((c: Record<string, unknown>) => ({
+            id: c.id as string,
+            clerkId: c.userId as string,
+            firstName: (c.user as Record<string, unknown>)?.firstName || c.cachedUserFirstName || '',
+            lastName: (c.user as Record<string, unknown>)?.lastName || c.cachedUserLastName || '',
+            email: (c.user as Record<string, unknown>)?.email || c.cachedUserEmail || '',
+            imageUrl: (c.user as Record<string, unknown>)?.imageUrl || c.cachedUserImageUrl || '',
+          }));
+          setClients(mappedClients);
         }
       } catch (err) {
         console.error('Failed to fetch clients:', err);
@@ -324,12 +467,8 @@ function InvoicesListPanel({ isDemoMode, openSignupModal }: InvoicesListPanelPro
         </div>
       )}
 
-      {/* Loading */}
-      {loading && invoices.length === 0 && (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-earth-500" />
-        </div>
-      )}
+      {/* Loading Skeleton */}
+      {loading && invoices.length === 0 && <InvoicesTableSkeleton />}
 
       {/* Empty State */}
       {!loading && filteredInvoices.length === 0 && (
@@ -607,16 +746,12 @@ function InvoiceSettingsPanel({ isDemoMode, openSignupModal }: InvoiceSettingsPa
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-earth-500" />
-      </div>
-    );
-  }
-
   // Common input class for consistency
   const inputClass = "w-full px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#5f6470] focus:outline-none focus:ring-2 focus:ring-brand-accent transition-colors";
+
+  if (loading) {
+    return <InvoiceSettingsSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -1004,11 +1139,7 @@ function StripeConnectPanel({ isDemoMode, openSignupModal }: StripeConnectPanelP
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-earth-500" />
-      </div>
-    );
+    return <StripeConnectSkeleton />;
   }
 
   return (

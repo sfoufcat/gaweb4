@@ -7,6 +7,8 @@ import {
   Drawer,
   DrawerContent,
   DrawerTitle,
+  DrawerFooter,
+  DrawerScrollArea,
 } from '@/components/ui/drawer';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -519,48 +521,107 @@ export function ReferralSetupWizard({
 
   const totalSteps = 3;
 
-  const wizardContent = (
-    <div className="flex flex-col h-full relative">
-      {/* Header */}
-      <div className="flex-shrink-0 px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {step !== 'program' && step !== 'link' && (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="p-1.5 -ml-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              </button>
-            )}
-            <div>
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-brand-accent" />
-                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  Create Referral
-                </h2>
-              </div>
+  // Header component (shared between mobile and desktop)
+  const wizardHeader = (
+    <div className="flex-shrink-0 px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {step !== 'program' && step !== 'link' && (
+            <button
+              type="button"
+              onClick={handleBack}
+              className="p-1.5 -ml-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+            </button>
+          )}
+          <div>
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-brand-accent" />
+              <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Create Referral
+              </h2>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-          >
-            <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-          </button>
         </div>
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+        >
+          <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+        </button>
+      </div>
+    </div>
+  );
+
+  // Footer content (progress dots + action button)
+  const wizardFooterContent = (
+    <div className="flex items-center justify-between">
+      {/* Progress dots */}
+      <div className="flex items-center gap-2">
+        {[...Array(totalSteps)].map((_, i) => (
+          <div
+            key={i}
+            className={`w-2 h-2 rounded-full transition-colors ${
+              i <= getStepIndex()
+                ? 'bg-brand-accent'
+                : 'bg-[#e1ddd8] dark:bg-[#262b35]'
+            }`}
+          />
+        ))}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 py-6">
-        {error && (
-          <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-            <p className="text-red-600 dark:text-red-400 text-sm font-albert">{error}</p>
-          </div>
-        )}
+      {/* Action button */}
+      {step === 'link' ? (
+        <button
+          type="button"
+          onClick={handleNext}
+          className="px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors"
+        >
+          Done
+        </button>
+      ) : step === 'funnelCreate' ? (
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={creatingFunnel || !funnelName.trim() || !funnelSlug.trim()}
+          className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {creatingFunnel && <Loader2 className="w-4 h-4 animate-spin" />}
+          {creatingFunnel ? 'Creating...' : 'Create & Continue'}
+        </button>
+      ) : step === 'reward' ? (
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={saving}
+          className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {saving ? 'Saving...' : 'Enable Referrals'}
+          {!saving && <ArrowRight className="w-4 h-4" />}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={
+            (step === 'program' && !selectedProgramId) ||
+            (step === 'funnel' && (!selectedFunnelId || funnels.length === 0))
+          }
+          className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Continue
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
 
+  // Main scrollable content
+  const wizardMainContent = (
+    <>
         <AnimatePresence mode="wait">
           {/* Step 1: Select Target (Program or Resource) */}
           {step === 'program' && (
@@ -595,7 +656,7 @@ export function ReferralSetupWizard({
                   </a>
                 </div>
               ) : (
-                <div className="space-y-4 max-h-[320px] overflow-y-auto">
+                <div className="space-y-4">
                   {/* Group targets by category */}
                   {Object.entries(
                     targets.reduce((acc, target) => {
@@ -708,7 +769,7 @@ export function ReferralSetupWizard({
                 </div>
               ) : (
                 <>
-                  <div className="space-y-2 max-h-[240px] overflow-y-auto">
+                  <div className="space-y-2">
                     {funnels.map((funnel) => {
                       const isSelected = selectedFunnelId === funnel.id;
 
@@ -944,70 +1005,23 @@ export function ReferralSetupWizard({
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+    </>
+  );
 
-      {/* Footer */}
-      <div className="flex-shrink-0 px-6 py-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-        <div className="flex items-center justify-between">
-          {/* Progress dots */}
-          <div className="flex items-center gap-2">
-            {[...Array(totalSteps)].map((_, i) => (
-              <div
-                key={i}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  i <= getStepIndex()
-                    ? 'bg-brand-accent'
-                    : 'bg-[#e1ddd8] dark:bg-[#262b35]'
-                }`}
-              />
-            ))}
+  // Desktop: full wizard content with inline footer
+  const wizardContent = (
+    <div className="flex flex-col h-full relative">
+      {wizardHeader}
+      <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 py-6">
+        {error && (
+          <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+            <p className="text-red-600 dark:text-red-400 text-sm font-albert">{error}</p>
           </div>
-
-          {/* Action button */}
-          {step === 'link' ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors"
-            >
-              Done
-            </button>
-          ) : step === 'funnelCreate' ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={creatingFunnel || !funnelName.trim() || !funnelSlug.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {creatingFunnel && <Loader2 className="w-4 h-4 animate-spin" />}
-              {creatingFunnel ? 'Creating...' : 'Create & Continue'}
-            </button>
-          ) : step === 'reward' ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {saving ? 'Saving...' : 'Enable Referrals'}
-              {!saving && <ArrowRight className="w-4 h-4" />}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={
-                (step === 'program' && !selectedProgramId) ||
-                (step === 'funnel' && (!selectedFunnelId || funnels.length === 0))
-              }
-              className="flex items-center gap-2 px-6 py-2.5 bg-brand-accent text-white rounded-xl font-medium font-albert hover:bg-brand-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Continue
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        )}
+        {wizardMainContent}
+      </div>
+      <div className="flex-shrink-0 px-6 py-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+        {wizardFooterContent}
       </div>
     </div>
   );
@@ -1016,11 +1030,22 @@ export function ReferralSetupWizard({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="h-[75vh] max-h-[600px] flex flex-col">
+        <DrawerContent className="h-[85vh] max-h-[700px] flex flex-col">
           <VisuallyHidden>
             <DrawerTitle>Create Referral</DrawerTitle>
           </VisuallyHidden>
-          {wizardContent}
+          {wizardHeader}
+          <DrawerScrollArea className="px-5 py-6">
+            {error && (
+              <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                <p className="text-red-600 dark:text-red-400 text-sm font-albert">{error}</p>
+              </div>
+            )}
+            {wizardMainContent}
+          </DrawerScrollArea>
+          <DrawerFooter style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom, 1.75rem))' }}>
+            {wizardFooterContent}
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     );

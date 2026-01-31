@@ -5,7 +5,7 @@ import { Plus, Trash2, Edit2, Copy, Tag, Percent, DollarSign, Calendar, Users, C
 import { Button } from '@/components/ui/button';
 import { Dialog as HeadlessDialog, Transition } from '@headlessui/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerScrollArea } from '@/components/ui/drawer';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { DiscountCode, DiscountType, DiscountApplicableTo, DiscountContentType, Program, Squad } from '@/types';
@@ -1011,25 +1011,26 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                 <p className="text-sm text-red-600 dark:text-red-400 font-albert">{formError}</p>
               </div>
             )}
+          </div>
+        );
 
-            {/* Actions */}
-            <div className="flex gap-3 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsModalOpen(false)}
-                disabled={saving}
-                className="flex-1 border-[#e1ddd8] dark:border-[#262b35]"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving || !formData.code.trim()}
-                className="flex-1 bg-brand-accent hover:bg-brand-accent/90 text-white"
-              >
-                {saving ? 'Saving...' : editingCode ? 'Update' : 'Create'}
-              </Button>
-            </div>
+        const footerActions = (
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsModalOpen(false)}
+              disabled={saving}
+              className="flex-1 border-[#e1ddd8] dark:border-[#262b35]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving || !formData.code.trim()}
+              className="flex-1 bg-brand-accent hover:bg-brand-accent/90 text-white"
+            >
+              {saving ? 'Saving...' : editingCode ? 'Update' : 'Create'}
+            </Button>
           </div>
         );
 
@@ -1051,24 +1052,30 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                 </button>
                 <div className="px-6 py-4 overflow-y-auto flex-1">
                   {modalContent}
+                  <div className="pt-4">
+                    {footerActions}
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
           );
         }
 
-        // Mobile: Use Drawer (slide-up)
+        // Mobile: Use Drawer (slide-up) with sticky footer
         return (
           <Drawer open={isModalOpen} onOpenChange={(open) => !saving && setIsModalOpen(open)} shouldScaleBackground={false}>
             <DrawerContent className="max-h-[85dvh] flex flex-col">
-              <DrawerHeader className="px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+              <DrawerHeader className="px-6 pt-0 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <DrawerTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                   {editingCode ? 'Edit Discount Code' : 'Create Discount Code'}
                 </DrawerTitle>
               </DrawerHeader>
-              <div className="px-6 py-4 overflow-y-auto flex-1 pb-safe">
+              <DrawerScrollArea className="px-6 py-4">
                 {modalContent}
-              </div>
+              </DrawerScrollArea>
+              <DrawerFooter style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom, 1.75rem))' }}>
+                {footerActions}
+              </DrawerFooter>
             </DrawerContent>
           </Drawer>
         );
@@ -1076,35 +1083,35 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
 
       {/* Delete Confirmation Modal */}
       {(() => {
-        const deleteContent = (
-          <>
-            <p className="text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
-              Are you sure you want to delete the discount code <strong>{deleteConfirm?.code}</strong>?
-              {deleteConfirm && deleteConfirm.useCount > 0 && (
-                <span className="block mt-2 text-amber-600 dark:text-amber-400">
-                  This code has been used {deleteConfirm.useCount} time(s).
-                </span>
-              )}
-            </p>
+        const deleteMessage = (
+          <p className="text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
+            Are you sure you want to delete the discount code <strong>{deleteConfirm?.code}</strong>?
+            {deleteConfirm && deleteConfirm.useCount > 0 && (
+              <span className="block mt-2 text-amber-600 dark:text-amber-400">
+                This code has been used {deleteConfirm.useCount} time(s).
+              </span>
+            )}
+          </p>
+        );
 
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setDeleteConfirm(null)}
-                disabled={deleting}
-                className="flex-1 border-[#e1ddd8] dark:border-[#262b35]"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-              >
-                {deleting ? 'Deleting...' : 'Delete'}
-              </Button>
-            </div>
-          </>
+        const deleteActions = (
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+              disabled={deleting}
+              className="flex-1 border-[#e1ddd8] dark:border-[#262b35]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
         );
 
         // Desktop: Use Dialog
@@ -1117,24 +1124,30 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                     Delete Discount Code?
                   </DialogTitle>
                 </DialogHeader>
-                {deleteContent}
+                <div className="space-y-4">
+                  {deleteMessage}
+                  {deleteActions}
+                </div>
               </DialogContent>
             </Dialog>
           );
         }
 
-        // Mobile: Use Drawer
+        // Mobile: Use Drawer with sticky footer
         return (
           <Drawer open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)} shouldScaleBackground={false}>
-            <DrawerContent className="max-h-[50dvh]">
-              <DrawerHeader className="px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+            <DrawerContent className="flex flex-col">
+              <DrawerHeader className="px-6 pt-0 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <DrawerTitle className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                   Delete Discount Code?
                 </DrawerTitle>
               </DrawerHeader>
-              <div className="px-6 py-4 pb-safe">
-                {deleteContent}
+              <div className="px-6 py-4">
+                {deleteMessage}
               </div>
+              <DrawerFooter style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom, 1.75rem))' }}>
+                {deleteActions}
+              </DrawerFooter>
             </DrawerContent>
           </Drawer>
         );

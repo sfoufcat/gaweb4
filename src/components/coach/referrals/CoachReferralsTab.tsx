@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import {
   Users,
@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ChevronDown,
+  ChevronUp,
   Loader2,
   Search,
   Eye,
@@ -18,16 +19,24 @@ import {
   Settings,
   Link as LinkIcon,
   Copy,
-  ExternalLink,
   Pencil,
+  X,
+  ArrowUpDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { HowReferralsWork } from './HowReferralsWork';
 import { ReferralSetupWizard } from './ReferralSetupWizard';
 import { ReferralEditSheet } from './ReferralEditSheet';
 import type { ReferralWithDetails, ReferralStatus, ReferralRewardType, ReferralConfig, ReferralResourceType } from '@/types';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateDemoReferrals } from '@/lib/demo-data';
+import { cn } from '@/lib/utils';
 
 interface ReferralStats {
   total: number;
@@ -69,6 +78,9 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
 };
 
 type ViewMode = 'programs' | 'referrers' | 'referred';
+type TypeFilter = 'all' | 'programs' | 'resources';
+type SortField = 'name' | 'type' | 'status' | 'reward' | 'referrals' | 'earned' | 'date';
+type SortDirection = 'asc' | 'desc';
 
 /**
  * CoachReferralsTab Component
@@ -91,8 +103,8 @@ export function CoachReferralsTab() {
   // View mode toggle - default to 'programs' to show configs
   const [viewMode, setViewMode] = useState<ViewMode>('programs');
 
-  // Sub-filter for programs view: 'programs' shows programs/squads, 'resources' shows courses/articles/etc
-  const [programsSubFilter, setProgramsSubFilter] = useState<'programs' | 'resources'>('programs');
+  // Type filter for programs view: 'all', 'programs', or 'resources'
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
   // Wizard state
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -105,6 +117,12 @@ export function CoachReferralsTab() {
   // Filters
   const [statusFilter, setStatusFilter] = useState<ReferralStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Sorting
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   // Pagination
   const [offset, setOffset] = useState(0);
@@ -119,6 +137,27 @@ export function CoachReferralsTab() {
 
   // Demo data (memoized)
   const demoData = useMemo(() => generateDemoReferrals(), []);
+
+  // Search expand/collapse handlers
+  const handleSearchExpand = useCallback(() => {
+    setIsSearchExpanded(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }, []);
+
+  const handleSearchCollapse = useCallback(() => {
+    setIsSearchExpanded(false);
+    setSearchQuery('');
+  }, []);
+
+  // Sort toggle handler
+  const handleSort = useCallback((field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  }, [sortField]);
 
   // Fetch referral configs
   const fetchConfigs = useCallback(async () => {
@@ -402,41 +441,106 @@ export function CoachReferralsTab() {
   };
 
   // Filter referrals by search query
-  const filteredReferrals = displayReferrals.filter(r => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      r.referrerName?.toLowerCase().includes(query) ||
-      r.referrerEmail?.toLowerCase().includes(query) ||
-      r.referredUserName?.toLowerCase().includes(query) ||
-      r.referredUserEmail?.toLowerCase().includes(query) ||
-      r.programName?.toLowerCase().includes(query) ||
-      r.squadName?.toLowerCase().includes(query)
-    );
-  });
+  const filteredReferrals = useMemo(() => {
+    let result = displayReferrals.filter(r => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        r.referrerName?.toLowerCase().includes(query) ||
+        r.referrerEmail?.toLowerCase().includes(query) ||
+        r.referredUserName?.toLowerCase().includes(query) ||
+        r.referredUserEmail?.toLowerCase().includes(query) ||
+        r.programName?.toLowerCase().includes(query) ||
+        r.squadName?.toLowerCase().includes(query)
+      );
+    });
+
+    // Sort
+    result.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'name':
+          cmp = (a.referrerName || '').localeCompare(b.referrerName || '');
+          break;
+        case 'status':
+          cmp = a.status.localeCompare(b.status);
+          break;
+        case 'date':
+          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+      }
+      return sortDirection === 'desc' ? -cmp : cmp;
+    });
+
+    return result;
+  }, [displayReferrals, searchQuery, sortField, sortDirection]);
 
   // Filter referrer summaries by search query
-  const filteredReferrerSummaries = referrerSummaries.filter(s => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      s.referrerName?.toLowerCase().includes(query) ||
-      s.referrerEmail?.toLowerCase().includes(query)
-    );
-  });
+  const filteredReferrerSummaries = useMemo(() => {
+    let result = referrerSummaries.filter(s => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        s.referrerName?.toLowerCase().includes(query) ||
+        s.referrerEmail?.toLowerCase().includes(query)
+      );
+    });
 
-  // Filter configs by search query and sub-filter (programs vs resources)
-  const filteredConfigs = displayConfigs.filter(c => {
-    // First filter by sub-filter (programs/squads vs resources)
-    const isProgramOrSquad = c.targetType === 'program' || c.targetType === 'squad';
-    if (programsSubFilter === 'programs' && !isProgramOrSquad) return false;
-    if (programsSubFilter === 'resources' && isProgramOrSquad) return false;
+    // Sort
+    result.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'name':
+          cmp = a.referrerName.localeCompare(b.referrerName);
+          break;
+        case 'referrals':
+          cmp = a.totalReferrals - b.totalReferrals;
+          break;
+        case 'earned':
+          cmp = a.totalEarned - b.totalEarned;
+          break;
+      }
+      return sortDirection === 'desc' ? -cmp : cmp;
+    });
 
-    // Then filter by search query
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return c.targetName.toLowerCase().includes(query);
-  });
+    return result;
+  }, [referrerSummaries, searchQuery, sortField, sortDirection]);
+
+  // Filter configs by search query and type filter
+  const filteredConfigs = useMemo(() => {
+    let result = displayConfigs.filter(c => {
+      // First filter by type filter
+      const isProgramOrSquad = c.targetType === 'program' || c.targetType === 'squad';
+      if (typeFilter === 'programs' && !isProgramOrSquad) return false;
+      if (typeFilter === 'resources' && isProgramOrSquad) return false;
+
+      // Then filter by search query
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return c.targetName.toLowerCase().includes(query);
+    });
+
+    // Sort
+    result.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'name':
+          cmp = a.targetName.localeCompare(b.targetName);
+          break;
+        case 'type':
+          cmp = a.targetType.localeCompare(b.targetType);
+          break;
+        case 'status':
+          const aEnabled = a.referralConfig?.enabled ? 1 : 0;
+          const bEnabled = b.referralConfig?.enabled ? 1 : 0;
+          cmp = aEnabled - bEnabled;
+          break;
+      }
+      return sortDirection === 'desc' ? -cmp : cmp;
+    });
+
+    return result;
+  }, [displayConfigs, typeFilter, searchQuery, sortField, sortDirection]);
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -506,6 +610,20 @@ export function CoachReferralsTab() {
         return r.rewardType;
     }
   };
+
+  // Sortable header component
+  const SortableHeader = ({ field, children, className }: { field: SortField; children: React.ReactNode; className?: string }) => (
+    <button
+      onClick={() => handleSort(field)}
+      className={cn(
+        "flex items-center gap-1 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors",
+        className
+      )}
+    >
+      {children}
+      <ArrowUpDown className={cn("w-3 h-3 transition-opacity", sortField === field ? "opacity-100" : "opacity-40")} />
+    </button>
+  );
 
   if (loading && configsLoading && displayReferrals.length === 0 && !isDemoMode) {
     return (
@@ -656,8 +774,8 @@ export function CoachReferralsTab() {
       )}
 
       {/* View Toggle and Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Pill Toggle */}
+      <div className="flex items-center justify-between gap-3">
+        {/* Left side: Pill Toggle */}
         <div className="inline-flex p-1 bg-[#f3f1ef] dark:bg-[#1d222b] rounded-full">
           <button
             onClick={() => setViewMode('programs')}
@@ -667,7 +785,7 @@ export function CoachReferralsTab() {
                 : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
             }`}
           >
-            Programs
+            Products
           </button>
           <button
             onClick={() => setViewMode('referrers')}
@@ -691,40 +809,97 @@ export function CoachReferralsTab() {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              viewMode === 'programs'
-                ? 'Search programs...'
-                : viewMode === 'referrers'
-                ? 'Search referrers...'
-                : 'Search referrals...'
-            }
-            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8]"
-          />
-        </div>
+        {/* Right side: Filters + Search */}
+        <div className="flex items-center gap-2">
+          {/* Type filter dropdown - only for programs view */}
+          {viewMode === 'programs' && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors">
+                  {typeFilter === 'all' ? 'All' : typeFilter === 'programs' ? 'Programs' : 'Resources'}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[140px]">
+                <DropdownMenuItem onClick={() => setTypeFilter('all')}>
+                  <span className={cn(typeFilter === 'all' && 'font-medium')}>All</span>
+                  {typeFilter === 'all' && <Check className="w-4 h-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTypeFilter('programs')}>
+                  <span className={cn(typeFilter === 'programs' && 'font-medium')}>Programs</span>
+                  {typeFilter === 'programs' && <Check className="w-4 h-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTypeFilter('resources')}>
+                  <span className={cn(typeFilter === 'resources' && 'font-medium')}>Resources</span>
+                  {typeFilter === 'resources' && <Check className="w-4 h-4 ml-auto" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-        {/* Status Filter - only show for referred view */}
-        {viewMode === 'referred' && (
-          <div className="relative">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as ReferralStatus | 'all')}
-              className="appearance-none px-4 py-2 pr-10 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] cursor-pointer"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-              <option value="rewarded">Rewarded</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] pointer-events-none" />
+          {/* Status filter dropdown - only for referred view */}
+          {viewMode === 'referred' && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors">
+                  {statusFilter === 'all' ? 'All Status' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[140px]">
+                <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+                  <span className={cn(statusFilter === 'all' && 'font-medium')}>All Status</span>
+                  {statusFilter === 'all' && <Check className="w-4 h-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('pending')}>
+                  <span className={cn(statusFilter === 'pending' && 'font-medium')}>Pending</span>
+                  {statusFilter === 'pending' && <Check className="w-4 h-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('completed')}>
+                  <span className={cn(statusFilter === 'completed' && 'font-medium')}>Completed</span>
+                  {statusFilter === 'completed' && <Check className="w-4 h-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('rewarded')}>
+                  <span className={cn(statusFilter === 'rewarded' && 'font-medium')}>Rewarded</span>
+                  {statusFilter === 'rewarded' && <Check className="w-4 h-4 ml-auto" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Animated search input with fade */}
+          <div
+            className="flex items-center overflow-hidden transition-all duration-300 ease-out"
+            style={{
+              width: isSearchExpanded ? '200px' : 0,
+              opacity: isSearchExpanded ? 1 : 0,
+            }}
+          >
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder={
+                viewMode === 'programs'
+                  ? 'Search...'
+                  : viewMode === 'referrers'
+                  ? 'Search referrers...'
+                  : 'Search referrals...'
+              }
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-3 py-1.5 text-sm bg-[#f3f1ef] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#9ca3af] focus:outline-none focus:ring-0 transition-opacity duration-300"
+            />
           </div>
-        )}
+
+          {/* Search toggle button */}
+          <button
+            onClick={isSearchExpanded ? handleSearchCollapse : handleSearchExpand}
+            className="p-2 text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+            title={isSearchExpanded ? "Close search" : "Search"}
+          >
+            {isSearchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
 
       {/* Error */}
@@ -748,150 +923,145 @@ export function CoachReferralsTab() {
       {/* Content based on view mode */}
       {viewMode === 'programs' ? (
         /* Programs View - Referral Configs */
-        <div className="space-y-4">
-          {/* Programs/Resources sub-toggle */}
-          <div className="inline-flex p-0.5 bg-[#f3f1ef] dark:bg-[#1d222b] rounded-full">
-            <button
-              onClick={() => setProgramsSubFilter('programs')}
-              className={`px-3 py-1 text-xs font-medium rounded-full transition-all ${
-                programsSubFilter === 'programs'
-                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-              }`}
-            >
-              Programs
-            </button>
-            <button
-              onClick={() => setProgramsSubFilter('resources')}
-              className={`px-3 py-1 text-xs font-medium rounded-full transition-all ${
-                programsSubFilter === 'resources'
-                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-              }`}
-            >
-              Resources
-            </button>
-          </div>
-
+        <div className="space-y-0">
           {filteredConfigs.length === 0 && !configsLoading ? (
             <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
               <Settings className="w-12 h-12 text-[#5f5a55] mx-auto mb-3" />
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-1">
-                {programsSubFilter === 'programs' ? 'No programs found' : 'No resources found'}
+                No referrals configured
               </h3>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-4">
-                {programsSubFilter === 'programs'
-                  ? 'Create a program first, then enable referrals'
-                  : 'Create a resource first, then enable referrals'}
+                {typeFilter === 'resources'
+                  ? 'Enable referrals on your resources to start tracking'
+                  : typeFilter === 'programs'
+                  ? 'Enable referrals on your programs to start tracking'
+                  : 'Enable referrals on a program or resource to start tracking'}
               </p>
+              {!isDemoMode && (
+                <Button
+                  onClick={() => handleEnableReferrals()}
+                  className="bg-brand-accent hover:bg-brand-accent/90 text-white"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Enable Referrals
+                </Button>
+              )}
             </div>
           ) : (
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+            {/* Table Header */}
+            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-[#faf8f6] dark:bg-[#1a1e26] border-b border-[#e1ddd8] dark:border-[#262b35]">
+              <div className="col-span-4">
+                <SortableHeader field="name">Name</SortableHeader>
+              </div>
+              <div className="col-span-2">
+                <SortableHeader field="type">Type</SortableHeader>
+              </div>
+              <div className="col-span-2">
+                <SortableHeader field="status">Status</SortableHeader>
+              </div>
+              <div className="col-span-2">
+                <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Reward</span>
+              </div>
+              <div className="col-span-2 text-right">
+                <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Actions</span>
+              </div>
+            </div>
+
+            {/* Table Body */}
             <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
               {filteredConfigs.map((config) => (
                 <div
                   key={config.targetId}
-                  className="p-4 hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors"
+                  className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors"
                 >
-                  <div className="flex items-center justify-between gap-4">
-                    {/* Program Info */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center flex-shrink-0">
-                        <Settings className="w-5 h-5 text-[#5f5a55]" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                          {config.targetName}
-                        </p>
-                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                          {TARGET_TYPE_LABELS[config.targetType] || config.targetType}
-                        </p>
-                      </div>
+                  {/* Name */}
+                  <div className="col-span-4 flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center flex-shrink-0">
+                      <Settings className="w-4 h-4 text-[#5f5a55]" />
                     </div>
-
-                    {/* Status & Actions */}
-                    <div className="flex items-center gap-4 flex-shrink-0">
-                      {config.referralConfig?.enabled ? (
-                        <>
-                          {/* Enabled Badge */}
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Enabled
-                          </span>
-
-                          {/* Reward */}
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                              {getRewardLabel(config.referralConfig)}
-                            </p>
-                            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                              Reward
-                            </p>
-                          </div>
-
-                          {/* Copy Link */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleCopyLink(config)}
-                            className="flex items-center gap-1.5"
-                          >
-                            {copiedId === config.targetId ? (
-                              <>
-                                <Check className="w-4 h-4" />
-                                Copied
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-4 h-4" />
-                                Copy Link
-                              </>
-                            )}
-                          </Button>
-
-                          {/* Edit */}
-                          {!isDemoMode && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditConfig(config)}
-                              className="text-[#5f5a55]"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          {/* Not Enabled */}
-                          <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                            Referrals not enabled
-                          </span>
-
-                          {/* Enable Button */}
-                          {!isDemoMode && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEnableReferrals(config.targetId)}
-                              className="flex items-center gap-1.5"
-                            >
-                              <Plus className="w-4 h-4" />
-                              Enable
-                            </Button>
-                          )}
-                        </>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                        {config.targetName}
+                      </p>
+                      {config.referralConfig?.enabled && config.funnelName && (
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate flex items-center gap-1">
+                          <LinkIcon className="w-3 h-3" />
+                          {config.funnelName}
+                        </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Funnel info if enabled */}
-                  {config.referralConfig?.enabled && config.funnelName && (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                      <LinkIcon className="w-3.5 h-3.5" />
-                      <span>Funnel: {config.funnelName}</span>
-                    </div>
-                  )}
+                  {/* Type */}
+                  <div className="col-span-2">
+                    <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                      {TARGET_TYPE_LABELS[config.targetType] || config.targetType}
+                    </span>
+                  </div>
+
+                  {/* Status */}
+                  <div className="col-span-2">
+                    {config.referralConfig?.enabled ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Enabled
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                        Not enabled
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Reward */}
+                  <div className="col-span-2">
+                    <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      {config.referralConfig?.enabled ? getRewardLabel(config.referralConfig) : '—'}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="col-span-2 flex items-center justify-end gap-2">
+                    {config.referralConfig?.enabled ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopyLink(config)}
+                          className="h-8 px-2"
+                        >
+                          {copiedId === config.targetId ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </Button>
+                        {!isDemoMode && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditConfig(config)}
+                            className="h-8 px-2 text-[#5f5a55]"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </>
+                    ) : (
+                      !isDemoMode && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEnableReferrals(config.targetId)}
+                          className="h-8"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Enable
+                        </Button>
+                      )
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -921,106 +1091,117 @@ export function CoachReferralsTab() {
           </div>
         ) : (
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+            {/* Table Header */}
+            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-[#faf8f6] dark:bg-[#1a1e26] border-b border-[#e1ddd8] dark:border-[#262b35]">
+              <div className="col-span-4">
+                <SortableHeader field="name">Referrer</SortableHeader>
+              </div>
+              <div className="col-span-2">
+                <SortableHeader field="referrals">Referrals</SortableHeader>
+              </div>
+              <div className="col-span-2">
+                <SortableHeader field="earned">Earned</SortableHeader>
+              </div>
+              <div className="col-span-2">
+                <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Pending</span>
+              </div>
+              <div className="col-span-2 text-right">
+                <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Actions</span>
+              </div>
+            </div>
+
+            {/* Table Body */}
             <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
               {filteredReferrerSummaries.map((summary) => (
                 <div
                   key={summary.referrerId}
-                  className="p-4 hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors"
+                  className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors"
                 >
-                  <div className="flex items-center justify-between gap-4">
-                    {/* Referrer Info */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
-                        {summary.referrerImageUrl ? (
-                          <Image
-                            src={summary.referrerImageUrl}
-                            alt={summary.referrerName}
-                            width={40}
-                            height={40}
-                            className="w-full h-full object-cover"
-                          />
+                  {/* Referrer */}
+                  <div className="col-span-4 flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
+                      {summary.referrerImageUrl ? (
+                        <Image
+                          src={summary.referrerImageUrl}
+                          alt={summary.referrerName}
+                          width={32}
+                          height={32}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="font-semibold text-xs text-[#5f5a55]">
+                            {summary.referrerName[0] || '?'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                        {summary.referrerName}
+                      </p>
+                      {summary.referrerEmail && (
+                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                          {summary.referrerEmail}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Referrals */}
+                  <div className="col-span-2">
+                    <span className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      {summary.totalReferrals}
+                    </span>
+                  </div>
+
+                  {/* Earned */}
+                  <div className="col-span-2">
+                    {summary.totalEarned > 0 ? (
+                      <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                        {formatCurrency(summary.totalEarned)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-[#a7a39e]">—</span>
+                    )}
+                  </div>
+
+                  {/* Pending */}
+                  <div className="col-span-2">
+                    {summary.pendingPayment > 0 ? (
+                      <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                        {formatCurrency(summary.pendingPayment)}
+                      </span>
+                    ) : summary.totalEarned > 0 ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Paid
+                      </span>
+                    ) : (
+                      <span className="text-sm text-[#a7a39e]">—</span>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="col-span-2 flex items-center justify-end">
+                    {summary.pendingPayment > 0 && !isDemoMode && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMarkPaid(summary.referrerId, summary.pendingPayment)}
+                        disabled={markingPaid === summary.referrerId}
+                        className="h-8 border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+                      >
+                        {markingPaid === summary.referrerId ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <span className="font-semibold text-sm text-[#5f5a55]">
-                              {summary.referrerName[0] || '?'}
-                            </span>
-                          </div>
+                          <>
+                            <Check className="w-4 h-4 mr-1" />
+                            Mark Paid
+                          </>
                         )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                          {summary.referrerName}
-                        </p>
-                        {summary.referrerEmail && (
-                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
-                            {summary.referrerEmail}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-6 flex-shrink-0">
-                      {/* Referral Count */}
-                      <div className="text-center">
-                        <p className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                          {summary.totalReferrals}
-                        </p>
-                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                          referrals
-                        </p>
-                      </div>
-
-                      {/* Total Earned (only show if > 0) */}
-                      {summary.totalEarned > 0 && (
-                        <div className="text-center">
-                          <p className="text-lg font-semibold text-green-600 dark:text-green-400">
-                            {formatCurrency(summary.totalEarned)}
-                          </p>
-                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                            earned
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Pending Payment (only show if > 0) */}
-                      {summary.pendingPayment > 0 && (
-                        <div className="text-center">
-                          <p className="text-lg font-semibold text-amber-600 dark:text-amber-400">
-                            {formatCurrency(summary.pendingPayment)}
-                          </p>
-                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                            pending
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Mark as Paid Button */}
-                      {summary.pendingPayment > 0 && !isDemoMode && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleMarkPaid(summary.referrerId, summary.pendingPayment)}
-                          disabled={markingPaid === summary.referrerId}
-                          className="flex items-center gap-1.5 border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
-                        >
-                          {markingPaid === summary.referrerId ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Check className="w-4 h-4" />
-                          )}
-                          Mark Paid
-                        </Button>
-                      )}
-
-                      {/* All paid indicator */}
-                      {summary.totalEarned > 0 && summary.pendingPayment === 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Paid
-                        </span>
-                      )}
-                    </div>
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1052,113 +1233,102 @@ export function CoachReferralsTab() {
           </div>
         ) : (
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+            {/* Table Header */}
+            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-[#faf8f6] dark:bg-[#1a1e26] border-b border-[#e1ddd8] dark:border-[#262b35]">
+              <div className="col-span-3">
+                <SortableHeader field="name">Referrer</SortableHeader>
+              </div>
+              <div className="col-span-3">
+                <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Referred</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2]">Program</span>
+              </div>
+              <div className="col-span-2">
+                <SortableHeader field="status">Status</SortableHeader>
+              </div>
+              <div className="col-span-2">
+                <SortableHeader field="date">Date</SortableHeader>
+              </div>
+            </div>
+
+            {/* Table Body */}
             <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
               {filteredReferrals.map((referral) => (
                 <div
                   key={referral.id}
-                  className="p-4 hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors"
+                  className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    {/* Referrer & Referred User */}
-                    <div className="flex items-center gap-4 min-w-0">
-                      {/* Referrer */}
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
-                          {referral.referrerImageUrl ? (
-                            <Image
-                              src={referral.referrerImageUrl}
-                              alt={referral.referrerName || ''}
-                              width={32}
-                              height={32}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="font-semibold text-xs text-[#5f5a55]">
-                                {referral.referrerName?.[0] || '?'}
-                              </span>
-                            </div>
-                          )}
+                  {/* Referrer */}
+                  <div className="col-span-3 flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
+                      {referral.referrerImageUrl ? (
+                        <Image
+                          src={referral.referrerImageUrl}
+                          alt={referral.referrerName || ''}
+                          width={28}
+                          height={28}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="font-semibold text-xs text-[#5f5a55]">
+                            {referral.referrerName?.[0] || '?'}
+                          </span>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                            {referral.referrerName || 'Unknown'}
-                          </p>
-                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Referrer</p>
-                        </div>
-                      </div>
-
-                      {/* Arrow */}
-                      <span className="text-[#5f5a55] dark:text-[#7d8190] flex-shrink-0">→</span>
-
-                      {/* Referred User */}
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
-                          {referral.referredUserImageUrl ? (
-                            <Image
-                              src={referral.referredUserImageUrl}
-                              alt={referral.referredUserName || ''}
-                              width={32}
-                              height={32}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="font-semibold text-xs text-[#5f5a55]">
-                                {referral.referredUserName?.[0] || '?'}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                            {referral.referredUserName || 'Pending signup...'}
-                          </p>
-                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Referred</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Status & Meta */}
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      {getStatusBadge(referral.status)}
-                      {referral.programName && (
-                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                          {referral.programName}
-                        </p>
-                      )}
-                      {referral.squadName && (
-                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                          {referral.squadName}
-                        </p>
                       )}
                     </div>
+                    <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                      {referral.referrerName || 'Unknown'}
+                    </span>
                   </div>
 
-                  {/* Reward Info */}
-                  {referral.status === 'rewarded' && (
-                    <div className="mt-3 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-                      <Gift className="w-3.5 h-3.5" />
-                      <span>{getRewardDescription(referral)}</span>
-                      {referral.rewardType === 'monetary' && referral.paymentStatus === 'paid' && (
-                        <span className="inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                          <Check className="w-3 h-3" />
-                          Paid
-                        </span>
+                  {/* Referred */}
+                  <div className="col-span-3 flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
+                      {referral.referredUserImageUrl ? (
+                        <Image
+                          src={referral.referredUserImageUrl}
+                          alt={referral.referredUserName || ''}
+                          width={28}
+                          height={28}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="font-semibold text-xs text-[#5f5a55]">
+                            {referral.referredUserName?.[0] || '?'}
+                          </span>
+                        </div>
                       )}
                     </div>
-                  )}
+                    <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                      {referral.referredUserName || 'Pending...'}
+                    </span>
+                  </div>
 
-                  {/* Timestamp */}
-                  <p className="mt-2 text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                    {new Date(referral.createdAt).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}
-                  </p>
+                  {/* Program */}
+                  <div className="col-span-2">
+                    <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate block">
+                      {referral.programName || referral.squadName || '—'}
+                    </span>
+                  </div>
+
+                  {/* Status */}
+                  <div className="col-span-2">
+                    {getStatusBadge(referral.status)}
+                  </div>
+
+                  {/* Date */}
+                  <div className="col-span-2">
+                    <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                      {new Date(referral.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

@@ -34,7 +34,7 @@ interface ViewModeProviderProps {
 }
 
 export function ViewModeProvider({ children }: ViewModeProviderProps) {
-  const { isLoaded: authLoaded } = useAuth();
+  const { isLoaded: authLoaded, userId } = useAuth();
   const { isDemoSite } = useDemoMode();
 
   // Use OrganizationContext to check role in CURRENT organization (Firestore-based)
@@ -133,7 +133,11 @@ export function ViewModeProvider({ children }: ViewModeProviderProps) {
 
   const isCoachView = viewMode === 'coach' && canAccessCoachView;
   const isClientView = !isCoachView;
-  const isLoading = !mounted || !authLoaded || orgLoading || !clerkOrgsLoaded;
+  // In demo mode, skip waiting for org/clerk data - demo users aren't authenticated
+  // For authenticated users, wait for both orgLoading and clerkOrgsLoaded
+  const isLoading = !mounted || !authLoaded || (
+    !isDemoSite && !!userId && (orgLoading || !clerkOrgsLoaded)
+  );
 
   // Don't block rendering while loading - just use default values
   const value = useMemo(() => ({
