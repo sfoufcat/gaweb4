@@ -48,7 +48,6 @@ import { ScheduleCallModal } from '@/components/scheduling';
 import { ClientDetailSlideOver } from '@/components/coach';
 import { AIHelperModal } from '@/components/ai';
 import type { ProgramContentDraft, LandingPageDraft, WebsiteContentDraft, AIGenerationContext } from '@/lib/ai/types';
-import { ReferralConfigForm } from '@/components/coach/referrals';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
 import { EnrollmentSettingsModal } from './EnrollmentSettingsModal';
@@ -336,8 +335,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
     subdomain: string | null;
   } | null>(null);
   
-  // View mode: 'list' | 'days' | 'members' (combined cohorts+enrollments for group) | 'enrollments' (individual) | 'landing' | 'referrals'
-  const [viewMode, setViewMode] = useState<'list' | 'overview' | 'community' | 'days' | 'cohorts' | 'enrollments' | 'members' | 'landing' | 'referrals'>('list');
+  // View mode: 'list' | 'days' | 'members' (combined cohorts+enrollments for group) | 'enrollments' (individual) | 'landing'
+  const [viewMode, setViewMode] = useState<'list' | 'overview' | 'community' | 'days' | 'cohorts' | 'enrollments' | 'members' | 'landing'>('list');
   const [viewModeDirection, setViewModeDirection] = useState<1 | -1>(1); // Animation direction for program tabs
   const prevViewModeRef = useRef(viewMode);
   
@@ -1178,7 +1177,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
 
   // View mode order for directional animations
   const VIEW_MODE_ORDER: Record<string, number> = {
-    'list': 0, 'overview': 1, 'days': 2, 'cohorts': 3, 'enrollments': 4, 'landing': 5, 'referrals': 6,
+    'list': 0, 'overview': 1, 'days': 2, 'cohorts': 3, 'enrollments': 4, 'landing': 5,
   };
 
   // Handler for view mode changes with direction tracking
@@ -4127,7 +4126,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         {viewMode === 'members' && <><Users className="w-4 h-4" />Cohorts/Members</>}
                         {viewMode === 'enrollments' && <><Users className="w-4 h-4" />Enrollments</>}
                         {viewMode === 'landing' && <><FileText className="w-4 h-4" />Landing</>}
-                        {viewMode === 'referrals' && <><Gift className="w-4 h-4" />Referrals</>}
                         <ChevronDown className="w-4 h-4" />
                       </button>
                     </PopoverTrigger>
@@ -4208,18 +4206,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       >
                         <FileText className="w-4 h-4" />
                         Landing Page
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { handleViewModeChange('referrals'); setIsPageDropdownOpen(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-albert rounded-xl transition-colors ${
-                          viewMode === 'referrals'
-                            ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
-                            : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
-                        }`}
-                      >
-                        <Gift className="w-4 h-4" />
-                        Referrals
                       </button>
                     </PopoverContent>
                   </Popover>
@@ -4549,18 +4535,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       >
                         <FileText className="w-4 h-4" />
                         Landing Page
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleViewModeChange('referrals')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium font-albert rounded-md transition-colors ${
-                          viewMode === 'referrals'
-                            ? 'bg-[#ebe8e4] dark:bg-[#262b35] text-[#1a1a1a] dark:text-white'
-                            : 'text-[#6b6560] dark:text-[#9ca3af] hover:bg-[#ebe8e4] dark:hover:bg-[#262b35] hover:text-[#1a1a1a] dark:hover:text-white'
-                        }`}
-                      >
-                        <Gift className="w-4 h-4" />
-                        Referrals
                       </button>
                     </div>
 
@@ -6466,44 +6440,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 coachTier={currentTier}
                 currentProductId={selectedProgram?.id}
                 currentProductType="program"
-              />
-            )}
-          </div>
-        ) : viewMode === 'referrals' ? (
-          // Referrals Settings
-          <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
-            {selectedProgram && (
-              <ReferralConfigForm
-                targetType="program"
-                targetId={selectedProgram.id}
-                targetName={selectedProgram.name}
-                initialConfig={selectedProgram.referralConfig}
-                onSave={async (config: ReferralConfig | null) => {
-                  const response = await fetch('/api/coach/referral-config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      targetType: 'program',
-                      targetId: selectedProgram.id,
-                      referralConfig: config,
-                    }),
-                  });
-                  
-                  if (!response.ok) {
-                    const data = await response.json();
-                    throw new Error(data.error || 'Failed to save referral config');
-                  }
-                  
-                  // Refresh programs to get updated config
-                  await fetchPrograms();
-                  // Update selected program with new config
-                  if (selectedProgram) {
-                    setSelectedProgram({
-                      ...selectedProgram,
-                      referralConfig: config || undefined,
-                    });
-                  }
-                }}
               />
             )}
           </div>

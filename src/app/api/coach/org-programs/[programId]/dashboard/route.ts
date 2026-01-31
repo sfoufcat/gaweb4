@@ -27,6 +27,19 @@ interface MemberStats {
   totalTasks: number;
 }
 
+interface LessonCompletion {
+  lessonId: string;
+  title: string;
+  completedCount: number;
+  totalCount: number;
+}
+
+interface ModuleCompletion {
+  moduleId: string;
+  title: string;
+  lessons: LessonCompletion[];
+}
+
 interface ContentCompletionItem {
   contentType: 'course' | 'article' | 'questionnaire';
   contentId: string;
@@ -34,6 +47,8 @@ interface ContentCompletionItem {
   completedCount: number;
   totalCount: number;
   completionPercent: number;
+  modules?: ModuleCompletion[];  // Only for courses
+  coverImageUrl?: string;  // Only for courses
 }
 
 interface UpcomingItem {
@@ -761,7 +776,18 @@ export async function GET(
 
     const assignedContentTitleMap = new Map<string, string>();
 
-    // Fetch course titles (check both 'courses' and 'discover_courses' collections for compatibility)
+    // Fetch course metadata (including modules/lessons for completion tracking)
+    interface CourseMetadata {
+      title: string;
+      coverImageUrl?: string;
+      modules: Array<{
+        id: string;
+        title: string;
+        lessons: Array<{ id: string; title: string }>;
+      }>;
+    }
+    const courseMetadataMap = new Map<string, CourseMetadata>();
+
     if (assignedCourseIds.length > 0) {
       const batchSize = 30;
       for (let i = 0; i < assignedCourseIds.length; i += batchSize) {
@@ -775,7 +801,19 @@ export async function GET(
 
         courseDocs.docs.forEach((doc) => {
           const data = doc.data();
-          assignedContentTitleMap.set(doc.id, data.title || `Course ${doc.id.slice(0, 8)}`);
+          const title = data.title || `Course ${doc.id.slice(0, 8)}`;
+          assignedContentTitleMap.set(doc.id, title);
+
+          // Extract modules and lessons for completion tracking
+          const modules = (data.modules || []).map((m: { id?: string; title?: string; lessons?: Array<{ id?: string; title?: string }> }) => ({
+            id: m.id || '',
+            title: m.title || 'Untitled Module',
+            lessons: (m.lessons || []).map((l: { id?: string; title?: string }) => ({
+              id: l.id || '',
+              title: l.title || 'Untitled Lesson',
+            })),
+          }));
+          courseMetadataMap.set(doc.id, { title, coverImageUrl: data.coverImageUrl, modules });
         });
 
         // Also check 'discover_courses' for any IDs not found (legacy/admin courses)
@@ -790,7 +828,19 @@ export async function GET(
 
           discoverCourseDocs.docs.forEach((doc) => {
             const data = doc.data();
-            assignedContentTitleMap.set(doc.id, data.title || `Course ${doc.id.slice(0, 8)}`);
+            const title = data.title || `Course ${doc.id.slice(0, 8)}`;
+            assignedContentTitleMap.set(doc.id, title);
+
+            // Extract modules and lessons for completion tracking
+            const modules = (data.modules || []).map((m: { id?: string; title?: string; lessons?: Array<{ id?: string; title?: string }> }) => ({
+              id: m.id || '',
+              title: m.title || 'Untitled Module',
+              lessons: (m.lessons || []).map((l: { id?: string; title?: string }) => ({
+                id: l.id || '',
+                title: l.title || 'Untitled Lesson',
+              })),
+            }));
+            courseMetadataMap.set(doc.id, { title, coverImageUrl: data.coverImageUrl, modules });
           });
         }
       }
@@ -850,6 +900,41 @@ export async function GET(
         resource.title ||
         (contentType === 'article' ? `Article ${resource.resourceId.slice(0, 8)}` : `Course ${resource.resourceId.slice(0, 8)}`);
 
+      // Build module/lesson completion for courses
+      let modules: ModuleCompletion[] | undefined;
+      if (contentType === 'course') {
+        const courseMeta = courseMetadataMap.get(resource.resourceId);
+        if (courseMeta && courseMeta.modules.length > 0) {
+          modules = courseMeta.modules.map((mod) => ({
+            moduleId: mod.id,
+            title: mod.title,
+            lessons: mod.lessons.map((lesson) => {
+              // Count how many members completed this lesson
+              let lessonCompletedCount = 0;
+              memberStats.forEach((member) => {
+                const memberProgress = contentProgressMap.get(member.userId) || [];
+                const hasCompletedLesson = memberProgress.some(
+                  (p) =>
+                    p.contentType === 'course_lesson' &&
+                    p.contentId === resource.resourceId &&
+                    p.lessonId === lesson.id &&
+                    p.status === 'completed'
+                );
+                if (hasCompletedLesson) lessonCompletedCount++;
+              });
+              return {
+                lessonId: lesson.id,
+                title: lesson.title,
+                completedCount: lessonCompletedCount,
+                totalCount: totalMembers,
+              };
+            }),
+          }));
+        }
+      }
+
+      const courseMeta = contentType === 'course' ? courseMetadataMap.get(resource.resourceId) : undefined;
+
       contentCompletionByItem.set(resource.resourceId, {
         contentType,
         contentId: resource.resourceId,
@@ -857,12 +942,48 @@ export async function GET(
         completedCount,
         totalCount: totalMembers,
         completionPercent: totalMembers > 0 ? Math.round((completedCount / totalMembers) * 100) : 0,
+        modules,
+        coverImageUrl: courseMeta?.coverImageUrl,
       });
     });
 
     // If no assigned resources found, fall back to tracked progress (for backwards compatibility)
     if (contentCompletionByItem.size === 0) {
+      // First, collect unique course IDs from progress to fetch their metadata
+      const fallbackCourseIds = new Set<string>();
       allProgress.forEach((p) => {
+        if (p.contentType === 'course' || p.contentType === 'course_lesson' || p.contentType === 'course_module') {
+          fallbackCourseIds.add(p.contentId);
+        }
+      });
+
+      // Fetch course metadata for fallback courses (if not already fetched)
+      const missingCourseIds = Array.from(fallbackCourseIds).filter(id => !courseMetadataMap.has(id));
+      if (missingCourseIds.length > 0) {
+        const batchSize = 30;
+        for (let i = 0; i < missingCourseIds.length; i += batchSize) {
+          const batch = missingCourseIds.slice(i, i + batchSize);
+          const courseDocs = await adminDb.collection('courses').where('__name__', 'in', batch).get();
+          courseDocs.docs.forEach((doc) => {
+            const data = doc.data();
+            const title = data.title || `Course ${doc.id.slice(0, 8)}`;
+            const modules = (data.modules || []).map((m: { id?: string; title?: string; lessons?: Array<{ id?: string; title?: string }> }) => ({
+              id: m.id || '',
+              title: m.title || 'Untitled Module',
+              lessons: (m.lessons || []).map((l: { id?: string; title?: string }) => ({
+                id: l.id || '',
+                title: l.title || 'Untitled Lesson',
+              })),
+            }));
+            courseMetadataMap.set(doc.id, { title, coverImageUrl: data.coverImageUrl, modules });
+          });
+        }
+      }
+
+      allProgress.forEach((p) => {
+        // Skip lesson-level progress, we only want course-level entries
+        if (p.contentType === 'course_lesson' || p.contentType === 'course_module') return;
+
         const key = `${p.contentType}-${p.contentId}`;
         const existing = contentCompletionByItem.get(key);
 
@@ -878,6 +999,41 @@ export async function GET(
           const title = contentTitleMap.get(p.contentId) ||
             (p.contentType === 'article' ? `Article ${p.contentId.slice(0, 8)}` : `Course ${p.contentId.slice(0, 8)}`);
 
+          // Build modules for courses in fallback
+          let modules: ModuleCompletion[] | undefined;
+          if (p.contentType === 'course') {
+            const courseMeta = courseMetadataMap.get(p.contentId);
+            if (courseMeta && courseMeta.modules.length > 0) {
+              modules = courseMeta.modules.map((mod) => ({
+                moduleId: mod.id,
+                title: mod.title,
+                lessons: mod.lessons.map((lesson) => {
+                  // Count lesson completions from allProgress
+                  let lessonCompletedCount = 0;
+                  memberStats.forEach((member) => {
+                    const memberProgress = contentProgressMap.get(member.userId) || [];
+                    const hasCompletedLesson = memberProgress.some(
+                      (prog) =>
+                        prog.contentType === 'course_lesson' &&
+                        prog.contentId === p.contentId &&
+                        prog.lessonId === lesson.id &&
+                        prog.status === 'completed'
+                    );
+                    if (hasCompletedLesson) lessonCompletedCount++;
+                  });
+                  return {
+                    lessonId: lesson.id,
+                    title: lesson.title,
+                    completedCount: lessonCompletedCount,
+                    totalCount: totalMembers,
+                  };
+                }),
+              }));
+            }
+          }
+
+          const fallbackCourseMeta = p.contentType === 'course' ? courseMetadataMap.get(p.contentId) : undefined;
+
           contentCompletionByItem.set(key, {
             contentType: p.contentType === 'article' ? 'article' : 'course',
             contentId: p.contentId,
@@ -885,6 +1041,8 @@ export async function GET(
             completedCount: p.status === 'completed' ? 1 : 0,
             totalCount: 1,
             completionPercent: p.status === 'completed' ? 100 : 0,
+            modules,
+            coverImageUrl: fallbackCourseMeta?.coverImageUrl,
           });
         }
       });

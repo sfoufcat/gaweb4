@@ -51,7 +51,35 @@ export function EngagementInsights({
   trend = defaultTrend,
   className,
 }: EngagementInsightsProps) {
-  // Format response time display
+  // Calculate estimated time to complete remaining tasks
+  // Uses average completion time (capped at 8h per task) and working hours (9-5)
+  const calculateTimeToComplete = () => {
+    const uncompletedTasks = taskVelocity.total - taskVelocity.completed;
+    if (uncompletedTasks <= 0) return { hours: 0, display: 'Done!' };
+
+    // Use average response time if available, capped at 8 hours per task
+    const avgHoursPerTask = responseTime.avgHours !== null
+      ? Math.min(responseTime.avgHours, 8)
+      : 2; // Default 2 hours per task if no data
+
+    const totalHours = uncompletedTasks * avgHoursPerTask;
+
+    // Convert to working days (8 hours per day, 9-5)
+    const workingHoursPerDay = 8;
+    if (totalHours <= workingHoursPerDay) {
+      // Less than a day - show hours
+      if (totalHours < 1) return { hours: totalHours, display: `${Math.round(totalHours * 60)}m` };
+      return { hours: totalHours, display: `${totalHours.toFixed(1)}h` };
+    }
+
+    // More than a day - show days
+    const workingDays = Math.ceil(totalHours / workingHoursPerDay);
+    return { hours: totalHours, display: `${workingDays}d` };
+  };
+
+  const timeToComplete = calculateTimeToComplete();
+
+  // Format response time display (kept for reference but renamed)
   const formatResponseTime = () => {
     if (responseTime.avgHours === null) return 'No data';
     if (responseTime.avgHours < 1) return `${Math.round(responseTime.avgHours * 60)}m`;
@@ -120,24 +148,19 @@ export function EngagementInsights({
           </div>
         </div>
 
-        {/* Response Time */}
+        {/* Time to Complete */}
         <div className="p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a]">
           <div className="flex items-center gap-2 mb-1.5">
             <Clock className="w-4 h-4 text-blue-500" />
-            <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">Response</span>
+            <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">Time to complete</span>
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              {formatResponseTime()}
+              {timeToComplete.display}
             </span>
-            {responseTime.bucket !== 'no_data' && (
-              <span className={cn(
-                'text-xs px-1.5 py-0.5 rounded-full',
-                responseTime.bucket === 'same_day' && 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
-                responseTime.bucket === 'next_day' && 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
-                responseTime.bucket === 'delayed' && 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-              )}>
-                {responseTime.sameDayPercent}% same day
+            {taskVelocity.total - taskVelocity.completed > 0 && (
+              <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                ({taskVelocity.total - taskVelocity.completed} task{taskVelocity.total - taskVelocity.completed !== 1 ? 's' : ''})
               </span>
             )}
           </div>

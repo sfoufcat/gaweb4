@@ -1,13 +1,13 @@
 /**
  * Referral Rewards System
- * 
+ *
  * Handles granting rewards to referrers when their referred users complete enrollment.
  */
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { nanoid } from 'nanoid';
-import type { Referral, ReferralConfig, Program, DiscountCode } from '@/types';
+import type { Referral, ReferralConfig, Program, DiscountCode, ReferralResourceType } from '@/types';
 
 export interface RewardResult {
   success: boolean;
@@ -18,7 +18,7 @@ export interface RewardResult {
 
 /**
  * Grant a referral reward to a referrer
- * 
+ *
  * @param referralId - The referral record ID
  * @param referralConfig - The referral configuration with reward settings
  * @param referrerId - The user ID of the referrer
@@ -40,24 +40,30 @@ export async function grantReferralReward(
   }
 
   const reward = referralConfig.reward;
-  const now = new Date().toISOString();
 
   try {
     switch (reward.type) {
-      case 'free_time':
-        return await grantFreeTimeReward(referralId, referrerId, organizationId, reward.freeDays || 14);
-      
       case 'free_program':
+        // Handle both program and resource rewards
+        if (reward.freeResourceId && reward.freeResourceType) {
+          return await grantFreeResourceReward(
+            referralId,
+            referrerId,
+            organizationId,
+            reward.freeResourceId,
+            reward.freeResourceType
+          );
+        }
         if (!reward.freeProgramId) {
           return {
             success: false,
             rewardType: 'free_program',
             details: {},
-            error: 'No program ID configured for free program reward',
+            error: 'No program or resource ID configured for free product reward',
           };
         }
         return await grantFreeProgramReward(referralId, referrerId, organizationId, reward.freeProgramId);
-      
+
       case 'discount_code':
         return await grantDiscountCodeReward(
           referralId,
@@ -66,7 +72,15 @@ export async function grantReferralReward(
           reward.discountType || 'percentage',
           reward.discountValue || 20
         );
-      
+
+      case 'monetary':
+        return await grantMonetaryReward(
+          referralId,
+          referrerId,
+          organizationId,
+          reward.monetaryAmount || 0
+        );
+
       default:
         return {
           success: false,
@@ -84,92 +98,6 @@ export async function grantReferralReward(
       error: error instanceof Error ? error.message : 'Failed to grant reward',
     };
   }
-}
-
-/**
- * Grant free time extension to a referrer's subscription/access
- */
-async function grantFreeTimeReward(
-  referralId: string,
-  referrerId: string,
-  organizationId: string,
-  freeDays: number
-): Promise<RewardResult> {
-  const now = new Date().toISOString();
-  
-  // Find the user's org membership and extend their access
-  const membershipQuery = await adminDb
-    .collection('org_memberships')
-    .where('userId', '==', referrerId)
-    .where('organizationId', '==', organizationId)
-    .limit(1)
-    .get();
-
-  if (membershipQuery.empty) {
-    // No membership found - might need to create one or this is an error case
-    // For now, just record the reward for later processing
-    await updateReferralWithReward(referralId, 'free_time', {
-      freeDays,
-      status: 'pending_application',
-      reason: 'No membership found - will apply when membership created',
-    });
-
-    return {
-      success: true,
-      rewardType: 'free_time',
-      details: {
-        freeDays,
-        status: 'pending_application',
-      },
-    };
-  }
-
-  const membership = membershipQuery.docs[0];
-  const membershipData = membership.data();
-  
-  // Calculate new expiration date
-  let currentExpiration = membershipData.accessExpiresAt 
-    ? new Date(membershipData.accessExpiresAt)
-    : new Date();
-  
-  // If current expiration is in the past, start from now
-  if (currentExpiration < new Date()) {
-    currentExpiration = new Date();
-  }
-  
-  const newExpiration = new Date(currentExpiration);
-  newExpiration.setDate(newExpiration.getDate() + freeDays);
-
-  // Update membership with extended access
-  await membership.ref.update({
-    accessExpiresAt: newExpiration.toISOString(),
-    hasActiveAccess: true,
-    updatedAt: now,
-    // Track that this was extended via referral
-    referralExtensions: FieldValue.arrayUnion({
-      referralId,
-      daysAdded: freeDays,
-      appliedAt: now,
-    }),
-  });
-
-  // Update referral record
-  await updateReferralWithReward(referralId, 'free_time', {
-    freeDays,
-    newExpirationDate: newExpiration.toISOString(),
-    previousExpirationDate: membershipData.accessExpiresAt,
-  });
-
-  console.log(`[REFERRAL_REWARD] Granted ${freeDays} free days to user ${referrerId}`);
-
-  return {
-    success: true,
-    rewardType: 'free_time',
-    details: {
-      freeDays,
-      newExpirationDate: newExpiration.toISOString(),
-    },
-  };
 }
 
 /**
@@ -267,6 +195,117 @@ async function grantFreeProgramReward(
 }
 
 /**
+ * Grant free access to a resource (article, course, video, download, link) for the referrer
+ */
+async function grantFreeResourceReward(
+  referralId: string,
+  referrerId: string,
+  organizationId: string,
+  resourceId: string,
+  resourceType: ReferralResourceType
+): Promise<RewardResult> {
+  const now = new Date().toISOString();
+
+  // Map resource type to collection name
+  const resourceCollections: Record<ReferralResourceType, string> = {
+    article: 'articles',
+    course: 'courses',
+    video: 'videos',
+    download: 'downloads',
+    link: 'links',
+  };
+
+  const collectionName = resourceCollections[resourceType];
+  if (!collectionName) {
+    return {
+      success: false,
+      rewardType: 'free_program',
+      details: {},
+      error: `Unknown resource type: ${resourceType}`,
+    };
+  }
+
+  // Check if resource exists
+  const resourceDoc = await adminDb.collection(collectionName).doc(resourceId).get();
+  if (!resourceDoc.exists) {
+    return {
+      success: false,
+      rewardType: 'free_program',
+      details: {},
+      error: 'Reward resource not found',
+    };
+  }
+
+  const resource = resourceDoc.data();
+  const resourceName = resource?.title || resource?.name || 'Resource';
+
+  // Check if user already has access
+  const existingAccess = await adminDb
+    .collection('resource_access')
+    .where('userId', '==', referrerId)
+    .where('resourceId', '==', resourceId)
+    .where('resourceType', '==', resourceType)
+    .limit(1)
+    .get();
+
+  if (!existingAccess.empty) {
+    // Already has access - record for tracking but don't create duplicate
+    await updateReferralWithReward(referralId, 'free_program', {
+      resourceId,
+      resourceType,
+      resourceName,
+      status: 'already_has_access',
+    });
+
+    return {
+      success: true,
+      rewardType: 'free_program',
+      details: {
+        resourceId,
+        resourceType,
+        resourceName,
+        status: 'already_has_access',
+      },
+    };
+  }
+
+  // Create resource access record
+  const accessId = `access_${nanoid(16)}`;
+
+  await adminDb.collection('resource_access').doc(accessId).set({
+    id: accessId,
+    userId: referrerId,
+    organizationId,
+    resourceType,
+    resourceId,
+    grantedBy: 'referral',
+    referralId,
+    createdAt: now,
+  });
+
+  // Update referral record
+  await updateReferralWithReward(referralId, 'free_program', {
+    resourceId,
+    resourceType,
+    resourceName,
+    accessId,
+  });
+
+  console.log(`[REFERRAL_REWARD] Granted free access to ${resourceType} ${resourceId} for user ${referrerId}`);
+
+  return {
+    success: true,
+    rewardType: 'free_program',
+    details: {
+      resourceId,
+      resourceType,
+      resourceName,
+      accessId,
+    },
+  };
+}
+
+/**
  * Generate and grant a discount code for the referrer
  */
 async function grantDiscountCodeReward(
@@ -327,8 +366,8 @@ async function grantDiscountCodeReward(
     expiresAt: expiresAt.toISOString(),
   });
 
-  const displayValue = discountType === 'percentage' 
-    ? `${discountValue}%` 
+  const displayValue = discountType === 'percentage'
+    ? `${discountValue}%`
     : `$${(discountValue / 100).toFixed(2)}`;
 
   console.log(`[REFERRAL_REWARD] Generated discount code ${code} (${displayValue} off) for user ${referrerId}`);
@@ -347,6 +386,51 @@ async function grantDiscountCodeReward(
 }
 
 /**
+ * Record a monetary reward for the referrer
+ *
+ * Note: Monetary rewards are tracked but must be paid manually by the coach.
+ * This function records the reward and sets paymentStatus to 'pending'.
+ */
+async function grantMonetaryReward(
+  referralId: string,
+  referrerId: string,
+  organizationId: string,
+  monetaryAmount: number
+): Promise<RewardResult> {
+  if (monetaryAmount <= 0) {
+    return {
+      success: false,
+      rewardType: 'monetary',
+      details: {},
+      error: 'Monetary amount must be greater than 0',
+    };
+  }
+
+  // Update referral record with monetary reward and pending payment status
+  await updateReferralWithReward(referralId, 'monetary', {
+    monetaryAmount,
+    displayValue: `$${(monetaryAmount / 100).toFixed(2)}`,
+  });
+
+  // Also set payment status to pending
+  await adminDb.collection('referrals').doc(referralId).update({
+    paymentStatus: 'pending',
+  });
+
+  console.log(`[REFERRAL_REWARD] Recorded monetary reward of $${(monetaryAmount / 100).toFixed(2)} for user ${referrerId} (pending payment)`);
+
+  return {
+    success: true,
+    rewardType: 'monetary',
+    details: {
+      monetaryAmount,
+      displayValue: `$${(monetaryAmount / 100).toFixed(2)}`,
+      paymentStatus: 'pending',
+    },
+  };
+}
+
+/**
  * Helper to update referral record with reward details
  */
 async function updateReferralWithReward(
@@ -355,7 +439,7 @@ async function updateReferralWithReward(
   rewardDetails: Record<string, unknown>
 ): Promise<void> {
   const now = new Date().toISOString();
-  
+
   await adminDb.collection('referrals').doc(referralId).update({
     status: 'rewarded',
     rewardType,
@@ -373,12 +457,12 @@ export async function linkReferredUser(
   referredUserId: string
 ): Promise<void> {
   const now = new Date().toISOString();
-  
+
   await adminDb.collection('referrals').doc(referralId).update({
     referredUserId,
     updatedAt: now,
   });
-  
+
   console.log(`[REFERRAL] Linked referred user ${referredUserId} to referral ${referralId}`);
 }
 
@@ -389,22 +473,12 @@ export async function completeReferral(
   referralId: string
 ): Promise<void> {
   const now = new Date().toISOString();
-  
+
   await adminDb.collection('referrals').doc(referralId).update({
     status: 'completed',
     completedAt: now,
     updatedAt: now,
   });
-  
+
   console.log(`[REFERRAL] Marked referral ${referralId} as completed`);
 }
-
-
-
-
-
-
-
-
-
-

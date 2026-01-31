@@ -48,7 +48,7 @@ interface AlignmentSheetProps {
  */
 // Activity display configuration
 const ACTIVITY_LABELS: Record<AlignmentActivityKey, string> = {
-  morning_checkin: 'Confidence check-in',
+  morning_checkin: 'Morning check-in',
   evening_checkin: 'Evening check-in',
   set_tasks: "Set today's tasks",
   complete_tasks: 'Complete tasks',

@@ -1,8 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Gift, Clock, BookOpen, Percent, DollarSign } from 'lucide-react';
-import type { ReferralReward, ReferralRewardType, Program } from '@/types';
+import { useState, useEffect, useMemo } from 'react';
+import { Gift, BookOpen, Percent, DollarSign, AlertTriangle, Loader2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import type { ReferralReward, ReferralRewardType, ReferralResourceType, Program } from '@/types';
+import type { DiscoverArticle, DiscoverCourse, DiscoverVideo } from '@/types/discover';
+
+interface Resource {
+  id: string;
+  title: string;
+  type: ReferralResourceType;
+}
 
 interface ReferralRewardSelectorProps {
   value: ReferralReward | undefined;
@@ -12,11 +28,12 @@ interface ReferralRewardSelectorProps {
 
 /**
  * ReferralRewardSelector Component
- * 
+ *
  * Allows coaches to configure rewards for successful referrals:
- * - Free time: Add free days to subscription/access
- * - Free program: Grant access to another program
+ * - No reward: Track referrals only
+ * - Free product: Grant access to a program or resource
  * - Discount code: Auto-generate a discount code
+ * - Cash reward: Coach pays referrer directly
  */
 export function ReferralRewardSelector({
   value,
@@ -24,29 +41,88 @@ export function ReferralRewardSelector({
   organizationId,
 }: ReferralRewardSelectorProps) {
   const [programs, setPrograms] = useState<Program[]>([]);
-  const [loadingPrograms, setLoadingPrograms] = useState(false);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
-  // Fetch programs for the free_program reward option
+  // Fetch programs and resources for the free_program reward option
   useEffect(() => {
-    const fetchPrograms = async () => {
-      if (!organizationId) return;
-      
-      setLoadingPrograms(true);
+    const fetchProducts = async () => {
+      setLoadingProducts(true);
       try {
-        const response = await fetch('/api/coach/org-programs');
-        if (response.ok) {
-          const data = await response.json();
+        // Fetch programs
+        const programsRes = await fetch('/api/coach/org-programs');
+        if (programsRes.ok) {
+          const data = await programsRes.json();
           setPrograms(data.programs || []);
         }
+
+        // Fetch resources in parallel
+        const [coursesRes, articlesRes, videosRes, downloadsRes, linksRes] = await Promise.all([
+          fetch('/api/coach/org-discover/courses'),
+          fetch('/api/coach/org-discover/articles'),
+          fetch('/api/coach/org-discover/videos'),
+          fetch('/api/coach/org-discover/downloads'),
+          fetch('/api/coach/org-discover/links'),
+        ]);
+
+        const allResources: Resource[] = [];
+
+        if (coursesRes.ok) {
+          const data = await coursesRes.json();
+          (data.courses || []).forEach((c: DiscoverCourse) => {
+            allResources.push({ id: c.id, title: c.title, type: 'course' });
+          });
+        }
+        if (articlesRes.ok) {
+          const data = await articlesRes.json();
+          (data.articles || []).forEach((a: DiscoverArticle) => {
+            allResources.push({ id: a.id, title: a.title, type: 'article' });
+          });
+        }
+        if (videosRes.ok) {
+          const data = await videosRes.json();
+          (data.videos || []).forEach((v: DiscoverVideo) => {
+            allResources.push({ id: v.id, title: v.title, type: 'video' });
+          });
+        }
+        if (downloadsRes.ok) {
+          const data = await downloadsRes.json();
+          (data.downloads || []).forEach((d: { id: string; title: string }) => {
+            allResources.push({ id: d.id, title: d.title, type: 'download' });
+          });
+        }
+        if (linksRes.ok) {
+          const data = await linksRes.json();
+          (data.links || []).forEach((l: { id: string; title: string }) => {
+            allResources.push({ id: l.id, title: l.title, type: 'link' });
+          });
+        }
+
+        setResources(allResources);
       } catch (err) {
-        console.error('Failed to fetch programs:', err);
+        console.error('Failed to fetch products:', err);
       } finally {
-        setLoadingPrograms(false);
+        setLoadingProducts(false);
       }
     };
 
-    fetchPrograms();
+    fetchProducts();
   }, [organizationId]);
+
+  // Group resources by type for the dropdown
+  const resourcesByType = useMemo(() => {
+    const grouped: Record<ReferralResourceType, Resource[]> = {
+      course: [],
+      article: [],
+      video: [],
+      download: [],
+      link: [],
+    };
+    resources.forEach((r) => {
+      grouped[r.type].push(r);
+    });
+    return grouped;
+  }, [resources]);
 
   const handleRewardTypeChange = (type: ReferralRewardType | 'none') => {
     if (type === 'none') {
@@ -55,190 +131,339 @@ export function ReferralRewardSelector({
     }
 
     const baseReward: ReferralReward = { type };
-    
+
     // Set defaults based on type
     switch (type) {
-      case 'free_time':
-        baseReward.freeDays = 14; // Default 2 weeks
-        break;
       case 'free_program':
-        baseReward.freeProgramId = programs[0]?.id;
+        // Don't set a default - user must select
         break;
       case 'discount_code':
         baseReward.discountType = 'percentage';
         baseReward.discountValue = 20; // Default 20%
+        break;
+      case 'monetary':
+        baseReward.monetaryAmount = 1000; // Default $10.00
         break;
     }
 
     onChange(baseReward);
   };
 
+  const handleProductSelect = (productValue: string) => {
+    if (!value || value.type !== 'free_program') return;
+
+    // Parse the value (format: "program:id" or "resource:type:id")
+    const parts = productValue.split(':');
+    if (parts[0] === 'program') {
+      onChange({
+        ...value,
+        freeProgramId: parts[1],
+        freeResourceId: undefined,
+        freeResourceType: undefined,
+      });
+    } else if (parts[0] === 'resource') {
+      onChange({
+        ...value,
+        freeProgramId: undefined,
+        freeResourceId: parts[2],
+        freeResourceType: parts[1] as ReferralResourceType,
+      });
+    }
+  };
+
+  // Get current product value for the select
+  const currentProductValue = useMemo(() => {
+    if (!value || value.type !== 'free_program') return '';
+    if (value.freeProgramId) return `program:${value.freeProgramId}`;
+    if (value.freeResourceId && value.freeResourceType) {
+      return `resource:${value.freeResourceType}:${value.freeResourceId}`;
+    }
+    return '';
+  }, [value]);
+
+  // Get product display name
+  const getProductDisplayName = () => {
+    if (!value || value.type !== 'free_program') return '';
+    if (value.freeProgramId) {
+      const program = programs.find((p) => p.id === value.freeProgramId);
+      return program?.name || 'Unknown program';
+    }
+    if (value.freeResourceId && value.freeResourceType) {
+      const resource = resources.find((r) => r.id === value.freeResourceId);
+      return resource?.title || 'Unknown resource';
+    }
+    return '';
+  };
+
   const rewardType = value?.type || 'none';
 
+  const hasProducts = programs.length > 0 || resources.length > 0;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+        <label className="block text-base font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
           Referral Reward (Optional)
         </label>
-        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
           Incentivize referrals by offering a reward when a friend completes enrollment
         </p>
 
-        {/* Reward Type Selection */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* Reward Type Selection - 2x2 Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* No Reward */}
           <button
             type="button"
             onClick={() => handleRewardTypeChange('none')}
-            className={`p-3 rounded-lg border text-left transition-all ${
+            className={`p-4 rounded-xl border-2 text-left transition-all ${
               rewardType === 'none'
-                ? 'border-brand-accent bg-brand-accent/10 dark:bg-brand-accent/20'
-                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <Gift className={`w-4 h-4 ${rewardType === 'none' ? 'text-brand-accent' : 'text-[#5f5a55]'}`} />
-              <span className={`text-sm font-medium ${
-                rewardType === 'none' 
-                  ? 'text-brand-accent' 
-                  : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-              }`}>
+            <div className="flex items-center gap-2 mb-1">
+              <Gift
+                className={`w-4 h-4 ${rewardType === 'none' ? 'text-brand-accent' : 'text-[#5f5a55]'}`}
+              />
+              <span
+                className={`text-base font-medium ${
+                  rewardType === 'none' ? 'text-brand-accent' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                }`}
+              >
                 No Reward
               </span>
             </div>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-              Track referrals only
-            </p>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Track referrals only</p>
           </button>
 
-          <button
-            type="button"
-            onClick={() => handleRewardTypeChange('free_time')}
-            className={`p-3 rounded-lg border text-left transition-all ${
-              rewardType === 'free_time'
-                ? 'border-brand-accent bg-brand-accent/10 dark:bg-brand-accent/20'
-                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Clock className={`w-4 h-4 ${rewardType === 'free_time' ? 'text-brand-accent' : 'text-[#5f5a55]'}`} />
-              <span className={`text-sm font-medium ${
-                rewardType === 'free_time' 
-                  ? 'text-brand-accent' 
-                  : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-              }`}>
-                Free Time
-              </span>
-            </div>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-              Add free days to access
-            </p>
-          </button>
-
+          {/* Free Product */}
           <button
             type="button"
             onClick={() => handleRewardTypeChange('free_program')}
-            className={`p-3 rounded-lg border text-left transition-all ${
+            className={`p-4 rounded-xl border-2 text-left transition-all ${
               rewardType === 'free_program'
-                ? 'border-brand-accent bg-brand-accent/10 dark:bg-brand-accent/20'
-                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <BookOpen className={`w-4 h-4 ${rewardType === 'free_program' ? 'text-brand-accent' : 'text-[#5f5a55]'}`} />
-              <span className={`text-sm font-medium ${
-                rewardType === 'free_program' 
-                  ? 'text-brand-accent' 
-                  : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-              }`}>
-                Free Program
+            <div className="flex items-center gap-2 mb-1">
+              <BookOpen
+                className={`w-4 h-4 ${
+                  rewardType === 'free_program' ? 'text-brand-accent' : 'text-[#5f5a55]'
+                }`}
+              />
+              <span
+                className={`text-base font-medium ${
+                  rewardType === 'free_program'
+                    ? 'text-brand-accent'
+                    : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                }`}
+              >
+                Free Product
               </span>
             </div>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-              Grant access to a program
-            </p>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Program or resource</p>
           </button>
 
+          {/* Discount Code */}
           <button
             type="button"
             onClick={() => handleRewardTypeChange('discount_code')}
-            className={`p-3 rounded-lg border text-left transition-all ${
+            className={`p-4 rounded-xl border-2 text-left transition-all ${
               rewardType === 'discount_code'
-                ? 'border-brand-accent bg-brand-accent/10 dark:bg-brand-accent/20'
-                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <Percent className={`w-4 h-4 ${rewardType === 'discount_code' ? 'text-brand-accent' : 'text-[#5f5a55]'}`} />
-              <span className={`text-sm font-medium ${
-                rewardType === 'discount_code' 
-                  ? 'text-brand-accent' 
-                  : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
-              }`}>
+            <div className="flex items-center gap-2 mb-1">
+              <Percent
+                className={`w-4 h-4 ${
+                  rewardType === 'discount_code' ? 'text-brand-accent' : 'text-[#5f5a55]'
+                }`}
+              />
+              <span
+                className={`text-base font-medium ${
+                  rewardType === 'discount_code'
+                    ? 'text-brand-accent'
+                    : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                }`}
+              >
                 Discount Code
               </span>
             </div>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-              Auto-generate a discount
-            </p>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Auto-generate discount</p>
+          </button>
+
+          {/* Cash Reward */}
+          <button
+            type="button"
+            onClick={() => handleRewardTypeChange('monetary')}
+            className={`p-4 rounded-xl border-2 text-left transition-all ${
+              rewardType === 'monetary'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign
+                className={`w-4 h-4 ${
+                  rewardType === 'monetary' ? 'text-brand-accent' : 'text-[#5f5a55]'
+                }`}
+              />
+              <span
+                className={`text-base font-medium ${
+                  rewardType === 'monetary'
+                    ? 'text-brand-accent'
+                    : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                }`}
+              >
+                Cash Reward
+              </span>
+            </div>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Pay referrers directly</p>
           </button>
         </div>
       </div>
 
       {/* Reward Configuration */}
       {value && (
-        <div className="mt-4 p-4 bg-[#f8f6f4] dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
-          {value.type === 'free_time' && (
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                Number of Free Days
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={value.freeDays || 14}
-                  onChange={(e) => onChange({ ...value, freeDays: parseInt(e.target.value) || 14 })}
-                  className="w-24 px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
-                />
-                <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">days</span>
-              </div>
-              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
-                The referrer will get {value.freeDays || 14} free days added to their subscription when their friend enrolls
-              </p>
-            </div>
-          )}
-
+        <div className="p-4 bg-[#f8f6f4] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+          {/* Free Product Configuration */}
           {value.type === 'free_program' && (
             <div>
               <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                Program to Grant Access To
+                Select Product to Grant
               </label>
-              {loadingPrograms ? (
-                <div className="text-sm text-[#5f5a55]">Loading programs...</div>
-              ) : programs.length === 0 ? (
-                <div className="text-sm text-[#5f5a55]">No programs available</div>
+              {loadingProducts ? (
+                <div className="flex items-center gap-2 text-sm text-[#5f5a55]">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading products...
+                </div>
+              ) : !hasProducts ? (
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                  No programs or resources available
+                </p>
               ) : (
-                <select
-                  value={value.freeProgramId || ''}
-                  onChange={(e) => onChange({ ...value, freeProgramId: e.target.value })}
-                  className="w-full px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
-                >
-                  <option value="">Select a program...</option>
-                  {programs.map((program) => (
-                    <option key={program.id} value={program.id}>
-                      {program.name}
-                    </option>
-                  ))}
-                </select>
+                <Select value={currentProductValue} onValueChange={handleProductSelect}>
+                  <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    <SelectValue placeholder="Select a product...">
+                      {getProductDisplayName() || 'Select a product...'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {/* Programs */}
+                    {programs.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-xs uppercase text-[#5f5a55] dark:text-[#b2b6c2] font-semibold px-2">
+                          Programs
+                        </SelectLabel>
+                        {programs.map((program) => (
+                          <SelectItem
+                            key={program.id}
+                            value={`program:${program.id}`}
+                            className="px-2"
+                          >
+                            <span className="font-albert">{program.name}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+
+                    {/* Courses */}
+                    {resourcesByType.course.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-xs uppercase text-[#5f5a55] dark:text-[#b2b6c2] font-semibold px-2 mt-2">
+                          Courses
+                        </SelectLabel>
+                        {resourcesByType.course.map((r) => (
+                          <SelectItem
+                            key={r.id}
+                            value={`resource:course:${r.id}`}
+                            className="px-2"
+                          >
+                            <span className="font-albert">{r.title}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+
+                    {/* Articles */}
+                    {resourcesByType.article.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-xs uppercase text-[#5f5a55] dark:text-[#b2b6c2] font-semibold px-2 mt-2">
+                          Articles
+                        </SelectLabel>
+                        {resourcesByType.article.map((r) => (
+                          <SelectItem
+                            key={r.id}
+                            value={`resource:article:${r.id}`}
+                            className="px-2"
+                          >
+                            <span className="font-albert">{r.title}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+
+                    {/* Videos */}
+                    {resourcesByType.video.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-xs uppercase text-[#5f5a55] dark:text-[#b2b6c2] font-semibold px-2 mt-2">
+                          Videos
+                        </SelectLabel>
+                        {resourcesByType.video.map((r) => (
+                          <SelectItem
+                            key={r.id}
+                            value={`resource:video:${r.id}`}
+                            className="px-2"
+                          >
+                            <span className="font-albert">{r.title}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+
+                    {/* Downloads */}
+                    {resourcesByType.download.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-xs uppercase text-[#5f5a55] dark:text-[#b2b6c2] font-semibold px-2 mt-2">
+                          Downloads
+                        </SelectLabel>
+                        {resourcesByType.download.map((r) => (
+                          <SelectItem
+                            key={r.id}
+                            value={`resource:download:${r.id}`}
+                            className="px-2"
+                          >
+                            <span className="font-albert">{r.title}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+
+                    {/* Links */}
+                    {resourcesByType.link.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-xs uppercase text-[#5f5a55] dark:text-[#b2b6c2] font-semibold px-2 mt-2">
+                          Links
+                        </SelectLabel>
+                        {resourcesByType.link.map((r) => (
+                          <SelectItem key={r.id} value={`resource:link:${r.id}`} className="px-2">
+                            <span className="font-albert">{r.title}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                  </SelectContent>
+                </Select>
               )}
               <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
-                The referrer will get free access to this program when their friend enrolls
+                The referrer will get free access to this product when their friend enrolls
               </p>
             </div>
           )}
 
+          {/* Discount Code Configuration */}
           {value.type === 'discount_code' && (
             <div className="space-y-4">
               <div>
@@ -249,26 +474,26 @@ export function ReferralRewardSelector({
                   <button
                     type="button"
                     onClick={() => onChange({ ...value, discountType: 'percentage' })}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 transition-all ${
                       value.discountType === 'percentage'
-                        ? 'border-brand-accent bg-brand-accent/10'
-                        : 'border-[#e1ddd8] dark:border-[#262b35]'
+                        ? 'border-brand-accent bg-brand-accent/5'
+                        : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b]'
                     }`}
                   >
                     <Percent className="w-4 h-4" />
-                    <span className="text-sm">Percentage</span>
+                    <span className="text-sm font-medium font-albert">Percentage</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onChange({ ...value, discountType: 'fixed' })}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 transition-all ${
                       value.discountType === 'fixed'
-                        ? 'border-brand-accent bg-brand-accent/10'
-                        : 'border-[#e1ddd8] dark:border-[#262b35]'
+                        ? 'border-brand-accent bg-brand-accent/5'
+                        : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b]'
                     }`}
                   >
                     <DollarSign className="w-4 h-4" />
-                    <span className="text-sm">Fixed Amount</span>
+                    <span className="text-sm font-medium font-albert">Fixed Amount</span>
                   </button>
                 </div>
               </div>
@@ -279,33 +504,73 @@ export function ReferralRewardSelector({
                 </label>
                 <div className="flex items-center gap-2">
                   {value.discountType === 'fixed' && (
-                    <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">$</span>
+                    <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">$</span>
                   )}
                   <input
                     type="number"
                     min={1}
                     max={value.discountType === 'percentage' ? 100 : 10000}
-                    value={value.discountType === 'fixed' 
-                      ? ((value.discountValue || 0) / 100).toFixed(2)
-                      : value.discountValue || 20
+                    value={
+                      value.discountType === 'fixed'
+                        ? ((value.discountValue || 0) / 100).toFixed(2)
+                        : value.discountValue || 20
                     }
                     onChange={(e) => {
                       const val = parseFloat(e.target.value) || 0;
                       onChange({
                         ...value,
-                        discountValue: value.discountType === 'fixed' 
-                          ? Math.round(val * 100) 
-                          : Math.min(100, val),
+                        discountValue:
+                          value.discountType === 'fixed'
+                            ? Math.round(val * 100)
+                            : Math.min(100, val),
                       });
                     }}
-                    className="w-24 px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] text-sm"
+                    className="w-28 px-4 py-2.5 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                   />
                   {value.discountType === 'percentage' && (
-                    <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">%</span>
+                    <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">%</span>
                   )}
                 </div>
                 <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
                   A unique discount code will be auto-generated for each successful referral
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Cash Reward Configuration */}
+          {value.type === 'monetary' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+                  Amount Per Referral
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">$</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10000}
+                    step="0.01"
+                    value={((value.monetaryAmount || 0) / 100).toFixed(2)}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      onChange({
+                        ...value,
+                        monetaryAmount: Math.round(val * 100),
+                      });
+                    }}
+                    className="w-28 px-4 py-2.5 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                  />
+                </div>
+              </div>
+
+              {/* Disclaimer */}
+              <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700 dark:text-amber-300 font-albert">
+                  You must arrange payment to referrers directly. We&apos;ll track how much you owe
+                  each referrer.
                 </p>
               </div>
             </div>
@@ -315,13 +580,3 @@ export function ReferralRewardSelector({
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-

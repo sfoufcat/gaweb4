@@ -233,7 +233,7 @@ export function ReferralProgramCard({
               onClick={() => onEnableClick?.(program.id)}
               className="h-8 bg-brand-accent hover:bg-brand-accent/90 text-white"
             >
-              Enable Referrals
+              Create Referral
             </Button>
           )}
         </div>

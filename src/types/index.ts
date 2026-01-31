@@ -2024,10 +2024,8 @@ export interface AlignmentActivityConfig {
 
 // Default alignment activities (for backward compatibility)
 export const DEFAULT_ALIGNMENT_ACTIVITIES: AlignmentActivityKey[] = [
-  'morning_checkin',
-  'set_tasks',
-  'chat_with_squad',
   'active_goal',
+  'set_tasks',
 ];
 
 // Default alignment config
@@ -4922,7 +4920,12 @@ export interface DiscountCodeUsage {
 /**
  * Referral reward types
  */
-export type ReferralRewardType = 'free_time' | 'free_program' | 'discount_code';
+export type ReferralRewardType = 'free_time' | 'free_program' | 'discount_code' | 'monetary';
+
+/**
+ * Resource types that can be granted as referral rewards
+ */
+export type ReferralResourceType = 'article' | 'course' | 'download' | 'video' | 'link';
 
 /**
  * Referral status
@@ -4934,13 +4937,18 @@ export type ReferralStatus = 'pending' | 'completed' | 'rewarded';
  */
 export interface ReferralReward {
   type: ReferralRewardType;
-  // For 'free_time': days to add to subscription/access
+  // For 'free_time': number of free days to add to subscription
   freeDays?: number;
   // For 'free_program': program ID to grant free access to
   freeProgramId?: string;
+  // For 'free_program': resource to grant (alternative to program)
+  freeResourceId?: string;
+  freeResourceType?: ReferralResourceType;
   // For 'discount_code': discount settings
   discountType?: 'percentage' | 'fixed';
   discountValue?: number; // 20 for 20% or 2000 for $20.00
+  // For 'monetary': cash reward amount
+  monetaryAmount?: number; // in cents (e.g., 1000 = $10.00)
 }
 
 /**
@@ -4966,18 +4974,38 @@ export interface Referral {
   squadId?: string; // If this is a squad referral
   funnelId: string;
   flowSessionId: string;
-  
+
   // Status tracking
   status: ReferralStatus;
   completedAt?: string; // When referred user completed enrollment
-  
+
   // Reward tracking
   rewardType?: ReferralRewardType;
   rewardGrantedAt?: string;
   rewardDetails?: Record<string, unknown>; // Additional reward info (e.g., discount code created)
-  
+
+  // Payment tracking (for monetary rewards)
+  paymentStatus?: 'pending' | 'paid';
+  paidAt?: string;
+  paidAmount?: number; // in cents
+
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Resource access record - Tracks granted access to resources
+ * Stored in Firestore 'resource_access' collection
+ */
+export interface ResourceAccess {
+  id: string;
+  userId: string;
+  organizationId: string;
+  resourceType: ReferralResourceType;
+  resourceId: string;
+  grantedBy: 'referral' | 'purchase' | 'admin';
+  referralId?: string; // If granted via referral
+  createdAt: string;
 }
 
 /**

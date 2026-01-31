@@ -106,6 +106,11 @@ interface ClientDashboardData {
     modules: ModuleProgress[];
     articles: ArticleProgress[];
   };
+  currentWeekProgramTasks?: {
+    completed: number;
+    total: number;
+    tasks: Array<{ id: string; label: string; completed: boolean }>;
+  };
   engagement: {
     taskVelocity: TaskVelocity;
     responseTime: ResponseTimeMetric;
@@ -150,7 +155,8 @@ export async function GET(
 
     const program = { id: programDoc.id, ...programData } as Program;
     const lengthDays = program.lengthDays || 30;
-    const totalWeeks = Math.ceil(lengthDays / 7);
+    // totalWeeks will be recalculated from instance if available
+    let totalWeeks = Math.ceil(lengthDays / 7);
 
     // Get client's enrollment
     const enrollmentSnapshot = await adminDb
@@ -194,6 +200,12 @@ export async function GET(
     if (!instanceSnapshot.empty) {
       const instanceDoc = instanceSnapshot.docs[0];
       instance = { id: instanceDoc.id, ...instanceDoc.data() } as ProgramInstance & { id: string };
+      // Use instance weeks count if available (more accurate than lengthDays)
+      if (instance.weeks && instance.weeks.length > 0) {
+        // Filter out special weeks like onboarding (weekNumber 0 or -1)
+        const regularWeeks = instance.weeks.filter(w => w.weekNumber > 0);
+        totalWeeks = regularWeeks.length || totalWeeks;
+      }
     }
 
     // Get content progress for this user
@@ -432,6 +444,7 @@ export async function GET(
     // ========================================
 
     // Fetch tasks for engagement metrics (last 14 days)
+    // Filter by programId to only count tasks from THIS program
     const now = new Date();
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -440,6 +453,7 @@ export async function GET(
       .collection('tasks')
       .where('userId', '==', clientId)
       .where('organizationId', '==', organizationId)
+      .where('programId', '==', programId)
       .where('date', '>=', fourteenDaysAgo.toISOString().split('T')[0])
       .get();
 
@@ -451,10 +465,10 @@ export async function GET(
       completedAt?: string;
     }
 
-    const tasks: TaskData[] = tasksSnapshot.docs.map(d => ({
-      id: d.id,
-      ...d.data()
-    } as TaskData));
+    // Filter out deleted tasks
+    const tasks: TaskData[] = tasksSnapshot.docs
+      .map(d => ({ id: d.id, ...d.data() } as TaskData))
+      .filter(t => t.status !== 'deleted');
 
     // Split into this week vs last week
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
@@ -671,6 +685,71 @@ export async function GET(
       console.warn('[CLIENT_DASHBOARD] Failed to fetch past sessions:', err);
     }
 
+    // Calculate current week program tasks from tasks collection (actual user tasks)
+    let currentWeekProgramTasks: ClientDashboardData['currentWeekProgramTasks'];
+    if (instance?.weeks) {
+      // Find current week in instance - match based on calendar dates or weekNumber
+      // WeekNumber 0 is onboarding, -1 is closing
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+
+      // Find the week that contains today's date, or fall back to weekNumber matching
+      let instanceWeek = instance.weeks.find(w => {
+        if (w.calendarStartDate && w.calendarEndDate) {
+          return todayStr >= w.calendarStartDate && todayStr <= w.calendarEndDate;
+        }
+        return false;
+      });
+
+      // Fallback: match by weekNumber (currentWeek is 1-indexed for display)
+      if (!instanceWeek) {
+        instanceWeek = instance.weeks.find(w => w.weekNumber === currentWeek - 1 || w.weekNumber === currentWeek);
+      }
+
+      // Final fallback: first week
+      if (!instanceWeek) {
+        instanceWeek = instance.weeks[0];
+      }
+
+      if (instanceWeek) {
+        // Get the day index range for this week
+        const startDayIndex = instanceWeek.startDayIndex || 1;
+        const endDayIndex = instanceWeek.endDayIndex || startDayIndex + 4;
+
+        // Query actual tasks from tasks collection for this instance
+        // Filter by instanceId only to avoid needing composite index, then filter in code
+        const weekTasksSnapshot = await adminDb
+          .collection('tasks')
+          .where('instanceId', '==', instance.id)
+          .get();
+
+        // Filter out deleted tasks and tasks outside the dayIndex range
+        const allTasks: Array<{ id: string; label: string; completed: boolean }> = [];
+
+        for (const doc of weekTasksSnapshot.docs) {
+          const taskData = doc.data();
+          // Skip deleted tasks
+          if (taskData.status === 'deleted') continue;
+          // Filter by dayIndex range for current week
+          const taskDayIndex = taskData.dayIndex;
+          if (taskDayIndex < startDayIndex || taskDayIndex > endDayIndex) continue;
+
+          allTasks.push({
+            id: doc.id,
+            label: taskData.label || taskData.title || 'Task',
+            completed: taskData.completed === true || taskData.status === 'completed',
+          });
+        }
+
+        const completedCount = allTasks.filter(t => t.completed).length;
+        currentWeekProgramTasks = {
+          completed: completedCount,
+          total: allTasks.length,
+          tasks: allTasks,
+        };
+      }
+    }
+
     // Build response
     const dashboardData: ClientDashboardData = {
       userId: clientId,
@@ -692,6 +771,7 @@ export async function GET(
       },
       weekProgress,
       currentWeekContent,
+      currentWeekProgramTasks,
       engagement: {
         taskVelocity,
         responseTime,

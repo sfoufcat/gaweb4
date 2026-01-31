@@ -80,6 +80,11 @@ interface ClientDashboardData {
       completedAt?: string;
     }>;
   };
+  currentWeekProgramTasks?: {
+    completed: number;
+    total: number;
+    tasks: Array<{ id: string; label: string; completed: boolean }>;
+  };
   engagement: {
     taskVelocity: {
       completed: number;
@@ -447,6 +452,34 @@ export function ProgramDashboard({
             <WeekProgressList
               weeks={clientData.weekProgress}
               currentWeek={clientData.stats.currentWeek}
+              thisWeekTasks={
+                clientData.currentWeekProgramTasks && clientData.currentWeekProgramTasks.total > 0
+                  ? clientData.currentWeekProgramTasks
+                  : undefined
+              }
+              daysRemainingInWeek={(() => {
+                const today = new Date().getDay(); // 0 = Sunday, 6 = Saturday
+                // Week ends Friday (5). Sat/Sun = 0 days remaining
+                if (today === 0 || today === 6) return 0; // Weekend
+                return 5 - today; // Mon=4, Tue=3, Wed=2, Thu=1, Fri=0
+              })()}
+              totalProgramWeeks={(() => {
+                // Calculate total weeks INCLUDING onboarding (week 0) and closing (week -1)
+                // The API gives us stats.totalWeeks which excludes special weeks
+                // Add 2 for onboarding and closing
+                return clientData.stats.totalWeeks + 2;
+              })()}
+              programEndDate={(() => {
+                // Calculate end date from enrollment start + program length
+                const enrollment = enrollments.find(e => e.id === clientData.enrollmentId);
+                if (enrollment) {
+                  const startDate = new Date(enrollment.startedAt || enrollment.createdAt || new Date());
+                  const endDate = new Date(startDate);
+                  endDate.setDate(endDate.getDate() + (program.lengthDays || 60));
+                  return endDate.toISOString().split('T')[0];
+                }
+                return undefined;
+              })()}
             />
           </div>
 
@@ -510,104 +543,6 @@ export function ProgramDashboard({
         </div>
       )}
 
-      {/* Collapsed settings section */}
-      {onProgramUpdate && (
-        <div className="border-t border-[#e1ddd8] dark:border-[#262b35] pt-6">
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
-          >
-            <Settings className="w-4 h-4" />
-            <span>Program Settings</span>
-            {showSettings ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
-
-          {showSettings && (
-            <div className="mt-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] space-y-4">
-              {/* Task Distribution */}
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                  Task Distribution
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTaskDistribution('spread')}
-                    className={cn(
-                      'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all font-albert',
-                      taskDistribution === 'spread'
-                        ? 'bg-brand-accent text-white'
-                        : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2] border border-[#e1ddd8] dark:border-[#262b35]'
-                    )}
-                  >
-                    Spread Evenly
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTaskDistribution('repeat-daily')}
-                    className={cn(
-                      'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all font-albert',
-                      taskDistribution === 'repeat-daily'
-                        ? 'bg-brand-accent text-white'
-                        : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2] border border-[#e1ddd8] dark:border-[#262b35]'
-                    )}
-                  >
-                    Repeat Daily
-                  </button>
-                </div>
-              </div>
-
-              {/* Include Weekends */}
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                  Include Weekends
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIncludeWeekends(true)}
-                    className={cn(
-                      'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all font-albert',
-                      includeWeekends
-                        ? 'bg-brand-accent text-white'
-                        : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2] border border-[#e1ddd8] dark:border-[#262b35]'
-                    )}
-                  >
-                    7 Days
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIncludeWeekends(false)}
-                    className={cn(
-                      'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all font-albert',
-                      !includeWeekends
-                        ? 'bg-brand-accent text-white'
-                        : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2] border border-[#e1ddd8] dark:border-[#262b35]'
-                    )}
-                  >
-                    Weekdays Only
-                  </button>
-                </div>
-              </div>
-
-              {/* Save button */}
-              {hasSettingsChanged && (
-                <button
-                  onClick={handleSaveSettings}
-                  disabled={isSavingSettings}
-                  className="w-full px-4 py-2 bg-brand-accent text-white rounded-lg text-sm font-medium hover:bg-brand-accent/90 transition-colors disabled:opacity-50"
-                >
-                  {isSavingSettings ? 'Saving...' : 'Save Settings'}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Event Detail Popup for 1:1 calls */}
       {selectedEvent && showEventDetailPopup && (
