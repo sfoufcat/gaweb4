@@ -50,7 +50,7 @@ export interface SkipLogicCondition {
 }
 
 /**
- * Skip logic rule - conditionally skip to a question based on answer(s)
+ * Skip logic rule - conditionally show/hide questions based on answer(s)
  * Supports multiple conditions with AND/OR logic
  */
 export interface SkipLogicRule {
@@ -59,10 +59,16 @@ export interface SkipLogicRule {
   conditions: SkipLogicCondition[];
   /** How to combine conditions: 'and' = all must match, 'or' = any must match */
   operator: 'and' | 'or';
-  /** Question ID to skip to, or null to skip to end/submit */
-  skipToQuestionId: string | null;
 
-  // Legacy fields for backwards compatibility (pre-migration rules)
+  // New show/hide model
+  /** Action to take when conditions match: 'hide' or 'show' */
+  action?: 'hide' | 'show';
+  /** Question IDs to show/hide when conditions match */
+  targetQuestionIds?: string[];
+
+  // Legacy skip-to model (backwards compatibility)
+  /** @deprecated Use action + targetQuestionIds instead */
+  skipToQuestionId?: string | null;
   /** @deprecated Use conditions[0].conditionType */
   conditionType?: 'equals' | 'contains' | 'not_equals';
   /** @deprecated Use conditions[0].conditionValue */

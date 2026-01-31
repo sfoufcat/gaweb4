@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -8,7 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { QuestionnaireQuestion, SkipLogicRule, SkipLogicCondition } from '@/types/questionnaire';
+import { useState, useRef, useEffect } from 'react';
 
 interface GlobalSkipLogicEditorProps {
   questions: QuestionnaireQuestion[];
@@ -26,7 +28,7 @@ export function GlobalSkipLogicEditor({
     q => (q.type === 'single_choice' || q.type === 'multi_choice') && q.options && q.options.length > 0
   );
 
-  // Get all questions that can be skip targets (any question)
+  // Get all questions that can be targets (any question except page breaks)
   const targetQuestions = questions.filter(q => q.type !== 'page_break');
 
   // Get options for a specific question
@@ -36,11 +38,13 @@ export function GlobalSkipLogicEditor({
   };
 
   // Get question label for display
-  const getQuestionLabel = (questionId: string) => {
+  const getQuestionLabel = (questionId: string, truncate = true) => {
     const q = questions.find(q => q.id === questionId);
     if (!q) return 'Unknown';
     const index = questions.indexOf(q);
-    return `Q${index + 1}: ${q.title || 'Untitled'}`;
+    const title = q.title || 'Untitled';
+    const truncated = truncate && title.length > 20 ? title.slice(0, 20) + '...' : title;
+    return `Q${index + 1}: ${truncated}`;
   };
 
   // Add new rule with one condition
@@ -57,7 +61,8 @@ export function GlobalSkipLogicEditor({
         conditionValue: firstQuestion.options?.[0]?.value || '',
       }],
       operator: 'and',
-      skipToQuestionId: targetQuestions.length > 1 ? targetQuestions[1]?.id : null,
+      action: 'hide',
+      targetQuestionIds: [],
     };
     onUpdate([...rules, newRule]);
   };
@@ -121,11 +126,31 @@ export function GlobalSkipLogicEditor({
     );
   };
 
-  // Update rule skip target
-  const handleUpdateSkipTo = (ruleId: string, skipToQuestionId: string | null) => {
+  // Update rule action
+  const handleUpdateAction = (ruleId: string, action: 'hide' | 'show') => {
     onUpdate(
-      rules.map(rule => (rule.id === ruleId ? { ...rule, skipToQuestionId } : rule))
+      rules.map(rule => (rule.id === ruleId ? { ...rule, action } : rule))
     );
+  };
+
+  // Update rule target questions
+  const handleUpdateTargets = (ruleId: string, targetQuestionIds: string[]) => {
+    onUpdate(
+      rules.map(rule => (rule.id === ruleId ? { ...rule, targetQuestionIds } : rule))
+    );
+  };
+
+  // Toggle a target question in the rule
+  const handleToggleTarget = (ruleId: string, questionId: string) => {
+    const rule = rules.find(r => r.id === ruleId);
+    if (!rule) return;
+
+    const currentTargets = rule.targetQuestionIds || [];
+    const newTargets = currentTargets.includes(questionId)
+      ? currentTargets.filter(id => id !== questionId)
+      : [...currentTargets, questionId];
+
+    handleUpdateTargets(ruleId, newTargets);
   };
 
   // Delete rule
@@ -137,10 +162,10 @@ export function GlobalSkipLogicEditor({
     return (
       <div className="py-8 text-center">
         <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-          Add choice questions to enable skip logic.
+          Add choice questions to enable conditional logic.
         </p>
         <p className="text-xs text-[#5f5a55]/70 dark:text-[#b2b6c2]/70 font-albert mt-1">
-          Skip logic requires single or multiple choice questions.
+          Conditional logic requires single or multiple choice questions.
         </p>
       </div>
     );
@@ -150,7 +175,7 @@ export function GlobalSkipLogicEditor({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-          Create rules to skip questions based on answers.
+          Create rules to show or hide questions based on answers.
         </p>
         <button
           type="button"
@@ -165,16 +190,18 @@ export function GlobalSkipLogicEditor({
       {rules.length === 0 ? (
         <div className="py-8 text-center border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
           <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            No skip logic rules yet.
+            No conditional rules yet.
           </p>
           <p className="text-xs text-[#5f5a55]/70 dark:text-[#b2b6c2]/70 font-albert mt-1">
-            Click &quot;Add Rule&quot; to create conditional navigation.
+            Click &quot;Add Rule&quot; to show or hide questions based on answers.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           {rules.map((rule, ruleIndex) => {
             const isSingleCondition = rule.conditions.length === 1;
+            const action = rule.action || 'hide';
+            const targetIds = rule.targetQuestionIds || [];
 
             return (
               <div
@@ -308,31 +335,38 @@ export function GlobalSkipLogicEditor({
                   </button>
                 </div>
 
-                {/* Skip to target */}
+                {/* Action and targets */}
                 <div className="mt-3 pt-3 border-t border-[#e8e5e1] dark:border-[#262b35]">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">then skip to</span>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">then</span>
                     <Select
-                      value={rule.skipToQuestionId || 'end'}
-                      onValueChange={value =>
-                        handleUpdateSkipTo(rule.id, value === 'end' ? null : value)
-                      }
+                      value={action}
+                      onValueChange={value => handleUpdateAction(rule.id, value as 'hide' | 'show')}
                     >
-                      <SelectTrigger className="w-[200px] px-3 py-1.5 h-auto text-sm bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      <SelectTrigger className="w-[100px] px-3 py-1.5 h-auto text-sm bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl max-h-60">
-                        {targetQuestions.map(q => (
-                          <SelectItem key={q.id} value={q.id}>
-                            Q{questions.indexOf(q) + 1}: {q.title || 'Untitled'}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="end">End (Submit)</SelectItem>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="hide">hide</SelectItem>
+                        <SelectItem value="show">show</SelectItem>
                       </SelectContent>
                     </Select>
+                    <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">these questions:</span>
                   </div>
-                  <p className="text-xs text-[#5f5a55]/60 dark:text-[#b2b6c2]/60 font-albert mt-1.5">
-                    All questions between the condition and target will be hidden.
+
+                  {/* Target questions multi-select */}
+                  <TargetQuestionSelector
+                    questions={targetQuestions}
+                    allQuestions={questions}
+                    selectedIds={targetIds}
+                    onToggle={(qId) => handleToggleTarget(rule.id, qId)}
+                    getQuestionLabel={getQuestionLabel}
+                  />
+
+                  <p className="text-xs text-[#5f5a55]/60 dark:text-[#b2b6c2]/60 font-albert mt-2">
+                    {action === 'show'
+                      ? 'Selected questions start hidden and appear when conditions match.'
+                      : 'Selected questions will be hidden when conditions match.'}
                   </p>
                 </div>
               </div>
@@ -344,6 +378,97 @@ export function GlobalSkipLogicEditor({
       <p className="text-xs text-[#5f5a55]/80 dark:text-[#b2b6c2]/80 font-albert text-center pt-2">
         Rules are evaluated in order. The first matching rule will be applied.
       </p>
+    </div>
+  );
+}
+
+// Multi-select dropdown for target questions
+function TargetQuestionSelector({
+  questions,
+  allQuestions,
+  selectedIds,
+  onToggle,
+  getQuestionLabel,
+}: {
+  questions: QuestionnaireQuestion[];
+  allQuestions: QuestionnaireQuestion[];
+  selectedIds: string[];
+  onToggle: (questionId: string) => void;
+  getQuestionLabel: (id: string, truncate?: boolean) => string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Selected tags display */}
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className="min-h-[40px] p-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl cursor-pointer hover:border-brand-accent/50 transition-colors"
+      >
+        {selectedIds.length === 0 ? (
+          <span className="text-sm text-[#5f5a55]/50 dark:text-[#b2b6c2]/50 font-albert">
+            Select questions...
+          </span>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {selectedIds.map(id => (
+              <span
+                key={id}
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-brand-accent/10 text-brand-accent rounded-lg font-albert"
+              >
+                {getQuestionLabel(id)}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggle(id);
+                  }}
+                  className="p-0.5 hover:bg-brand-accent/20 rounded"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full max-h-60 overflow-auto bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl shadow-lg">
+          {questions.map(q => {
+            const isSelected = selectedIds.includes(q.id);
+            const index = allQuestions.indexOf(q);
+            return (
+              <label
+                key={q.id}
+                className="flex items-center gap-3 px-3 py-2 hover:bg-[#faf9f7] dark:hover:bg-[#1a1f28] cursor-pointer"
+              >
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => onToggle(q.id)}
+                  className="border-[#e1ddd8] dark:border-[#262b35]"
+                />
+                <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  Q{index + 1}: {q.title || 'Untitled'}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -147,7 +147,7 @@ export async function GET(
     // Demo mode: return demo client data
     const isDemo = await isDemoRequest();
     if (isDemo) {
-      const { clients } = generateDemoClients(18);
+      const { clients } = generateDemoClients(43);
       // Client ID format: "demo-org_demo-user-X", extract the userId part
       const extractedUserId = clientId.includes('_') ? clientId.split('_').pop() : clientId;
       const demoClient = clients.find(c => c.userId === extractedUserId) || clients[0];

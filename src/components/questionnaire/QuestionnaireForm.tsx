@@ -73,73 +73,119 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
   }, [evaluateCondition]);
 
   // Get visible questions based on skip logic (includes page breaks and info steps)
-  // Now evaluates global skipLogicRules from questionnaire
+  // Supports both new show/hide model and legacy skip-to model
   const visibleQuestions = useMemo(() => {
-    const visible: QuestionnaireQuestion[] = [];
     const globalRules = questionnaire.skipLogicRules || [];
 
+    // Step 1: Identify questions that are targets of "show" rules (they start hidden)
+    const defaultHiddenQuestionIds = new Set<string>();
+    for (const rule of globalRules) {
+      if (rule.action === 'show' && rule.targetQuestionIds) {
+        for (const targetId of rule.targetQuestionIds) {
+          defaultHiddenQuestionIds.add(targetId);
+        }
+      }
+    }
+
+    // Step 2: Evaluate visibility for each question
+    const visible: QuestionnaireQuestion[] = [];
+
     for (const question of sortedQuestions) {
-      let isSkipped = false;
+      let isHidden = defaultHiddenQuestionIds.has(question.id);
+      let matchedRule = false;
 
-      // Check global skip logic rules first
+      // Check new show/hide rules (first matching rule wins)
       for (const rule of globalRules) {
+        // Skip legacy rules (no action defined)
+        if (!rule.action || !rule.targetQuestionIds) continue;
+
         const conditionMet = evaluateRule(rule, '');
+        const isTargeted = rule.targetQuestionIds.includes(question.id);
 
-        if (conditionMet && rule.skipToQuestionId) {
-          // Skip to a specific question - skip everything in between
-          const skipToQuestion = sortedQuestions.find(q => q.id === rule.skipToQuestionId);
+        if (conditionMet && isTargeted) {
+          if (rule.action === 'show') {
+            // Show rule matched - question should be visible
+            isHidden = false;
+          } else if (rule.action === 'hide') {
+            // Hide rule matched - question should be hidden
+            isHidden = true;
+          }
+          matchedRule = true;
+          break; // First matching rule wins
+        }
+      }
 
-          if (skipToQuestion) {
-            // Find the earliest condition question to determine "from" position
+      // Step 3: Handle legacy skip-to rules (only if no new rules matched)
+      if (!matchedRule) {
+        for (const rule of globalRules) {
+          // Only process legacy rules (has skipToQuestionId, no action)
+          if (rule.action || !rule.skipToQuestionId) continue;
+
+          const conditionMet = evaluateRule(rule, '');
+
+          if (conditionMet) {
+            // Skip to a specific question - skip everything in between
+            const skipToQuestion = sortedQuestions.find(q => q.id === rule.skipToQuestionId);
+
+            if (skipToQuestion) {
+              // Find the latest condition question to determine "from" position
+              const conditionQuestionOrders = rule.conditions
+                .map(c => sortedQuestions.find(q => q.id === c.questionId)?.order ?? -1)
+                .filter(o => o >= 0);
+              const fromOrder = conditionQuestionOrders.length > 0 ? Math.max(...conditionQuestionOrders) : -1;
+
+              // Skip if current question is after all condition questions and before skip target
+              if (fromOrder >= 0 && question.order > fromOrder && question.order < skipToQuestion.order) {
+                isHidden = true;
+                break;
+              }
+            }
+          }
+        }
+
+        // Legacy skip-to-end rules (skipToQuestionId === null)
+        for (const rule of globalRules) {
+          if (rule.action || rule.skipToQuestionId !== null) continue;
+
+          const conditionMet = evaluateRule(rule, '');
+          if (conditionMet) {
             const conditionQuestionOrders = rule.conditions
               .map(c => sortedQuestions.find(q => q.id === c.questionId)?.order ?? -1)
               .filter(o => o >= 0);
             const fromOrder = conditionQuestionOrders.length > 0 ? Math.max(...conditionQuestionOrders) : -1;
 
-            // Skip if current question is after all condition questions and before skip target
-            if (fromOrder >= 0 && question.order > fromOrder && question.order < skipToQuestion.order) {
-              isSkipped = true;
+            if (fromOrder >= 0 && question.order > fromOrder) {
+              isHidden = true;
               break;
             }
           }
-        } else if (conditionMet && rule.skipToQuestionId === null) {
-          // Skip to end - skip all questions after the condition questions
-          const conditionQuestionOrders = rule.conditions
-            .map(c => sortedQuestions.find(q => q.id === c.questionId)?.order ?? -1)
-            .filter(o => o >= 0);
-          const fromOrder = conditionQuestionOrders.length > 0 ? Math.max(...conditionQuestionOrders) : -1;
-
-          if (fromOrder >= 0 && question.order > fromOrder) {
-            isSkipped = true;
-            break;
-          }
         }
-      }
 
-      // Also check per-question skip logic (legacy support)
-      if (!isSkipped) {
-        for (const prevQuestion of visible) {
-          if (prevQuestion.skipLogic && prevQuestion.skipLogic.length > 0) {
-            for (const rule of prevQuestion.skipLogic) {
-              const conditionMet = evaluateRule(rule, prevQuestion.id);
+        // Also check per-question skip logic (legacy support)
+        if (!isHidden) {
+          for (const prevQuestion of visible) {
+            if (prevQuestion.skipLogic && prevQuestion.skipLogic.length > 0) {
+              for (const rule of prevQuestion.skipLogic) {
+                const conditionMet = evaluateRule(rule, prevQuestion.id);
 
-              if (conditionMet && rule.skipToQuestionId) {
-                const currentOrder = question.order;
-                const skipToQuestion = sortedQuestions.find(q => q.id === rule.skipToQuestionId);
+                if (conditionMet && rule.skipToQuestionId) {
+                  const currentOrder = question.order;
+                  const skipToQuestion = sortedQuestions.find(q => q.id === rule.skipToQuestionId);
 
-                if (skipToQuestion && currentOrder > prevQuestion.order && currentOrder < skipToQuestion.order) {
-                  isSkipped = true;
-                  break;
+                  if (skipToQuestion && currentOrder > prevQuestion.order && currentOrder < skipToQuestion.order) {
+                    isHidden = true;
+                    break;
+                  }
                 }
               }
             }
-          }
 
-          if (isSkipped) break;
+            if (isHidden) break;
+          }
         }
       }
 
-      if (!isSkipped) {
+      if (!isHidden) {
         visible.push(question);
       }
     }
@@ -508,16 +554,30 @@ export function QuestionnaireForm({ questionnaire, onSubmit, submitting }: Quest
                 transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                 className="space-y-8"
               >
-                {currentPage.questions.map((question) => (
-                  <div key={question.id}>
-                    <QuestionRenderer
-                      question={question}
-                      answer={answers.get(question.id)}
-                      error={errors.get(question.id)}
-                      onChange={(value) => updateAnswer(question.id, value)}
-                    />
-                  </div>
-                ))}
+                <AnimatePresence mode="popLayout">
+                  {currentPage.questions.map((question, index) => (
+                    <motion.div
+                      key={question.id}
+                      layout
+                      initial={{ opacity: 0, y: -12, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                      transition={{
+                        duration: 0.3,
+                        ease: [0.4, 0, 0.2, 1],
+                        delay: index * 0.05, // Stagger effect
+                        layout: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
+                      }}
+                    >
+                      <QuestionRenderer
+                        question={question}
+                        answer={answers.get(question.id)}
+                        error={errors.get(question.id)}
+                        onChange={(value) => updateAnswer(question.id, value)}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </motion.div>
             ) : null}
           </AnimatePresence>

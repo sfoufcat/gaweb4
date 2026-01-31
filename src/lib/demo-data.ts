@@ -263,13 +263,13 @@ export function generateDemoClients(count: number = 18): { clients: DemoClient[]
   const random = seededRandom(42); // Consistent seed for reproducible data
   const clients: DemoClient[] = [];
   
-  // Distribution: 5 thriving, 6 active, 4 inactive, 3 at-risk
+  // Distribution: 8 thriving, 29 active, 6 inactive, 5 at-risk (total: 43)
   const statusDistribution: { status: HealthStatus; atRisk: boolean; count: number }[] = [
-    { status: 'thriving', atRisk: false, count: 5 },
-    { status: 'active', atRisk: false, count: 4 },
-    { status: 'active', atRisk: true, count: 2 },
+    { status: 'thriving', atRisk: false, count: 8 },
+    { status: 'active', atRisk: false, count: 24 },
+    { status: 'active', atRisk: true, count: 5 },
     { status: 'inactive', atRisk: false, count: 4 },
-    { status: 'inactive', atRisk: true, count: 3 },
+    { status: 'inactive', atRisk: true, count: 2 },
   ];
 
   let clientIndex = 0;

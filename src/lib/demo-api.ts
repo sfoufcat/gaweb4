@@ -101,12 +101,12 @@ export const demoHandlers = {
   },
   
   'clients': () => {
-    const { clients, summary } = generateDemoClients(18);
+    const { clients, summary } = generateDemoClients(43);
     return demoResponse({ clients, summary });
   },
   
   'client-detail': (clientId: string) => {
-    const { clients } = generateDemoClients(18);
+    const { clients } = generateDemoClients(43);
     const client = clients.find(c => c.userId === clientId) || clients[0];
     return demoResponse({
       client: {
@@ -275,7 +275,7 @@ export const demoHandlers = {
   // ============================================================================
   
   'analytics-clients': () => {
-    const { clients, summary } = generateDemoClients(18);
+    const { clients, summary } = generateDemoClients(43);
     return demoResponse({ clients, summary });
   },
   

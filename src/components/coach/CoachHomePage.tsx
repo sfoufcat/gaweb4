@@ -61,8 +61,12 @@ import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
 import type { Program as FullProgram } from '@/types';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+// Demo coach avatar
+const DEMO_COACH_AVATAR = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face';
 
 // ============================================================================
 // DESIGN TOKENS
@@ -419,15 +423,19 @@ function StatCarousel({ children }: StatCarouselProps) {
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
     const container = scrollRef.current;
-    const cardWidth = container.offsetWidth * 0.48 + 12; // 48% width + gap
-    const newIndex = Math.round(container.scrollLeft / cardWidth);
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    const scrollProgress = maxScroll > 0 ? container.scrollLeft / maxScroll : 0;
+    // Map scroll progress to index (0 to children.length - 1)
+    const newIndex = Math.round(scrollProgress * (children.length - 1));
     setActiveIndex(Math.max(0, Math.min(newIndex, children.length - 1)));
   }, [children.length]);
 
   const scrollToIndex = (index: number) => {
     if (!scrollRef.current) return;
-    const cardWidth = scrollRef.current.offsetWidth * 0.48 + 12;
-    scrollRef.current.scrollTo({ left: index * cardWidth, behavior: 'smooth' });
+    const container = scrollRef.current;
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    const targetScroll = (index / (children.length - 1)) * maxScroll;
+    container.scrollTo({ left: targetScroll, behavior: 'smooth' });
   };
 
   return (
@@ -1464,6 +1472,7 @@ interface RevenueGoalData {
 
 export function CoachHomePage() {
   const { user } = useUser();
+  const { isDemoMode } = useDemoMode();
   const router = useRouter();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('30');
   const [greeting, setGreeting] = useState('Good morning');
@@ -1805,9 +1814,9 @@ export function CoachHomePage() {
           <div className="bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-1 flex items-center gap-2 sm:gap-3 pr-3 sm:pr-4 max-w-[72%] sm:max-w-none">
             <StoryAvatar
               user={{
-                firstName: user?.firstName || '',
-                lastName: user?.lastName || '',
-                imageUrl: user?.imageUrl || '',
+                firstName: isDemoMode ? 'Demo' : (user?.firstName || ''),
+                lastName: isDemoMode ? 'Coach' : (user?.lastName || ''),
+                imageUrl: isDemoMode ? DEMO_COACH_AVATAR : (user?.imageUrl || ''),
               }}
               userId={currentUserId}
               hasStory={storyAvailability.hasStory}

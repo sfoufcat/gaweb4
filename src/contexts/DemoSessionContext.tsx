@@ -213,7 +213,7 @@ function generateId(prefix: string): string {
 }
 
 function createInitialState(): DemoSessionState {
-  const { clients } = generateDemoClients(18);
+  const { clients } = generateDemoClients(43);
   const squads = generateDemoSquadsWithStats();
   const programs = generateDemoProgramsWithStats();
   const funnels = generateDemoFunnels();

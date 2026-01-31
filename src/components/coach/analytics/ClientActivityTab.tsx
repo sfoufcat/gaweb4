@@ -74,7 +74,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
   const [showDmModal, setShowDmModal] = useState(false);
 
   // Generate demo data (memoized to prevent re-generation)
-  const demoData = useMemo(() => generateDemoClients(18), []);
+  const demoData = useMemo(() => generateDemoClients(43), []);
 
   const fetchClients = useCallback(async (isRefresh = false) => {
     // Skip API call in demo mode

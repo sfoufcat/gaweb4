@@ -41,13 +41,13 @@ interface ContentCompletionListProps {
 const TYPE_CONFIG = {
   course: {
     icon: GraduationCap,
-    color: 'text-purple-600 dark:text-purple-400',
-    bg: 'bg-purple-100 dark:bg-purple-900/30',
+    color: 'text-indigo-600 dark:text-indigo-400',
+    bg: 'bg-indigo-100 dark:bg-indigo-900/30',
   },
   article: {
     icon: FileText,
-    color: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
+    color: 'text-indigo-600 dark:text-indigo-400',
+    bg: 'bg-indigo-100 dark:bg-indigo-900/30',
   },
   module: {
     icon: BookOpen,
@@ -180,8 +180,8 @@ export function ContentCompletionList({ items, className }: ContentCompletionLis
     return (
       <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6', className)}>
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30">
-            <BookOpen className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/30">
+            <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           </div>
           <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             Content Completion
@@ -206,8 +206,8 @@ export function ContentCompletionList({ items, className }: ContentCompletionLis
     <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6', className)}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30">
-            <BookOpen className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/30">
+            <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
             <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">

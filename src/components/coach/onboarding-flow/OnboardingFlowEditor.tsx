@@ -443,7 +443,7 @@ export function OnboardingFlowEditor({ flowId, onBack }: OnboardingFlowEditorPro
                   </div>
                   <button
                     onClick={() => setShowAddStep(false)}
-                    className="p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                    className="hidden sm:block p-2 -mr-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
                   >
                     <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
                   </button>
