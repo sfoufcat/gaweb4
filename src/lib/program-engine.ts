@@ -1862,17 +1862,9 @@ export async function syncProgramV2TasksForToday(
   const existingFocusTasks = await getExistingFocusTasks(userId, today);
   const existingBacklogTasks = await getExistingBacklogTasks(userId, today);
   
-  // Get focus limit from org settings or program settings
-  let focusLimit = program.dailyFocusSlots || 3;
-  try {
-    const orgSettingsDoc = await adminDb.collection('org_settings').doc(enrollment.organizationId).get();
-    const orgSettings = orgSettingsDoc.data();
-    if (orgSettings?.defaultDailyFocusSlots) {
-      focusLimit = orgSettings.defaultDailyFocusSlots;
-    }
-  } catch {
-    // Fallback to program setting or default
-  }
+  // Use program's dailyFocusSlots as the focus limit
+  // This ensures per-program configuration is respected
+  const focusLimit = program.dailyFocusSlots ?? 3;
   
   let availableFocusSlots = focusLimit - existingFocusTasks.length;
   let nextFocusOrder = existingFocusTasks.length > 0 
@@ -2660,17 +2652,10 @@ export async function syncProgramTasksToClientDay(
   const existingBacklogTasks = existingTasks.filter(t => t.listType === 'backlog');
   
   // 8. Get focus limit from org settings or program
-  let focusLimit = program.dailyFocusSlots || 3;
-  try {
-    const orgSettingsDoc = await adminDb.collection('org_settings').doc(enrollment.organizationId).get();
-    const orgSettings = orgSettingsDoc.data();
-    if (orgSettings?.defaultDailyFocusSlots) {
-      focusLimit = orgSettings.defaultDailyFocusSlots;
-    }
-  } catch {
-    // Use default
-  }
-  
+  // Use program's dailyFocusSlots as the focus limit
+  // This ensures per-program configuration is respected
+  const focusLimit = program.dailyFocusSlots ?? 3;
+
   const now = new Date().toISOString();
 
   // Calculate cycleNumber for evergreen programs only

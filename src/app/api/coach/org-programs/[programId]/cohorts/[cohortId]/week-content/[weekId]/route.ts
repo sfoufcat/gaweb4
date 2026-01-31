@@ -29,23 +29,16 @@ async function syncDayTasksToUser(
   calendarDate?: string,
   organizationId?: string,
   enrollmentId?: string,
-  programId?: string
+  programId?: string,
+  dailyFocusSlots?: number
 ): Promise<{ created: number; updated: number; deleted: number }> {
   const batch = adminDb.batch();
   const now = new Date().toISOString();
   let created = 0, updated = 0, deleted = 0;
 
-  // Get org's focus limit setting
-  let focusLimit = 3; // Default
-  if (organizationId) {
-    try {
-      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
-      const orgSettings = orgSettingsDoc.data();
-      focusLimit = orgSettings?.defaultDailyFocusSlots ?? 3;
-    } catch {
-      // Fallback to 3 if org settings can't be fetched
-    }
-  }
+  // Use program's dailyFocusSlots setting (passed from instance)
+  // This respects per-program configuration instead of org-wide defaults
+  const focusLimit = dailyFocusSlots ?? 3;
 
   // Get existing tasks for this instance + day + user
   const existingTasksQuery = await adminDb.collection('tasks')
@@ -229,7 +222,8 @@ async function syncWeekTasksToMembers(
   cohortStartDate?: string,
   includeWeekends?: boolean,
   organizationId?: string,
-  programId?: string
+  programId?: string,
+  dailyFocusSlots?: number
 ): Promise<{ membersProcessed: number; totalTasksCreated: number; totalTasksUpdated: number; totalTasksDeleted: number }> {
   // Get cohort members (only active/upcoming - don't sync to completed/stopped enrollments)
   const enrollmentsSnap = await adminDb.collection('program_enrollments')
@@ -279,7 +273,8 @@ async function syncWeekTasksToMembers(
         effectiveCalendarDate,
         organizationId,
         enrollmentId,
-        programId
+        programId,
+        dailyFocusSlots
       );
       totalTasksCreated += result.created;
       totalTasksUpdated += result.updated;
@@ -1045,7 +1040,7 @@ export async function PUT(
     let syncResult = null;
     if (body.distributeTasksNow === true) {
       try {
-        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek, cohortData.startDate, programData.includeWeekends !== false, organizationId, programId);
+        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek, cohortData.startDate, programData.includeWeekends !== false, organizationId, programId, programData.dailyFocusSlots);
         console.log(`[COHORT_WEEK_CONTENT_PUT] Synced to ${syncResult.membersProcessed} members: ${syncResult.totalTasksCreated} created, ${syncResult.totalTasksUpdated} updated`);
       } catch (syncErr) {
         console.error('[COHORT_WEEK_CONTENT_PUT] Sync failed:', syncErr);
@@ -1329,7 +1324,7 @@ export async function PATCH(
     let syncResult = null;
     if (body.distributeTasksNow === true) {
       try {
-        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek, cohortData.startDate, programData.includeWeekends !== false, organizationId, programId);
+        syncResult = await syncWeekTasksToMembers(instanceId, cohortId, updatedWeek, cohortData.startDate, programData.includeWeekends !== false, organizationId, programId, programData.dailyFocusSlots);
         console.log(`[COHORT_WEEK_CONTENT_PATCH] Synced to ${syncResult.membersProcessed} members: ${syncResult.totalTasksCreated} created, ${syncResult.totalTasksUpdated} updated`);
       } catch (syncErr) {
         console.error('[COHORT_WEEK_CONTENT_PATCH] Sync failed:', syncErr);

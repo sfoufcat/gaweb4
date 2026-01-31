@@ -21,7 +21,7 @@ import type { Questionnaire } from '@/types/questionnaire';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar as CalendarIcon, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw, UserPlus, Search, SlidersHorizontal, MessageCircle, Archive, MoreVertical } from 'lucide-react';
+import { Plus, Users, User, Calendar as CalendarIcon, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, Settings2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone, ArrowLeft, ArrowLeftRight, List, CalendarDays, Check, PenLine, RefreshCw, UserPlus, Search, SlidersHorizontal, MessageCircle, Archive, MoreVertical, CheckCircle2, CircleDashed, CircleOff, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Popover,
@@ -5067,6 +5067,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   setContentDirection(-1);
                   setContentDisplayMode('row');
                 }}
+                taskCompletions={
+                  clientViewContext.mode === 'client'
+                    ? clientTaskCompletion
+                    : cohortViewContext.mode === 'cohort'
+                      ? (() => {
+                          // Convert cohort completion to simple boolean map for day preview
+                          // Use completion rate >= threshold to determine if "completed" for cohort
+                          const threshold = selectedProgram?.cohortCompletionThreshold ?? 80;
+                          const map = new Map<string, { completed: boolean }>();
+                          cohortTaskCompletion.forEach((value, key) => {
+                            map.set(key, { completed: value.completionRate >= threshold });
+                          });
+                          return map;
+                        })()
+                      : undefined
+                }
               />
             </motion.div>
           ) : (
@@ -5938,45 +5954,63 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                   show: { opacity: 1, y: 0 }
                                 }}
                                 onClick={() => setSelectedClient(enrollment)}
-                                className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors group"
+                                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors group"
                               >
+                                {/* Avatar */}
                                 {enrollment.user?.imageUrl ? (
                                   <Image
                                     src={enrollment.user.imageUrl}
                                     alt={`${enrollment.user.firstName} ${enrollment.user.lastName}`}
-                                    width={36}
-                                    height={36}
-                                    className="rounded-full object-cover flex-shrink-0"
+                                    width={40}
+                                    height={40}
+                                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                                   />
                                 ) : (
-                                  <div className="w-9 h-9 rounded-full bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-                                    <User className="w-4 h-4 text-brand-accent" />
+                                  <div className="w-10 h-10 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0 text-brand-accent-foreground font-albert font-semibold">
+                                    {enrollment.user?.firstName?.charAt(0) || 'M'}
                                   </div>
                                 )}
+                                {/* Name & Email with Status Icon */}
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                                    {enrollment.user ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown' : 'Unknown'}
-                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                                      {enrollment.user ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown' : 'Unknown'}
+                                    </p>
+                                    {/* Status Icon */}
+                                    <span
+                                      className={cn(
+                                        "inline-flex items-center justify-center w-4 h-4 flex-shrink-0",
+                                        enrollment.status === 'active' && "text-green-600 dark:text-green-400",
+                                        enrollment.status === 'upcoming' && "text-blue-600 dark:text-blue-400",
+                                        enrollment.status === 'completed' && "text-gray-500 dark:text-gray-400",
+                                        enrollment.status === 'stopped' && "text-red-600 dark:text-red-400"
+                                      )}
+                                      title={enrollment.status}
+                                    >
+                                      {enrollment.status === 'active' ? (
+                                        <CheckCircle2 className="w-4 h-4" />
+                                      ) : enrollment.status === 'upcoming' ? (
+                                        <CircleDashed className="w-4 h-4" />
+                                      ) : enrollment.status === 'completed' ? (
+                                        <Check className="w-4 h-4" />
+                                      ) : (
+                                        <CircleOff className="w-4 h-4" />
+                                      )}
+                                    </span>
+                                  </div>
                                   <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
                                     {enrollment.user?.email}
                                   </p>
                                 </div>
-                                <span className={cn(
-                                  "px-2 py-0.5 rounded-full text-xs flex-shrink-0",
-                                  enrollment.status === 'active' && "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
-                                  enrollment.status === 'upcoming' && "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-                                  enrollment.status === 'completed' && "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-                                  enrollment.status === 'stopped' && "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400"
-                                )}>
-                                  {enrollment.status}
-                                </span>
+                                {/* Actions */}
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setRemoveConfirmEnrollment(enrollment); }}
-                                  className="p-1.5 text-[#a7a39e] hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-all"
+                                  className="p-2 text-[#a7a39e] hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-all opacity-0 group-hover:opacity-100"
                                   title="Remove from cohort"
                                 >
                                   <UserMinus className="w-4 h-4" />
                                 </button>
+                                <ChevronRight className="w-5 h-5 text-[#c4bfb9] dark:text-[#7d8190] flex-shrink-0" />
                               </motion.div>
                             ))}
                           </motion.div>
@@ -6153,30 +6187,42 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                     className="w-11 h-11 rounded-full object-cover flex-shrink-0"
                                   />
                                 ) : (
-                                  <div className="w-11 h-11 rounded-full bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-                                    <User className="w-5 h-5 text-brand-accent" />
+                                  <div className="w-11 h-11 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0 text-brand-accent-foreground font-albert font-semibold">
+                                    {enrollment.user?.firstName?.charAt(0) || 'M'}
                                   </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                                    {enrollment.user ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown' : 'Unknown'}
-                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                                      {enrollment.user ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown' : 'Unknown'}
+                                    </p>
+                                    {/* Status Icon */}
+                                    <span
+                                      className={cn(
+                                        "inline-flex items-center justify-center w-4 h-4 flex-shrink-0",
+                                        enrollment.status === 'active' && "text-green-600 dark:text-green-400",
+                                        enrollment.status === 'upcoming' && "text-blue-600 dark:text-blue-400",
+                                        enrollment.status === 'completed' && "text-gray-500 dark:text-gray-400",
+                                        enrollment.status === 'stopped' && "text-red-600 dark:text-red-400"
+                                      )}
+                                      title={enrollment.status}
+                                    >
+                                      {enrollment.status === 'active' ? (
+                                        <CheckCircle2 className="w-4 h-4" />
+                                      ) : enrollment.status === 'upcoming' ? (
+                                        <CircleDashed className="w-4 h-4" />
+                                      ) : enrollment.status === 'completed' ? (
+                                        <Check className="w-4 h-4" />
+                                      ) : (
+                                        <CircleOff className="w-4 h-4" />
+                                      )}
+                                    </span>
+                                  </div>
                                   <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
                                     {enrollment.user?.email}
                                   </p>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={cn(
-                                    "px-2.5 py-1 rounded-full text-xs font-medium",
-                                    enrollment.status === 'active' && "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
-                                    enrollment.status === 'upcoming' && "bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400",
-                                    enrollment.status === 'completed' && "bg-[#f5f4f2] text-[#7a7570] dark:bg-[#2a303c] dark:text-[#7a8290]",
-                                    enrollment.status === 'stopped' && "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-400"
-                                  )}>
-                                    {enrollment.status}
-                                  </span>
-                                  <ChevronRight className="w-4 h-4 text-[#c4c0bb] dark:text-[#4a5160]" />
-                                </div>
+                                <ChevronRight className="w-5 h-5 text-[#c4bfb9] dark:text-[#7d8190] flex-shrink-0" />
                               </div>
                             ))}
                           </div>
@@ -6235,8 +6281,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {programEnrollments.map((enrollment) => {
+              <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+                {programEnrollments.map((enrollment, index) => {
                   // Format next call datetime
                   const formatNextCall = (nextCall: NextCallInfo | null | undefined) => {
                     if (!nextCall?.datetime) return null;
@@ -6247,162 +6293,148 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       isRecurring: nextCall.isRecurring,
                     };
                   };
-                  
+
                   const nextCallFormatted = formatNextCall(enrollment.nextCall);
-                  
+
                   return (
-                  <div
+                  <button
                     key={enrollment.id}
                     onClick={() => setSelectedClient(enrollment)}
-                    className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 cursor-pointer hover:border-brand-accent/50 transition-colors"
+                    className={`w-full flex items-center gap-4 p-4 hover:bg-[#faf8f6] dark:hover:bg-[#11141b] transition-colors text-left ${
+                      index !== programEnrollments.length - 1 ? 'border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50' : ''
+                    }`}
                   >
-                    <div className="flex items-center justify-between gap-4">
-                      {/* User Info */}
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {enrollment.user?.imageUrl ? (
-                          <Image
-                            src={enrollment.user.imageUrl}
-                            alt={`${enrollment.user.firstName} ${enrollment.user.lastName}`}
-                            width={40}
-                            height={40}
-                            className="rounded-full object-cover flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-brand-accent/20 flex items-center justify-center flex-shrink-0">
-                            <User className="w-5 h-5 text-brand-accent" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                            {enrollment.user 
-                              ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown User'
-                              : 'Unknown User'}
-                          </h3>
-                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
-                            {enrollment.user?.email || enrollment.userId}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {/* Credits & Next Call - Only for individual programs */}
-                      {selectedProgram?.type === 'individual' && (
-                        <div className="flex items-center gap-4 flex-shrink-0">
-                          {/* Credits Badge */}
-                          {enrollment.callCredits && enrollment.callCredits.monthlyAllowance > 0 && (
-                            <div 
-                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-accent/10 border border-brand-accent/20"
-                              title={`${enrollment.callCredits.creditsUsedThisMonth} used this month`}
-                            >
-                              <Phone className="w-3.5 h-3.5 text-brand-accent" />
-                              <span className="text-xs font-medium text-brand-accent">
-                                {enrollment.callCredits.creditsRemaining}/{enrollment.callCredits.monthlyAllowance}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Next Call */}
-                          <div className="text-right min-w-[100px]">
-                            {nextCallFormatted ? (
-                              <div className="flex items-center gap-1.5">
-                                <CalendarIcon className="w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                                <div>
-                                  <p className="text-xs font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                                    {nextCallFormatted.date}
-                                  </p>
-                                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] flex items-center gap-1">
-                                    {nextCallFormatted.time}
-                                    {nextCallFormatted.isRecurring && (
-                                      <span title="Recurring"><Repeat className="w-3 h-3" /></span>
-                                    )}
-                                  </p>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">No call scheduled</p>
-                            )}
-                          </div>
-                          
-                          {/* Schedule Call Button */}
-                          {(enrollment.status === 'active' || enrollment.status === 'upcoming') && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setScheduleCallEnrollment(enrollment); }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-accent text-white rounded-lg text-xs font-medium hover:bg-brand-accent/90 transition-colors"
-                              title="Schedule a call"
-                            >
-                              <CalendarIcon className="w-3.5 h-3.5" />
-                              Schedule
-                            </button>
-                          )}
+                    {/* Avatar */}
+                    <div className="shrink-0">
+                      {enrollment.user?.imageUrl ? (
+                        <Image
+                          src={enrollment.user.imageUrl}
+                          alt={enrollment.user.firstName || 'Client'}
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 rounded-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-brand-accent flex items-center justify-center text-brand-accent-foreground font-albert font-semibold">
+                          {enrollment.user?.firstName?.charAt(0) || 'C'}
                         </div>
                       )}
+                    </div>
 
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        {/* Community Badge & Toggle - Only for individual programs with community enabled */}
-                        {selectedProgram?.type === 'individual' && selectedProgram?.clientCommunitySquadId && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleToggleCommunity(enrollment, !enrollment.joinedCommunity); }}
-                            disabled={togglingCommunity === enrollment.id}
-                            className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 transition-colors ${
-                              enrollment.joinedCommunity
-                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800'
-                                : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                            }`}
-                            title={enrollment.joinedCommunity ? 'Remove from community' : 'Add to community'}
-                          >
-                            <Users className="w-3 h-3" />
-                            {togglingCommunity === enrollment.id
-                              ? '...'
-                              : enrollment.joinedCommunity
-                                ? 'Community'
-                                : 'Add to community'
-                            }
-                          </button>
-                        )}
-                        <div className="text-right">
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${
-                            enrollment.status === 'active' 
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                    {/* Client Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                          {enrollment.user
+                            ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown User'
+                            : 'Unknown User'}
+                        </p>
+                        {/* Status Icon */}
+                        <span
+                          className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${
+                            enrollment.status === 'active'
+                              ? 'text-green-600 dark:text-green-400'
                               : enrollment.status === 'upcoming'
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                              ? 'text-blue-600 dark:text-blue-400'
                               : enrollment.status === 'completed'
-                              ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                              : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                          }`}>
-                            {enrollment.status}
+                              ? 'text-gray-500 dark:text-gray-400'
+                              : 'text-red-600 dark:text-red-400'
+                          }`}
+                          title={enrollment.status}
+                        >
+                          {enrollment.status === 'active' ? (
+                            <CheckCircle2 className="w-4 h-4" />
+                          ) : enrollment.status === 'upcoming' ? (
+                            <CircleDashed className="w-4 h-4" />
+                          ) : enrollment.status === 'completed' ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <CircleOff className="w-4 h-4" />
+                          )}
+                        </span>
+                        {/* Community Icon - just indicator */}
+                        {selectedProgram?.type === 'individual' && selectedProgram?.clientCommunitySquadId && enrollment.joinedCommunity && (
+                          <span
+                            className="inline-flex items-center justify-center text-purple-600 dark:text-purple-400"
+                            title="In community"
+                          >
+                            <Users className="w-4 h-4" />
                           </span>
-                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-                            Enrolled {new Date(enrollment.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                        {(enrollment.status === 'active' || enrollment.status === 'upcoming') && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setRemoveConfirmEnrollment(enrollment); }}
-                            className="p-2 text-[#5f5a55] hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            title="Remove from program"
-                          >
-                            <UserMinus className="w-5 h-5" />
-                          </button>
-                        )}
-                        {enrollment.status === 'stopped' && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleResumeEnrollment(enrollment); }}
-                            disabled={resumingEnrollment === enrollment.id}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50"
-                            title="Resume enrollment"
-                          >
-                            {resumingEnrollment === enrollment.id ? (
-                              <span className="animate-spin">...</span>
-                            ) : (
-                              <>
-                                <UserPlus className="w-4 h-4" />
-                                Resume
-                              </>
-                            )}
-                          </button>
                         )}
                       </div>
+                      <p className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                        {enrollment.user?.email || enrollment.userId}
+                      </p>
+
+                      {/* Next Call Info - for individual programs */}
+                      {selectedProgram?.type === 'individual' && nextCallFormatted && (
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <CalendarIcon className="w-3.5 h-3.5 text-brand-accent" />
+                          <span className="font-albert text-xs text-brand-accent">
+                            Next call: {nextCallFormatted.date} at {nextCallFormatted.time}
+                            {nextCallFormatted.isRecurring && <Repeat className="w-3 h-3 inline ml-1" />}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  </div>
+
+                    {/* Stats - for individual programs */}
+                    {selectedProgram?.type === 'individual' && (
+                      <div className="hidden sm:flex items-center gap-4 shrink-0 text-[#5f5a55] dark:text-[#b2b6c2]">
+                        {/* Calls Used */}
+                        {enrollment.callCredits && enrollment.callCredits.monthlyAllowance > 0 && (
+                          <div className="text-center" title={`${enrollment.callCredits.creditsUsedThisMonth} calls used this month`}>
+                            <p className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                              {enrollment.callCredits.creditsUsedThisMonth}/{enrollment.callCredits.monthlyAllowance}
+                            </p>
+                            <p className="font-albert text-[10px] uppercase tracking-wider">Calls</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {/* Schedule Call Button */}
+                      {selectedProgram?.type === 'individual' && (enrollment.status === 'active' || enrollment.status === 'upcoming') && (
+                        <button
+                          onClick={() => setScheduleCallEnrollment(enrollment)}
+                          className="p-2 text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+                          title="Schedule a call"
+                        >
+                          <CalendarIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                      {/* Remove Button */}
+                      {(enrollment.status === 'active' || enrollment.status === 'upcoming') && (
+                        <button
+                          onClick={() => setRemoveConfirmEnrollment(enrollment)}
+                          className="p-2 text-[#5f5a55] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Remove from program"
+                        >
+                          <UserMinus className="w-4 h-4" />
+                        </button>
+                      )}
+                      {/* Resume Button */}
+                      {enrollment.status === 'stopped' && (
+                        <button
+                          onClick={() => handleResumeEnrollment(enrollment)}
+                          disabled={resumingEnrollment === enrollment.id}
+                          className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50"
+                          title="Resume enrollment"
+                        >
+                          {resumingEnrollment === enrollment.id ? (
+                            <span className="w-4 h-4 block animate-spin">⟳</span>
+                          ) : (
+                            <UserPlus className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                      {/* Chevron */}
+                      <ChevronRight className="w-5 h-5 text-[#c4bfb9] dark:text-[#7d8190]" />
+                    </div>
+                  </button>
                   );
                 })}
               </div>

@@ -316,9 +316,13 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
                             </div>
 
                             {/* Lessons */}
-                            {expandedModules.has(module.id) && module.lessons && (
-                              <div className="ml-8 mt-1 space-y-1">
-                                {module.lessons.map((lesson) => (
+                            <div
+                              className={`ml-12 space-y-1 overflow-hidden transition-all duration-200 ease-out ${
+                                expandedModules.has(module.id) ? 'max-h-96 opacity-100 mt-1' : 'max-h-0 opacity-0'
+                              }`}
+                            >
+                              {module.lessons && module.lessons.length > 0 ? (
+                                module.lessons.map((lesson) => (
                                   <div
                                     key={lesson.id}
                                     className="flex items-center gap-2 py-1 cursor-pointer"
@@ -337,9 +341,13 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
                                       </span>
                                     )}
                                   </div>
-                                ))}
-                              </div>
-                            )}
+                                ))
+                              ) : (
+                                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] italic py-1">
+                                  No lessons in this module
+                                </p>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -463,9 +471,13 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
                     </div>
 
                     {/* Lessons */}
-                    {expandedModules.has(module.id) && module.lessons && (
-                      <div className="ml-8 mt-1 space-y-1">
-                        {module.lessons.map((lesson) => (
+                    <div
+                      className={`ml-12 space-y-1 overflow-hidden transition-all duration-200 ease-out ${
+                        expandedModules.has(module.id) ? 'max-h-96 opacity-100 mt-1' : 'max-h-0 opacity-0'
+                      }`}
+                    >
+                      {module.lessons && module.lessons.length > 0 ? (
+                        module.lessons.map((lesson) => (
                           <div
                             key={lesson.id}
                             className="flex items-center gap-2 py-1 cursor-pointer"
@@ -484,9 +496,13 @@ export function DayCourseSelector({ currentAssignments, onChange, availableCours
                               </span>
                             )}
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        ))
+                      ) : (
+                        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] italic py-1">
+                          No lessons in this module
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

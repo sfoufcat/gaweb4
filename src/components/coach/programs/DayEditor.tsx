@@ -470,9 +470,24 @@ export function DayEditor({
       }
       
       // Build request body based on context
+      // Enforce dailyFocusSlots: only first N primary tasks keep isPrimary:true
+      const processedTasks = [...formData.tasks];
+      let primaryCount = 0;
+      for (const task of processedTasks) {
+        if (task.isPrimary) {
+          if (primaryCount >= dailyFocusSlots) {
+            // Excess primary task - mark as non-primary
+            task.isPrimary = false;
+          } else {
+            primaryCount++;
+          }
+        }
+      }
+
       let requestBody: Record<string, unknown> = {
         dayIndex,
         ...formData,
+        tasks: processedTasks,
       };
       if (isClientMode && clientEnrollmentId) {
         requestBody.enrollmentId = clientEnrollmentId;

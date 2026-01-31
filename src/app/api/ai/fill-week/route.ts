@@ -157,8 +157,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });
     }
 
+    // Apply fallback defaults for optional/missing fields before validation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = parsedResponse as any;
+    if (!response.currentFocus || !Array.isArray(response.currentFocus) || response.currentFocus.length === 0) {
+      response.currentFocus = ['Review and complete assigned tasks'];
+    }
+    if (!response.tasks || !Array.isArray(response.tasks)) {
+      response.tasks = [];
+    }
+    // Ensure each task has required fields with defaults
+    response.tasks = response.tasks.map((t: Record<string, unknown>) => ({
+      label: t.label || t.title || 'Untitled task',
+      type: t.type || 'task',
+      isPrimary: t.isPrimary ?? false,
+      estimatedMinutes: t.estimatedMinutes,
+      notes: t.notes,
+      tag: t.tag,
+    }));
+
     // Validate the response
-    const validationResult = validateWeekFillResult(parsedResponse);
+    const validationResult = validateWeekFillResult(response);
     if (!validationResult.success) {
       console.error('[AI_FILL_WEEK] Validation failed:', validationResult.errors);
       return NextResponse.json(

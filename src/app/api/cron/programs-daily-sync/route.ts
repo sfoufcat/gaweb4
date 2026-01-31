@@ -215,23 +215,16 @@ async function syncInstanceDayTasksToUser(
   dayIndex: number,
   tasks: ProgramInstanceTask[],
   calendarDate: string,
-  organizationId: string | undefined
+  organizationId: string | undefined,
+  dailyFocusSlots?: number
 ): Promise<number> {
   const batch = adminDb.batch();
   const now = new Date().toISOString();
   let tasksCreated = 0;
 
-  // Get org's focus limit setting
-  let focusLimit = 3; // Default
-  if (organizationId) {
-    try {
-      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
-      const orgSettings = orgSettingsDoc.data();
-      focusLimit = orgSettings?.defaultDailyFocusSlots ?? 3;
-    } catch {
-      // Fallback to 3 if org settings can't be fetched
-    }
-  }
+  // Use program's dailyFocusSlots setting (passed from instance)
+  // This respects per-program configuration instead of org-wide defaults
+  const focusLimit = dailyFocusSlots ?? 3;
 
   // Get existing tasks for this instance + day + user
   const existingTasksQuery = await adminDb.collection('tasks')
@@ -579,7 +572,8 @@ export async function GET(request: Request) {
                 todayDay.globalDayIndex,
                 todayDay.day.tasks,
                 userTodayStr,
-                enrollment.organizationId
+                enrollment.organizationId,
+                instance.dailyFocusSlots
               );
               if (tasksCreated > 0) {
                 syncedToday++;
@@ -612,7 +606,8 @@ export async function GET(request: Request) {
                 tomorrowDay.globalDayIndex,
                 tomorrowDay.day.tasks,
                 userTomorrowStr,
-                enrollment.organizationId
+                enrollment.organizationId,
+                instance.dailyFocusSlots
               );
               if (tasksCreated > 0) {
                 syncedTomorrow++;

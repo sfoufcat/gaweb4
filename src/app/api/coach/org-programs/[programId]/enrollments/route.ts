@@ -133,13 +133,43 @@ export async function GET(
           try {
             const creditsDocId = `${organizationId}_${enrollment.userId}`;
             const creditsDoc = await adminDb.collection('user_call_credits').doc(creditsDocId).get();
-            
+
             if (creditsDoc.exists) {
               const credits = creditsDoc.data() as UserCallCredits;
+              const monthlyAllowance = credits.monthlyAllowance || 0;
+
+              // Count actual calls this month (like client hook does) instead of using stale creditsUsedThisMonth
+              const startOfMonth = new Date();
+              startOfMonth.setDate(1);
+              startOfMonth.setHours(0, 0, 0, 0);
+              const endOfMonth = new Date(startOfMonth);
+              endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+
+              // Query events collection for this user's 1:1 calls this month
+              // Use simple query and filter in memory to avoid composite index requirement
+              const monthCallsQuery = await adminDb.collection('events')
+                .where('organizationId', '==', organizationId)
+                .where('eventType', '==', 'coaching_1on1')
+                .where('clientUserId', '==', enrollment.userId)
+                .get();
+
+              const callsThisMonth = monthCallsQuery.docs.filter(doc => {
+                const data = doc.data();
+                const status = data.status;
+                const startDateTime = data.startDateTime;
+                // Count confirmed calls (not cancelled) within this month
+                if (status === 'canceled' || status === 'cancelled') return false;
+                if (!startDateTime) return false;
+                const callDate = new Date(startDateTime);
+                return callDate >= startOfMonth && callDate < endOfMonth;
+              }).length;
+
+              const creditsRemaining = Math.max(0, monthlyAllowance - callsThisMonth);
+
               callCredits = {
-                creditsRemaining: credits.creditsRemaining,
-                monthlyAllowance: credits.monthlyAllowance,
-                creditsUsedThisMonth: credits.creditsUsedThisMonth,
+                creditsRemaining,
+                monthlyAllowance,
+                creditsUsedThisMonth: callsThisMonth,
               };
             }
           } catch (err) {

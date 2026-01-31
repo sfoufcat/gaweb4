@@ -55,7 +55,7 @@ export function ClientDetailSlideOver({
         </div>
 
         {/* Content - scrollable */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-6 py-6">
           <ClientDetailView
             clientId={clientId}
             onBack={onClose}

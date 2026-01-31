@@ -507,7 +507,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // UI states
   const [showPastPrograms, setShowPastPrograms] = useState(false);
-  const [showPastSessionsModal, setShowPastSessionsModal] = useState(false);
+  const [showPastSessions, setShowPastSessions] = useState(false);
   const [checkinTab, setCheckinTab] = useState<'morning' | 'evening' | 'weekly'>('morning');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     goal: true,
@@ -1440,11 +1440,12 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           <div className="flex items-center gap-2">
             {pastSessions.length > 0 && (
               <button
-                onClick={() => setShowPastSessionsModal(true)}
+                onClick={() => setShowPastSessions(!showPastSessions)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
               >
                 <History className="w-3.5 h-3.5" />
                 Past ({pastSessions.length})
+                {showPastSessions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
             )}
             <button
@@ -1515,6 +1516,64 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             </p>
           </div>
         )}
+
+        {/* Past Sessions - Inline Expandable */}
+        <div
+          className={`grid transition-all duration-300 ease-in-out ${
+            showPastSessions ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0'
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="pt-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3">
+                Past Sessions
+              </p>
+              <div className="space-y-3">
+                {pastSessions.map((session) => (
+                  <div key={session.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                            {session.title}
+                          </span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                            session.eventType === 'coaching_1on1'
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          }`}>
+                            {session.eventType === 'coaching_1on1' ? '1:1' : 'Group'}
+                          </span>
+                        </div>
+                        <p className="font-albert text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                          {formatCallTime(session.startDateTime, session.timezone)}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1.5 text-[12px] text-[#8c8c8c] dark:text-[#7d8190]">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {session.locationLabel}
+                          </span>
+                          {session.programName && (
+                            <span className="flex items-center gap-1">
+                              <GraduationCap className="w-3 h-3" />
+                              {session.programName}
+                            </span>
+                          )}
+                          {session.squadName && (
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {session.squadName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Goal and Identity Section */}
@@ -2293,142 +2352,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         clientName={user?.firstName || user?.name?.split(' ')[0]}
       />
 
-      {/* Past Sessions Modal */}
-      {isMobile ? (
-        <Drawer open={showPastSessionsModal} onOpenChange={setShowPastSessionsModal}>
-          <DrawerContent className="max-h-[85vh]">
-            <DrawerHeader className="border-b border-[#e1ddd8] dark:border-[#262b35]">
-              <DrawerTitle className="font-albert text-[18px] font-semibold tracking-[-0.5px]">
-                Past Sessions
-              </DrawerTitle>
-              <DrawerDescription className="font-albert text-[13px] text-[#8c8c8c] dark:text-[#7d8190]">
-                {pastSessions.length} previous session{pastSessions.length !== 1 ? 's' : ''}
-              </DrawerDescription>
-            </DrawerHeader>
-            <div className="p-4 overflow-y-auto max-h-[calc(85vh-80px)]">
-              {pastSessions.length > 0 ? (
-                <div className="space-y-3">
-                  {pastSessions.map((session) => (
-                    <div key={session.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                              {session.title}
-                            </span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                              session.eventType === 'coaching_1on1'
-                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                            }`}>
-                              {session.eventType === 'coaching_1on1' ? '1:1' : 'Group'}
-                            </span>
-                          </div>
-                          <p className="font-albert text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                            {formatCallTime(session.startDateTime, session.timezone)}
-                          </p>
-                          <div className="flex items-center gap-3 mt-1.5 text-[12px] text-[#8c8c8c] dark:text-[#7d8190]">
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {session.locationLabel}
-                            </span>
-                            {session.programName && (
-                              <span className="flex items-center gap-1">
-                                <GraduationCap className="w-3 h-3" />
-                                {session.programName}
-                              </span>
-                            )}
-                            {session.squadName && (
-                              <span className="flex items-center gap-1">
-                                <Users className="w-3 h-3" />
-                                {session.squadName}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <History className="w-10 h-10 mx-auto mb-2 text-[#c4bfb9] dark:text-[#7d8190]" />
-                  <p className="font-albert text-[14px] text-[#8c8c8c] dark:text-[#7d8190]">
-                    No past sessions yet
-                  </p>
-                </div>
-              )}
-            </div>
-          </DrawerContent>
-        </Drawer>
-      ) : (
-        <Dialog open={showPastSessionsModal} onOpenChange={setShowPastSessionsModal}>
-          <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
-            <DialogHeader>
-              <DialogTitle className="font-albert text-[18px] font-semibold tracking-[-0.5px]">
-                Past Sessions
-              </DialogTitle>
-              <DialogDescription className="font-albert text-[13px] text-[#8c8c8c] dark:text-[#7d8190]">
-                {pastSessions.length} previous session{pastSessions.length !== 1 ? 's' : ''}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="overflow-y-auto flex-1 pr-2">
-              {pastSessions.length > 0 ? (
-                <div className="space-y-3">
-                  {pastSessions.map((session) => (
-                    <div key={session.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                              {session.title}
-                            </span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                              session.eventType === 'coaching_1on1'
-                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                            }`}>
-                              {session.eventType === 'coaching_1on1' ? '1:1' : 'Group'}
-                            </span>
-                          </div>
-                          <p className="font-albert text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                            {formatCallTime(session.startDateTime, session.timezone)}
-                          </p>
-                          <div className="flex items-center gap-3 mt-1.5 text-[12px] text-[#8c8c8c] dark:text-[#7d8190]">
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {session.locationLabel}
-                            </span>
-                            {session.programName && (
-                              <span className="flex items-center gap-1">
-                                <GraduationCap className="w-3 h-3" />
-                                {session.programName}
-                              </span>
-                            )}
-                            {session.squadName && (
-                              <span className="flex items-center gap-1">
-                                <Users className="w-3 h-3" />
-                                {session.squadName}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <History className="w-10 h-10 mx-auto mb-2 text-[#c4bfb9] dark:text-[#7d8190]" />
-                  <p className="font-albert text-[14px] text-[#8c8c8c] dark:text-[#7d8190]">
-                    No past sessions yet
-                  </p>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
 
     </div>
   );

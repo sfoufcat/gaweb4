@@ -1,10 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useMemo } from 'react';
 import {
-  X,
-  Circle,
   Calendar,
   Phone,
   Repeat,
@@ -17,9 +14,16 @@ import {
   Video,
   ClipboardList,
   Link2,
-  GraduationCap,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerScrollArea,
+} from '@/components/ui/drawer';
 import type {
   ProgramDay,
   ProgramInstanceDay,
@@ -75,6 +79,8 @@ interface DayPreviewPopupProps {
   contentCompletion?: Map<string, ContentCompletionData>;
   // Global day offset for display (e.g., week 2 starts at day 8, so offset = 7)
   globalDayOffset?: number;
+  // Task completion data - map of taskId to completion status
+  taskCompletions?: Map<string, boolean>;
 }
 
 export function DayPreviewPopup({
@@ -93,35 +99,9 @@ export function DayPreviewPopup({
   contentProgress = [],
   contentCompletion,
   globalDayOffset = 0,
+  taskCompletions,
 }: DayPreviewPopupProps) {
-  const [mounted, setMounted] = useState(false);
-
-  // Mount portal after initial render
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Handle escape key
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
-
-  // Prevent body scroll when open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+  const isDesktop = useMediaQuery('(min-width: 640px)');
 
   // Get day's resources using helper
   const dayResources = useMemo(() => {
@@ -136,35 +116,30 @@ export function DayPreviewPopup({
   }, [week, calendarDate, events]);
 
   // Filter resources by type
-  // For courses, check both resourceAssignments (unified format) and courseAssignments (legacy format)
   const courseAssignments = useMemo(() => {
     const fromResources = getResourcesByType(dayResources, 'course');
     if (fromResources.length > 0) {
       return fromResources;
     }
-    // Check if there are ANY course resources in the week (just not for this day)
-    // If so, don't fall back to legacy format - the user is using the new format
     const allCourseResources = (week?.resourceAssignments || []).filter(
       (r) => r.resourceType === 'course'
     );
     if (allCourseResources.length > 0) {
-      // Using new format but no courses for this specific day
       return [];
     }
-    // Fallback: Convert week.courseAssignments (DayCourseAssignment[]) to WeekResourceAssignment format
-    // These are week-level assignments (no day-specific tagging in legacy format)
     const legacyCourses = (week as ProgramWeek)?.courseAssignments || [];
     return legacyCourses.map((ca: DayCourseAssignment, index: number): WeekResourceAssignment => ({
       id: `legacy-course-${ca.courseId}`,
       resourceType: 'course',
       resourceId: ca.courseId,
-      dayTag: 'week', // Legacy format doesn't have day tags, treat as week-level
+      dayTag: 'week',
       isRequired: false,
       order: index,
       moduleIds: ca.moduleIds,
       lessonIds: ca.lessonIds,
     }));
   }, [dayResources, week]);
+
   const articleAssignments = useMemo(
     () => getResourcesByType(dayResources, 'article'),
     [dayResources]
@@ -211,7 +186,7 @@ export function DayPreviewPopup({
     }
   };
 
-  if (!mounted || !day) return null;
+  if (!day) return null;
 
   // Separate focus tasks from backlog
   const focusTasks = (day.tasks || []).filter((t) => t.isPrimary !== false);
@@ -224,7 +199,6 @@ export function DayPreviewPopup({
 
   // Get the source label for a task
   const getSourceLabel = (task: TaskData) => {
-    // Resource-generated tasks show "from resource"
     if (isResourceTask(task)) {
       return 'from resource';
     }
@@ -246,6 +220,27 @@ export function DayPreviewPopup({
     return BookOpen;
   };
 
+  // Check if a task is completed
+  const isTaskCompleted = (task: TaskData): boolean => {
+    if (!taskCompletions) return false;
+    return taskCompletions.get(task.id || '') ?? false;
+  };
+
+  // Checkbox component matching TaskItem style
+  const TaskCheckbox = ({ completed }: { completed: boolean }) => (
+    <div
+      className={`w-6 h-6 rounded-md border ${
+        completed
+          ? 'border-brand-accent'
+          : 'border-[#e1ddd8] dark:border-[#262b35]'
+      } flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-white dark:bg-[#181d26]`}
+    >
+      {completed && (
+        <div className="w-4 h-4 bg-brand-accent rounded-sm" />
+      )}
+    </div>
+  );
+
   // Get day tag label for display
   const getDayTagLabel = (assignment: WeekResourceAssignment): string => {
     const tag = assignment.dayTag;
@@ -258,467 +253,469 @@ export function DayPreviewPopup({
     return '';
   };
 
-  const content = (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
-          {/* Backdrop - blurs the sidebar and content */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={onClose}
-          />
+  // Header content (shared between mobile and desktop)
+  const headerContent = (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-accent/10 text-brand-accent">
+        <Calendar className="w-5 h-5" />
+      </div>
+      <div>
+        <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          Day {globalDayOffset + dayNumber} Preview
+        </h3>
+        <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+          {weekNumber === 0 ? 'Onboarding' : weekNumber === -1 ? 'Closing' : `Week ${weekNumber}`} · {day.title || `Day ${dayNumber}`}
+          {calendarDate && ` · ${calendarDate}`}
+        </p>
+      </div>
+    </div>
+  );
 
-          {/* Popup - slides up on mobile, scales in on desktop */}
-          <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{
-              duration: 0.25,
-              ease: [0.25, 0.1, 0.25, 1],
-            }}
-            className="relative w-full sm:max-w-md max-h-[85vh] sm:max-h-[80vh] overflow-hidden bg-white dark:bg-[#1e222a] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-[#e1ddd8] dark:border-[#262b35]"
-          >
-            {/* Mobile drag handle */}
-            <div className="sm:hidden flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 rounded-full bg-[#d1cdc8] dark:bg-[#3a4150]" />
-            </div>
-
-            <div className="overflow-hidden">
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-[#e1ddd8]/60 dark:border-[#262b35]/60 bg-[#f7f5f3] dark:bg-[#11141b]">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-accent/10 text-brand-accent">
-                    <Calendar className="w-5 h-5" />
+  // Main content (shared between mobile and desktop)
+  const mainContent = (
+    <div className="p-5 space-y-5">
+      {/* Focus Tasks */}
+      <section>
+        <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+          Focus Tasks
+        </h4>
+        {focusTasks.length === 0 ? (
+          <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] italic">
+            No focus tasks for this day
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {focusTasks.map((task, idx) => {
+              const isResource = isResourceTask(task);
+              const completed = isTaskCompleted(task);
+              const ResourceIcon = isResource ? getResourceTaskIcon(task) : null;
+              return (
+                <div
+                  key={task.id || idx}
+                  className={`flex items-start gap-3 p-3 rounded-xl ${
+                    completed
+                      ? 'bg-[#f3f1ef] dark:bg-[#1d222b]'
+                      : isResource
+                        ? 'bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/30'
+                        : 'bg-[#f7f5f3] dark:bg-[#11141b]'
+                  }`}
+                >
+                  <TaskCheckbox completed={completed} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-albert transition-all duration-300 ${
+                      completed
+                        ? 'line-through text-[#8c8c8c] dark:text-[#7d8190]'
+                        : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                    }`}>
+                      {task.label}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {isResource && ResourceIcon && (
+                        <ResourceIcon className="w-3 h-3 text-purple-500 dark:text-purple-400" />
+                      )}
+                      <p className={`text-xs ${
+                        isResource
+                          ? 'text-purple-500 dark:text-purple-400'
+                          : 'text-[#a7a39e] dark:text-[#7d8190]'
+                      }`}>
+                        {getSourceLabel(task)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                      Day {globalDayOffset + dayNumber} Preview
-                    </h3>
-                    <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
-                      {weekNumber === 0 ? 'Onboarding' : weekNumber === -1 ? 'Closing' : `Week ${weekNumber}`} &middot; {day.title || `Day ${dayNumber}`}
-                      {calendarDate && ` &middot; ${calendarDate}`}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Scheduled Calls */}
+      {dayCalls.length > 0 && (
+        <section>
+          <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+            Scheduled Calls
+          </h4>
+          <div className="space-y-2">
+            {dayCalls.map((call) => (
+              <div
+                key={call.id}
+                className="flex items-center gap-3 p-3 bg-brand-accent/5 rounded-xl border border-brand-accent/20"
+              >
+                <Phone className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    {call.title}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Clock className="w-3 h-3 text-[#a7a39e] dark:text-[#7d8190]" />
+                    <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                      {formatCallTime(call.startDateTime)}
+                      {call.durationMinutes && ` · ${call.durationMinutes} min`}
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="p-2 text-[#8c8c8c] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#e1ddd8]/40 dark:hover:bg-[#262b35]/40 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
-                {/* Focus Tasks */}
-                <section>
-                  <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                    Focus Tasks
-                  </h4>
-                  {focusTasks.length === 0 ? (
-                    <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] italic">
-                      No focus tasks for this day
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {focusTasks.map((task, idx) => {
-                        const isResource = isResourceTask(task);
-                        const TaskIcon = isResource ? getResourceTaskIcon(task) : Circle;
-                        return (
-                          <div
-                            key={task.id || idx}
-                            className={`flex items-start gap-3 p-3 rounded-xl ${
-                              isResource
-                                ? 'bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/30'
-                                : 'bg-[#f7f5f3] dark:bg-[#11141b]'
-                            }`}
-                          >
-                            <TaskIcon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                              isResource
-                                ? 'text-purple-500 dark:text-purple-400'
-                                : 'text-[#c4c0bb] dark:text-[#4a4f5c]'
-                            }`} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                                {task.label}
-                              </p>
-                              <p className={`text-xs mt-0.5 ${
-                                isResource
-                                  ? 'text-purple-500 dark:text-purple-400'
-                                  : 'text-[#a7a39e] dark:text-[#7d8190]'
-                              }`}>
-                                {getSourceLabel(task)}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-
-                {/* Scheduled Calls */}
-                {dayCalls.length > 0 && (
-                  <section>
-                    <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                      Scheduled Calls
-                    </h4>
-                    <div className="space-y-2">
-                      {dayCalls.map((call) => (
-                        <div
-                          key={call.id}
-                          className="flex items-center gap-3 p-3 bg-brand-accent/5 rounded-xl border border-brand-accent/20"
-                        >
-                          <Phone className="w-4 h-4 text-brand-accent flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                              {call.title}
-                            </p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <Clock className="w-3 h-3 text-[#a7a39e] dark:text-[#7d8190]" />
-                              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                                {formatCallTime(call.startDateTime)}
-                                {call.durationMinutes && ` · ${call.durationMinutes} min`}
-                              </p>
-                            </div>
-                          </div>
-                          {call.callSummaryId && (
-                            <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Legacy Sessions placeholder (fallback if no week data) */}
-                {!week &&
-                  (() => {
-                    const eventCount =
-                      'linkedEventIds' in day && day.linkedEventIds
-                        ? day.linkedEventIds.length
-                        : 'scheduledItems' in day && day.scheduledItems
-                          ? day.scheduledItems.length
-                          : 0;
-                    if (eventCount === 0) return null;
-                    return (
-                      <section>
-                        <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                          Sessions
-                        </h4>
-                        <div className="flex items-center gap-3 p-3 bg-brand-accent/5 rounded-xl border border-brand-accent/20">
-                          <Phone className="w-4 h-4 text-brand-accent flex-shrink-0" />
-                          <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                            {eventCount} scheduled session{eventCount !== 1 ? 's' : ''}
-                          </p>
-                        </div>
-                      </section>
-                    );
-                  })()}
-
-                {/* Courses */}
-                {courseAssignments.length > 0 && (
-                  <section>
-                    <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                      Courses
-                    </h4>
-                    <div className="space-y-2">
-                      {courseAssignments.map((assignment) => {
-                        const course = courses[assignment.resourceId];
-                        const completion = contentCompletion?.get(assignment.resourceId);
-                        const completed = completion
-                          ? completion.completedCount === completion.totalCount && completion.totalCount > 0
-                          : isContentCompleted('course', assignment.resourceId);
-
-                        // Get lessons for this specific day (if using spread or specific days)
-                        const lessonsForDay = dayOfWeek && course
-                          ? getLessonsForDay(assignment, dayOfWeek, course)
-                          : [];
-                        const hasLessonMapping = assignment.lessonDayMapping && Object.keys(assignment.lessonDayMapping).length > 0;
-                        const isWeekLevel = assignment.dayTag === 'week';
-
-                        return (
-                          <div
-                            key={assignment.id}
-                            className="flex items-start gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
-                          >
-                            <Video className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                                {assignment.title || course?.title || 'Course'}
-                              </p>
-                              {/* Show specific lessons for this day */}
-                              {hasLessonMapping && lessonsForDay.length > 0 ? (
-                                <div className="mt-1.5 space-y-1">
-                                  {lessonsForDay.map((lesson) => (
-                                    <p key={lesson.id} className="text-xs text-[#6b6560] dark:text-[#9ca3af] flex items-center gap-1.5">
-                                      <span className="w-1 h-1 rounded-full bg-purple-400 flex-shrink-0" />
-                                      {lesson.title}
-                                    </p>
-                                  ))}
-                                </div>
-                              ) : isWeekLevel ? (
-                                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
-                                  Self-paced
-                                  {assignment.isRequired && ' · Required'}
-                                </p>
-                              ) : (
-                                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
-                                  {getDayTagLabel(assignment)}
-                                  {assignment.isRequired && ' · Required'}
-                                </p>
-                              )}
-                            </div>
-                            {/* Completion badge or checkmark */}
-                            {completion && completion.totalCount > 0 ? (
-                              <span
-                                className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${
-                                  completion.completedCount === completion.totalCount
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                    : completion.completedCount > 0
-                                    ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                                    : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
-                                }`}
-                              >
-                                {completion.completedCount}/{completion.totalCount}
-                              </span>
-                            ) : completed ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                )}
-
-                {/* Articles */}
-                {articleAssignments.length > 0 && (
-                  <section>
-                    <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                      Articles
-                    </h4>
-                    <div className="space-y-2">
-                      {articleAssignments.map((assignment) => {
-                        const article = articles[assignment.resourceId];
-                        const completion = contentCompletion?.get(assignment.resourceId);
-                        const completed = completion
-                          ? completion.completedCount === completion.totalCount && completion.totalCount > 0
-                          : isContentCompleted('article', assignment.resourceId);
-                        return (
-                          <div
-                            key={assignment.id}
-                            className="flex items-start gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
-                          >
-                            <FileText className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                                {assignment.title || article?.title || 'Article'}
-                              </p>
-                              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
-                                {getDayTagLabel(assignment)}
-                                {assignment.isRequired && ' · Required'}
-                              </p>
-                            </div>
-                            {/* Completion badge or checkmark */}
-                            {completion && completion.totalCount > 0 ? (
-                              <span
-                                className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${
-                                  completion.completedCount === completion.totalCount
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                    : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
-                                }`}
-                              >
-                                {completion.completedCount}/{completion.totalCount}
-                              </span>
-                            ) : completed ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                )}
-
-                {/* Downloads */}
-                {downloadAssignments.length > 0 && (
-                  <section>
-                    <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                      Downloads
-                    </h4>
-                    <div className="space-y-2">
-                      {downloadAssignments.map((assignment) => (
-                        <div
-                          key={assignment.id}
-                          className="flex items-center gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
-                        >
-                          <Download className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                              {assignment.title || 'Download'}
-                            </p>
-                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
-                              {getDayTagLabel(assignment)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Links */}
-                {linkAssignments.length > 0 && (
-                  <section>
-                    <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                      Links
-                    </h4>
-                    <div className="space-y-2">
-                      {linkAssignments.map((assignment) => (
-                        <div
-                          key={assignment.id}
-                          className="flex items-center gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
-                        >
-                          <ExternalLink className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                              {assignment.title || 'Link'}
-                            </p>
-                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
-                              {getDayTagLabel(assignment)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Forms/Questionnaires */}
-                {questionnaireAssignments.length > 0 && (
-                  <section>
-                    <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                      Forms
-                    </h4>
-                    <div className="space-y-2">
-                      {questionnaireAssignments.map((assignment) => (
-                        <div
-                          key={assignment.id}
-                          className="flex items-center gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
-                        >
-                          <ClipboardList className="w-4 h-4 text-pink-500 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                              {assignment.title || 'Form'}
-                            </p>
-                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
-                              {getDayTagLabel(assignment)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Habits */}
-                {habits.length > 0 && (
-                  <section>
-                    <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                      Habits
-                    </h4>
-                    <div className="space-y-2">
-                      {habits.map((habit, idx) => (
-                        <div
-                          key={`habit-${idx}`}
-                          className="flex items-center gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
-                        >
-                          <Repeat className="w-4 h-4 text-brand-accent flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                              {habit.title}
-                            </p>
-                            {habit.frequency && (
-                              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
-                                {habit.frequency}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Backlog */}
-                {backlogTasks.length > 0 && (
-                  <section>
-                    <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                      Backlog
-                    </h4>
-                    <div className="space-y-2">
-                      {backlogTasks.map((task, idx) => {
-                        const isResource = isResourceTask(task);
-                        const TaskIcon = isResource ? getResourceTaskIcon(task) : Circle;
-                        return (
-                          <div
-                            key={task.id || idx}
-                            className={`flex items-start gap-3 p-3 rounded-xl opacity-70 ${
-                              isResource
-                                ? 'bg-purple-50/60 dark:bg-purple-900/5 border border-purple-100/60 dark:border-purple-800/20'
-                                : 'bg-[#f7f5f3]/60 dark:bg-[#11141b]/60'
-                            }`}
-                          >
-                            <TaskIcon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                              isResource
-                                ? 'text-purple-400 dark:text-purple-500'
-                                : 'text-[#c4c0bb] dark:text-[#4a4f5c]'
-                            }`} />
-                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                              {task.label}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                )}
-
-                {/* Day prompt if exists */}
-                {day.dailyPrompt && (
-                  <section>
-                    <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
-                      Day Prompt
-                    </h4>
-                    <div className="p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl">
-                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-pre-wrap">
-                        {day.dailyPrompt}
-                      </p>
-                    </div>
-                  </section>
+                {call.callSummaryId && (
+                  <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
                 )}
               </div>
+            ))}
+          </div>
+        </section>
+      )}
 
-              {/* Footer */}
-              <div className="px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3 border-t border-[#e1ddd8]/60 dark:border-[#262b35]/60 bg-[#f7f5f3]/50 dark:bg-[#11141b]/50">
-                <p className="text-xs text-center text-[#a7a39e] dark:text-[#7d8190] font-albert">
-                  This is a preview of the computed day. Edit tasks in the Week Editor.
+      {/* Legacy Sessions placeholder */}
+      {!week &&
+        (() => {
+          const eventCount =
+            'linkedEventIds' in day && day.linkedEventIds
+              ? day.linkedEventIds.length
+              : 'scheduledItems' in day && day.scheduledItems
+                ? day.scheduledItems.length
+                : 0;
+          if (eventCount === 0) return null;
+          return (
+            <section>
+              <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+                Sessions
+              </h4>
+              <div className="flex items-center gap-3 p-3 bg-brand-accent/5 rounded-xl border border-brand-accent/20">
+                <Phone className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  {eventCount} scheduled session{eventCount !== 1 ? 's' : ''}
                 </p>
               </div>
-            </div>
-          </motion.div>
-        </div>
+            </section>
+          );
+        })()}
+
+      {/* Courses */}
+      {courseAssignments.length > 0 && (
+        <section>
+          <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+            Courses
+          </h4>
+          <div className="space-y-2">
+            {courseAssignments.map((assignment) => {
+              const course = courses[assignment.resourceId];
+              const completion = contentCompletion?.get(assignment.resourceId);
+              const completed = completion
+                ? completion.completedCount === completion.totalCount && completion.totalCount > 0
+                : isContentCompleted('course', assignment.resourceId);
+
+              const lessonsForDay = dayOfWeek && course
+                ? getLessonsForDay(assignment, dayOfWeek, course)
+                : [];
+              const hasLessonMapping = assignment.lessonDayMapping && Object.keys(assignment.lessonDayMapping).length > 0;
+              const isWeekLevel = assignment.dayTag === 'week';
+
+              return (
+                <div
+                  key={assignment.id}
+                  className="flex items-start gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
+                >
+                  <Video className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      {assignment.title || course?.title || 'Course'}
+                    </p>
+                    {hasLessonMapping && lessonsForDay.length > 0 ? (
+                      <div className="mt-1.5 space-y-1">
+                        {lessonsForDay.map((lesson) => (
+                          <p key={lesson.id} className="text-xs text-[#6b6560] dark:text-[#9ca3af] flex items-center gap-1.5">
+                            <span className="w-1 h-1 rounded-full bg-purple-400 flex-shrink-0" />
+                            {lesson.title}
+                          </p>
+                        ))}
+                      </div>
+                    ) : isWeekLevel ? (
+                      <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                        Self-paced
+                        {assignment.isRequired && ' · Required'}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                        {getDayTagLabel(assignment)}
+                        {assignment.isRequired && ' · Required'}
+                      </p>
+                    )}
+                  </div>
+                  {completion && completion.totalCount > 0 ? (
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${
+                        completion.completedCount === completion.totalCount
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                          : completion.completedCount > 0
+                          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                          : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
+                      }`}
+                    >
+                      {completion.completedCount}/{completion.totalCount}
+                    </span>
+                  ) : completed ? (
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
-    </AnimatePresence>
+
+      {/* Articles */}
+      {articleAssignments.length > 0 && (
+        <section>
+          <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+            Articles
+          </h4>
+          <div className="space-y-2">
+            {articleAssignments.map((assignment) => {
+              const article = articles[assignment.resourceId];
+              const completion = contentCompletion?.get(assignment.resourceId);
+              const completed = completion
+                ? completion.completedCount === completion.totalCount && completion.totalCount > 0
+                : isContentCompleted('article', assignment.resourceId);
+              return (
+                <div
+                  key={assignment.id}
+                  className="flex items-start gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
+                >
+                  <FileText className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      {assignment.title || article?.title || 'Article'}
+                    </p>
+                    <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                      {getDayTagLabel(assignment)}
+                      {assignment.isRequired && ' · Required'}
+                    </p>
+                  </div>
+                  {completion && completion.totalCount > 0 ? (
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${
+                        completion.completedCount === completion.totalCount
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                          : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#8c8c8c] dark:text-[#7d8190]'
+                      }`}
+                    >
+                      {completion.completedCount}/{completion.totalCount}
+                    </span>
+                  ) : completed ? (
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Downloads */}
+      {downloadAssignments.length > 0 && (
+        <section>
+          <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+            Downloads
+          </h4>
+          <div className="space-y-2">
+            {downloadAssignments.map((assignment) => (
+              <div
+                key={assignment.id}
+                className="flex items-center gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
+              >
+                <Download className="w-4 h-4 text-green-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    {assignment.title || 'Download'}
+                  </p>
+                  <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                    {getDayTagLabel(assignment)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Links */}
+      {linkAssignments.length > 0 && (
+        <section>
+          <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+            Links
+          </h4>
+          <div className="space-y-2">
+            {linkAssignments.map((assignment) => (
+              <div
+                key={assignment.id}
+                className="flex items-center gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
+              >
+                <ExternalLink className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    {assignment.title || 'Link'}
+                  </p>
+                  <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                    {getDayTagLabel(assignment)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Forms/Questionnaires */}
+      {questionnaireAssignments.length > 0 && (
+        <section>
+          <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+            Forms
+          </h4>
+          <div className="space-y-2">
+            {questionnaireAssignments.map((assignment) => (
+              <div
+                key={assignment.id}
+                className="flex items-center gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
+              >
+                <ClipboardList className="w-4 h-4 text-pink-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    {assignment.title || 'Form'}
+                  </p>
+                  <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                    {getDayTagLabel(assignment)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Habits */}
+      {habits.length > 0 && (
+        <section>
+          <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+            Habits
+          </h4>
+          <div className="space-y-2">
+            {habits.map((habit, idx) => (
+              <div
+                key={`habit-${idx}`}
+                className="flex items-center gap-3 p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl"
+              >
+                <Repeat className="w-4 h-4 text-brand-accent flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    {habit.title}
+                  </p>
+                  {habit.frequency && (
+                    <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                      {habit.frequency}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Backlog */}
+      {backlogTasks.length > 0 && (
+        <section>
+          <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+            Backlog
+          </h4>
+          <div className="space-y-2">
+            {backlogTasks.map((task, idx) => {
+              const isResource = isResourceTask(task);
+              const completed = isTaskCompleted(task);
+              const ResourceIcon = isResource ? getResourceTaskIcon(task) : null;
+              return (
+                <div
+                  key={task.id || idx}
+                  className={`flex items-start gap-3 p-3 rounded-xl opacity-70 ${
+                    completed
+                      ? 'bg-[#f3f1ef] dark:bg-[#1d222b]'
+                      : isResource
+                        ? 'bg-purple-50/60 dark:bg-purple-900/5 border border-purple-100/60 dark:border-purple-800/20'
+                        : 'bg-[#f7f5f3]/60 dark:bg-[#11141b]/60'
+                  }`}
+                >
+                  <TaskCheckbox completed={completed} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-albert ${
+                      completed
+                        ? 'line-through text-[#8c8c8c] dark:text-[#7d8190]'
+                        : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                    }`}>
+                      {task.label}
+                    </p>
+                    {isResource && ResourceIcon && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <ResourceIcon className="w-3 h-3 text-purple-400 dark:text-purple-500" />
+                        <span className="text-xs text-purple-400 dark:text-purple-500">from resource</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Day prompt if exists */}
+      {day.dailyPrompt && (
+        <section>
+          <h4 className="text-xs font-semibold text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-3 font-albert">
+            Day Prompt
+          </h4>
+          <div className="p-3 bg-[#f7f5f3] dark:bg-[#11141b] rounded-xl">
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-pre-wrap">
+              {day.dailyPrompt}
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Footer hint */}
+      <p className="text-xs text-center text-[#a7a39e] dark:text-[#7d8190] font-albert pt-2">
+        This is a preview of the computed day. Edit tasks in the Week Editor.
+      </p>
+    </div>
   );
 
-  // Use portal to render at document body level
-  return createPortal(content, document.body);
+  // Desktop: Dialog
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center px-5 py-4 border-b border-[#e1ddd8]/60 dark:border-[#262b35]/60">
+            {headerContent}
+          </div>
+          {/* Scrollable content */}
+          <div className="max-h-[60vh] overflow-y-auto">
+            {mainContent}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Drawer (draggable)
+  return (
+    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="max-h-[85vh]">
+        <DrawerHeader className="px-5 py-4 border-b border-[#e1ddd8]/60 dark:border-[#262b35]/60">
+          <DrawerTitle asChild>
+            {headerContent}
+          </DrawerTitle>
+        </DrawerHeader>
+        <DrawerScrollArea className="max-h-[60vh]">
+          {mainContent}
+        </DrawerScrollArea>
+      </DrawerContent>
+    </Drawer>
+  );
 }

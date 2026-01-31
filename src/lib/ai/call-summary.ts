@@ -1138,11 +1138,14 @@ export async function autoFillWeekFromSummary(
     // 6. Distribute action items to days using deterministic logic (no AI call needed)
     // The action items already have frequency/targetDayName from summary generation
     // Falls back to pattern matching on description if frequency field is missing
+    // Uses program's dailyFocusSlots to limit primary tasks per day
+    const dailyFocusSlots = instance.dailyFocusSlots ?? program?.dailyFocusSlots ?? 2;
     const result = distributeActionItemsToDays(
       summaryData.actionItems,
       fillConfig.weeks,
       fillConfig.skipWeekends,
-      summaryData.weekContent
+      summaryData.weekContent,
+      dailyFocusSlots
     );
 
     console.log(`[Auto-Fill] Deterministic distribution completed for ${summaryData.actionItems.length} action items`);
@@ -1476,12 +1479,14 @@ function getDayIndexFromName(dayName: string): number | null {
 /**
  * Distribute action items to days deterministically (no AI call)
  * Uses structured frequency field from summary generation, with fallback pattern matching
+ * Respects dailyFocusSlots: sorts tasks by priority, only first N get isPrimary:true per day
  */
 function distributeActionItemsToDays(
   actionItems: CallSummaryActionItem[],
   weekPlans: WeekFillPlan[],
   skipWeekends: boolean,
-  weekContent?: CallSummary['weekContent']
+  weekContent?: CallSummary['weekContent'],
+  dailyFocusSlots: number = 2
 ): MultiWeekFillResult {
   const result: MultiWeekFillResult = { weeks: {} };
 
@@ -1537,11 +1542,13 @@ function distributeActionItemsToDays(
       console.log(`[Auto-Fill] Inferred frequency for "${actionItem.description.slice(0, 50)}...": ${frequency}${targetDayName ? ` (${targetDayName})` : ''}`);
     }
 
-    // Create task object
+    // Create task object - store original priority for later sorting
+    // isPrimary will be determined after distribution based on dailyFocusSlots
     const task = {
       label: actionItem.description,
       type: 'task' as const,
-      isPrimary: actionItem.priority === 'high',
+      isPrimary: false, // Will be set after distribution
+      _priority: actionItem.priority, // Temporary field for sorting
     };
 
     // Distribute based on frequency
@@ -1590,6 +1597,34 @@ function distributeActionItemsToDays(
         result.weeks[slot.weekKey].days[String(slot.dayIndex)].tasks.push({ ...task });
         onceTaskSlotIndex++;
         console.log(`[Auto-Fill] Once task placed on week ${slot.weekKey} day ${slot.dayIndex}: "${task.label.slice(0, 40)}..."`);
+      }
+    }
+  }
+
+  // Post-process: for each day, sort by priority and cap isPrimary based on dailyFocusSlots
+  const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+  for (const weekKey of Object.keys(result.weeks)) {
+    for (const dayKey of Object.keys(result.weeks[weekKey].days)) {
+      const dayTasks = result.weeks[weekKey].days[dayKey].tasks;
+
+      // Sort by priority: high first, then medium, then low
+      dayTasks.sort((a, b) => {
+        const aPriority = (a as { _priority?: string })._priority || 'low';
+        const bPriority = (b as { _priority?: string })._priority || 'low';
+        return (priorityOrder[aPriority] ?? 2) - (priorityOrder[bPriority] ?? 2);
+      });
+
+      // Set isPrimary for first N tasks (where N = dailyFocusSlots)
+      for (let i = 0; i < dayTasks.length; i++) {
+        dayTasks[i].isPrimary = i < dailyFocusSlots;
+        // Remove temporary _priority field
+        delete (dayTasks[i] as { _priority?: string })._priority;
+      }
+
+      const primaryCount = dayTasks.filter(t => t.isPrimary).length;
+      if (dayTasks.length > 0) {
+        console.log(`[Auto-Fill] Day ${dayKey}: ${dayTasks.length} tasks, ${primaryCount} primary (limit: ${dailyFocusSlots})`);
       }
     }
   }

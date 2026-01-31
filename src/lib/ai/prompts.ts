@@ -538,6 +538,8 @@ INSTRUCTIONS:
 - Note any important reminders or context from the conversation
 - Tasks marked as "isPrimary: true" will be shown in Daily Focus
 - Limit to 3-8 tasks, 1-3 focus areas, and 1-3 notes
+- IMPORTANT: "currentFocus" is REQUIRED - always include 1-3 focus areas, even if you need to infer them from the overall theme
+- If the source is a questionnaire or diagnostic, infer focus areas from the questions/themes covered
 
 Remember: Output ONLY the JSON object. No explanations, no markdown formatting.`;
 

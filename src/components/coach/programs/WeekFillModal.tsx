@@ -965,7 +965,9 @@ export function WeekFillModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to generate content');
+        // Include validation details if available
+        const details = data.details?.map((e: { message?: string }) => e.message || String(e)).join('; ');
+        throw new Error(details || data.error || 'Failed to generate content');
       }
 
       setResult(data.result);

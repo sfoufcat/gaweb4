@@ -433,73 +433,152 @@ function CourseEditPanel({
           Select specific content (leave empty for full course)
         </p>
         {modules.length > 0 && (
-          <div className="max-h-56 overflow-y-auto space-y-0.5 rounded-lg bg-[#faf8f6] dark:bg-[#1d222b] p-2">
-            {modules.map((module) => (
-              <div key={module.id}>
-                <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-[#262b35]/60 transition-colors">
-                  <button
-                    type="button"
-                    onClick={() => onToggleModuleExpand(module.id)}
-                    className="p-0.5 hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] rounded transition-colors"
-                  >
-                    <ChevronRight
-                      className={cn(
-                        "w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] transition-transform duration-200",
-                        expandedModules.has(module.id) && "rotate-90"
-                      )}
-                    />
-                  </button>
+          <div className="max-h-56 overflow-y-auto rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] divide-y divide-[#e1ddd8]/50 dark:divide-[#262b35]/50">
+            {modules.map((module, moduleIndex) => {
+              const lessonCount = module.lessons?.length || 0;
+              const selectedLessonCount = module.lessons?.filter(l => selectedLessons.has(l.id)).length || 0;
+              const isExpanded = expandedModules.has(module.id);
+              const isModuleSelected = selectedModules.has(module.id);
+
+              return (
+                <div key={module.id}>
+                  {/* Module header */}
                   <div
-                    className="flex items-center gap-2 flex-1 cursor-pointer"
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors",
+                      isModuleSelected
+                        ? "bg-brand-accent/5"
+                        : "hover:bg-[#faf8f6] dark:hover:bg-[#1d222b]"
+                    )}
                     onClick={() => onToggleModuleSelection(module)}
                   >
-                    <BrandedCheckbox
-                      checked={selectedModules.has(module.id)}
-                      onChange={() => {}}
-                    />
-                    <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-medium">
-                      {module.title}
-                    </span>
-                    <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                      ({module.lessons?.length || 0} lessons)
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleModuleExpand(module.id);
+                      }}
+                      className={cn(
+                        "w-6 h-6 flex items-center justify-center rounded-md transition-colors",
+                        lessonCount > 0
+                          ? "hover:bg-[#e1ddd8] dark:hover:bg-[#262b35]"
+                          : "opacity-30 cursor-default"
+                      )}
+                      disabled={lessonCount === 0}
+                    >
+                      <ChevronRight
+                        className={cn(
+                          "w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] transition-transform duration-200",
+                          isExpanded && "rotate-90"
+                        )}
+                      />
+                    </button>
+
+                    {/* Module checkbox */}
+                    <div className={cn(
+                      "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
+                      isModuleSelected
+                        ? "bg-brand-accent border-brand-accent"
+                        : selectedLessonCount > 0
+                          ? "bg-brand-accent/30 border-brand-accent"
+                          : "border-[#d1cdc8] dark:border-[#3a3f4b] bg-white dark:bg-[#1d222b]"
+                    )}>
+                      {(isModuleSelected || selectedLessonCount > 0) && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          {isModuleSelected ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M18 12H6" />
+                          )}
+                        </svg>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                        {module.title}
+                      </span>
+                    </div>
+
+                    <span className={cn(
+                      "text-xs px-2 py-0.5 rounded-full font-medium",
+                      lessonCount === 0
+                        ? "bg-[#f3f1ef] dark:bg-[#262b35] text-[#a7a39e] dark:text-[#7d8190]"
+                        : selectedLessonCount === lessonCount
+                          ? "bg-brand-accent/15 text-brand-accent"
+                          : selectedLessonCount > 0
+                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                            : "bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]"
+                    )}>
+                      {lessonCount === 0 ? 'Empty' : `${selectedLessonCount}/${lessonCount}`}
                     </span>
                   </div>
-                </div>
 
-                {/* Lessons - animated expand */}
-                <div
-                  className={cn(
-                    "ml-7 overflow-hidden transition-all duration-200 ease-out",
-                    expandedModules.has(module.id) ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-                  )}
-                >
-                  {module.lessons && (
-                    <div className="py-1 space-y-0.5">
-                      {module.lessons.map((lesson) => (
-                        <div
-                          key={lesson.id}
-                          className="flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer hover:bg-white/60 dark:hover:bg-[#262b35]/60 transition-colors"
-                          onClick={() => onToggleLessonSelection(lesson.id, module.id, module)}
-                        >
-                          <BrandedCheckbox
-                            checked={selectedLessons.has(lesson.id)}
-                            onChange={() => {}}
-                          />
-                          <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert flex-1">
-                            {lesson.title}
-                          </span>
-                          {lesson.durationMinutes && (
-                            <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] tabular-nums">
-                              {lesson.durationMinutes}min
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Lessons - animated expand */}
+                  <div
+                    className={cn(
+                      "overflow-hidden transition-all duration-200 ease-out",
+                      isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                    )}
+                  >
+                    {lessonCount > 0 ? (
+                      <div className="bg-[#faf8f6] dark:bg-[#0d0f13] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                        {module.lessons!.map((lesson, lessonIndex) => {
+                          const isLessonSelected = selectedLessons.has(lesson.id);
+                          return (
+                            <div
+                              key={lesson.id}
+                              className={cn(
+                                "flex items-center gap-3 pl-12 pr-3 py-2 cursor-pointer transition-colors",
+                                isLessonSelected
+                                  ? "bg-brand-accent/5"
+                                  : "hover:bg-white/60 dark:hover:bg-[#1d222b]/60"
+                              )}
+                              onClick={() => onToggleLessonSelection(lesson.id, module.id, module)}
+                            >
+                              {/* Lesson checkbox - smaller, square */}
+                              <div className={cn(
+                                "w-3.5 h-3.5 rounded border-[1.5px] flex items-center justify-center transition-all",
+                                isLessonSelected
+                                  ? "bg-brand-accent border-brand-accent"
+                                  : "border-[#d1cdc8] dark:border-[#3a3f4b] bg-white dark:bg-[#1d222b]"
+                              )}>
+                                {isLessonSelected && (
+                                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+
+                              <span className={cn(
+                                "text-sm font-albert flex-1",
+                                isLessonSelected
+                                  ? "text-[#1a1a1a] dark:text-[#f5f5f8]"
+                                  : "text-[#5f5a55] dark:text-[#b2b6c2]"
+                              )}>
+                                {lesson.title}
+                              </span>
+
+                              {lesson.durationMinutes && (
+                                <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] tabular-nums">
+                                  {lesson.durationMinutes}m
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="bg-[#faf8f6] dark:bg-[#0d0f13] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 px-12 py-3">
+                        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] italic">
+                          No lessons in this module
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         <div className="flex items-center justify-end gap-2 pt-1">
@@ -1150,63 +1229,152 @@ export function UnifiedResourcesTabs({
                       <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                         Select specific content (leave empty for full course)
                       </p>
-                      <div className="max-h-64 overflow-y-auto space-y-1 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-2 bg-white dark:bg-[#11141b]">
-                        {course.modules.map((module) => (
-                          <div key={module.id}>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => toggleModuleExpand(module.id)}
-                                className="p-1 hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded"
-                              >
-                                {expandedModules.has(module.id) ? (
-                                  <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                                ) : (
-                                  <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                                )}
-                              </button>
+                      <div className="max-h-64 overflow-y-auto rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] divide-y divide-[#e1ddd8]/50 dark:divide-[#262b35]/50">
+                        {course.modules.map((module) => {
+                          const lessonCount = module.lessons?.length || 0;
+                          const selectedLessonCount = module.lessons?.filter(l => selectedLessons.has(l.id)).length || 0;
+                          const isExpanded = expandedModules.has(module.id);
+                          const isModuleSelected = selectedModules.has(module.id);
+
+                          return (
+                            <div key={module.id}>
+                              {/* Module header */}
                               <div
-                                className="flex items-center gap-2 flex-1 cursor-pointer"
+                                className={cn(
+                                  "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors",
+                                  isModuleSelected
+                                    ? "bg-brand-accent/5"
+                                    : "hover:bg-[#faf8f6] dark:hover:bg-[#1d222b]"
+                                )}
                                 onClick={() => toggleModuleSelection(module)}
                               >
-                                <BrandedCheckbox
-                                  checked={selectedModules.has(module.id)}
-                                  onChange={() => {}}
-                                />
-                                <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                                  {module.title}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleModuleExpand(module.id);
+                                  }}
+                                  className={cn(
+                                    "w-6 h-6 flex items-center justify-center rounded-md transition-colors",
+                                    lessonCount > 0
+                                      ? "hover:bg-[#e1ddd8] dark:hover:bg-[#262b35]"
+                                      : "opacity-30 cursor-default"
+                                  )}
+                                  disabled={lessonCount === 0}
+                                >
+                                  <ChevronRight
+                                    className={cn(
+                                      "w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] transition-transform duration-200",
+                                      isExpanded && "rotate-90"
+                                    )}
+                                  />
+                                </button>
+
+                                {/* Module checkbox */}
+                                <div className={cn(
+                                  "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
+                                  isModuleSelected
+                                    ? "bg-brand-accent border-brand-accent"
+                                    : selectedLessonCount > 0
+                                      ? "bg-brand-accent/30 border-brand-accent"
+                                      : "border-[#d1cdc8] dark:border-[#3a3f4b] bg-white dark:bg-[#1d222b]"
+                                )}>
+                                  {(isModuleSelected || selectedLessonCount > 0) && (
+                                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      {isModuleSelected ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                      ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M18 12H6" />
+                                      )}
+                                    </svg>
+                                  )}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                                    {module.title}
+                                  </span>
+                                </div>
+
+                                <span className={cn(
+                                  "text-xs px-2 py-0.5 rounded-full font-medium",
+                                  lessonCount === 0
+                                    ? "bg-[#f3f1ef] dark:bg-[#262b35] text-[#a7a39e] dark:text-[#7d8190]"
+                                    : selectedLessonCount === lessonCount
+                                      ? "bg-brand-accent/15 text-brand-accent"
+                                      : selectedLessonCount > 0
+                                        ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                                        : "bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]"
+                                )}>
+                                  {lessonCount === 0 ? 'Empty' : `${selectedLessonCount}/${lessonCount}`}
                                 </span>
-                                <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                                  ({module.lessons?.length || 0} lessons)
-                                </span>
+                              </div>
+
+                              {/* Lessons - animated expand */}
+                              <div
+                                className={cn(
+                                  "overflow-hidden transition-all duration-200 ease-out",
+                                  isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                                )}
+                              >
+                                {lessonCount > 0 ? (
+                                  <div className="bg-[#faf8f6] dark:bg-[#0d0f13] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                                    {module.lessons!.map((lesson) => {
+                                      const isLessonSelected = selectedLessons.has(lesson.id);
+                                      return (
+                                        <div
+                                          key={lesson.id}
+                                          className={cn(
+                                            "flex items-center gap-3 pl-12 pr-3 py-2 cursor-pointer transition-colors",
+                                            isLessonSelected
+                                              ? "bg-brand-accent/5"
+                                              : "hover:bg-white/60 dark:hover:bg-[#1d222b]/60"
+                                          )}
+                                          onClick={() => toggleLessonSelection(lesson.id, module.id, module)}
+                                        >
+                                          {/* Lesson checkbox - smaller, square */}
+                                          <div className={cn(
+                                            "w-3.5 h-3.5 rounded border-[1.5px] flex items-center justify-center transition-all",
+                                            isLessonSelected
+                                              ? "bg-brand-accent border-brand-accent"
+                                              : "border-[#d1cdc8] dark:border-[#3a3f4b] bg-white dark:bg-[#1d222b]"
+                                          )}>
+                                            {isLessonSelected && (
+                                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                              </svg>
+                                            )}
+                                          </div>
+
+                                          <span className={cn(
+                                            "text-sm font-albert flex-1",
+                                            isLessonSelected
+                                              ? "text-[#1a1a1a] dark:text-[#f5f5f8]"
+                                              : "text-[#5f5a55] dark:text-[#b2b6c2]"
+                                          )}>
+                                            {lesson.title}
+                                          </span>
+
+                                          {lesson.durationMinutes && (
+                                            <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] tabular-nums">
+                                              {lesson.durationMinutes}m
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="bg-[#faf8f6] dark:bg-[#0d0f13] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 px-12 py-3">
+                                    <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] italic">
+                                      No lessons in this module
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                            {expandedModules.has(module.id) && module.lessons && (
-                              <div className="ml-8 mt-1 space-y-1">
-                                {module.lessons.map((lesson) => (
-                                  <div
-                                    key={lesson.id}
-                                    className="flex items-center gap-2 py-1 cursor-pointer"
-                                    onClick={() => toggleLessonSelection(lesson.id, module.id, module)}
-                                  >
-                                    <BrandedCheckbox
-                                      checked={selectedLessons.has(lesson.id)}
-                                      onChange={() => {}}
-                                    />
-                                    <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                                      {lesson.title}
-                                    </span>
-                                    {lesson.durationMinutes && (
-                                      <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                                        {lesson.durationMinutes}min
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </>
                   )}
