@@ -579,6 +579,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
         actualEndDayOfWeek: calculatedCalendar?.actualEndDayOfWeek ?? week.actualEndDayOfWeek,
         displayDaysCount: calculatedCalendar?.displayDaysCount ?? week.displayDaysCount,
         moduleId: week.moduleId,
+        fillSource: week.fillSource,
         // Use calculated calendar week indices (most accurate for 5-day onboarding)
         // Handle special weeks: 0 (onboarding), -1 (closing), 1+ (regular)
         startDayIndex: calculatedCalendar?.startDayIndex ?? week.startDayIndex ?? (
@@ -788,7 +789,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
       endDayIndex: instanceWeek?.endDayIndex ?? templateWeek?.endDayIndex ?? endDay,
       createdAt: templateWeek?.createdAt || new Date().toISOString(),
       updatedAt: instanceWeek?.updatedAt || templateWeek?.updatedAt || new Date().toISOString(),
-      fillSource: templateWeek?.fillSource,
+      fillSource: instanceWeek?.fillSource ?? templateWeek?.fillSource,
       calendarStartDate: instanceWeek?.calendarStartDate,
       actualStartDayOfWeek: instanceWeek?.actualStartDayOfWeek,
       actualEndDayOfWeek: instanceWeek?.actualEndDayOfWeek,

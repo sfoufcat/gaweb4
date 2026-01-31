@@ -9,8 +9,7 @@
  * - Prompt: Custom instructions for generating content
  */
 
-import React, { useState, useEffect, Fragment, useCallback, useRef } from 'react';
-import { Dialog, Transition, Tab } from '@headlessui/react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -30,8 +29,12 @@ import {
   Calendar,
   Wand2,
   ArrowLeft,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type {
   ProgramWeek,
   ProgramTaskTemplate,
@@ -323,10 +326,174 @@ function InlineGenerateSummaryButton({
   return (
     <button
       onClick={handleGenerate}
+      data-generate-summary={eventId}
       className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-brand-accent/10 hover:text-brand-accent transition-colors"
     >
       Get Summary (1 credit)
     </button>
+  );
+}
+
+// Inline add recording form component with glass effect
+function AddRecordingInlineForm({
+  eventId,
+  onComplete,
+  onCancel,
+}: {
+  eventId: string;
+  onComplete: () => void;
+  onCancel: () => void;
+}) {
+  const [mode, setMode] = useState<'upload' | 'link'>('upload');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string>();
+  const [showUploader, setShowUploader] = useState(false);
+
+  const handleLinkSubmit = async () => {
+    if (!linkUrl.trim()) return;
+    setIsSubmitting(true);
+    setError(undefined);
+
+    try {
+      const response = await fetch(`/api/events/${eventId}/recording`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recordingUrl: linkUrl.trim() }),
+      });
+
+      if (response.ok) {
+        onComplete();
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to save recording');
+      }
+    } catch {
+      setError('Network error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Tab switcher with glass effect */}
+      <div className="flex gap-1 p-1 backdrop-blur-xl backdrop-saturate-150 bg-[#f5f3f0]/80 dark:bg-[#171b22]/60 border border-[#e5e1dc]/60 dark:border-white/10 rounded-xl">
+        <button
+          onClick={() => { setMode('upload'); setShowUploader(false); }}
+          className={cn(
+            'flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
+            mode === 'upload'
+              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+          )}
+        >
+          <Upload className="w-4 h-4" />
+          Upload File
+        </button>
+        <button
+          onClick={() => setMode('link')}
+          className={cn(
+            'flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
+            mode === 'link'
+              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+          )}
+        >
+          <LinkIcon className="w-4 h-4" />
+          Paste Link
+        </button>
+      </div>
+
+      {/* Content */}
+      <AnimatePresence mode="wait">
+        {mode === 'upload' ? (
+          <motion.div
+            key="upload-mode"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            {showUploader ? (
+              <InlineRecordingUploadCompact
+                eventId={eventId}
+                onUploadComplete={onComplete}
+              />
+            ) : (
+              /* Drop zone style trigger with glass effect */
+              <button
+                onClick={() => setShowUploader(true)}
+                className="w-full backdrop-blur-xl backdrop-saturate-150 bg-[#f5f3f0]/60 dark:bg-[#171b22]/60 border-2 border-dashed border-[#d4cfc9] dark:border-[#3a4150] rounded-xl p-8 text-center hover:border-brand-accent/50 hover:bg-brand-accent/5 transition-all group"
+              >
+                <div className="w-12 h-12 mx-auto rounded-xl bg-[#e8e4df] dark:bg-[#262b35] flex items-center justify-center mb-3 group-hover:bg-brand-accent/10 transition-colors">
+                  <Upload className="w-6 h-6 text-[#8a857f] dark:text-[#7d8190] group-hover:text-brand-accent transition-colors" />
+                </div>
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1">
+                  Click to select a file
+                </p>
+                <p className="text-xs text-[#8a857f] dark:text-[#7d8190]">
+                  Audio or video up to 500MB
+                </p>
+              </button>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="link-mode"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-3"
+          >
+            <div className="backdrop-blur-xl backdrop-saturate-150 bg-[#f5f3f0]/60 dark:bg-[#171b22]/60 border border-[#e5e1dc]/60 dark:border-white/10 rounded-xl p-4">
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                Recording URL
+              </label>
+              <input
+                type="text"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://zoom.us/rec/... or https://drive.google.com/..."
+                className="w-full px-4 py-3 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent transition-all"
+              />
+              {error && (
+                <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {error}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={handleLinkSubmit}
+              disabled={!linkUrl.trim() || isSubmitting}
+              className="w-full px-4 py-3 text-sm font-medium bg-brand-accent text-white rounded-xl hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Save Link
+                </>
+              )}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancel button */}
+      <button
+        onClick={onCancel}
+        className="w-full py-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
+      >
+        Cancel
+      </button>
+    </div>
   );
 }
 
@@ -370,6 +537,9 @@ export function WeekFillModal({
   // Determine if we're in client mode (should use FillWeekPreviewModal)
   const isClientMode = !!enrollmentId;
 
+  // Responsive: use Dialog on desktop, Drawer on mobile
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -377,6 +547,9 @@ export function WeekFillModal({
 
   // Apply state
   const [isApplying, setIsApplying] = useState(false);
+
+  // Add Recording inline form state
+  const [addingRecordingForId, setAddingRecordingForId] = useState<string | null>(null);
 
   // Fetch sessions (events with recordings) for this program
   const fetchSessions = useCallback(async () => {
@@ -525,6 +698,7 @@ export function WeekFillModal({
       setFillResult(undefined);
       setHasNextCall(null);
       setFillTarget('current');
+      setAddingRecordingForId(null);
     }
   }, [isOpen, fetchSessions]);
 
@@ -893,73 +1067,51 @@ export function WeekFillModal({
     return `Week ${week.weekNumber}`;
   };
 
-  return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
-        {/* Backdrop */}
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-        </Transition.Child>
+  // Modal title for accessibility
+  const modalTitle = showFillPreview ? 'Fill Week from Summary' : `Fill ${getWeekDisplayName()} with AI`;
 
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
+  // Content shared between Dialog and Drawer
+  const content = (
+    <div className="flex flex-col max-h-[85vh] md:max-h-[85vh]">
+      {/* Header */}
+      <div className="relative px-6 pt-6 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35] shrink-0">
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        <div className="flex items-center gap-3">
+          {showFillPreview && (
+            <button
+              onClick={() => {
+                setShowFillPreview(false);
+                setFillState('preview');
+              }}
+              className="p-2 -ml-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
             >
-              <Dialog.Panel className="w-full max-w-2xl max-h-[85vh] transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] shadow-2xl transition-all flex flex-col">
-                {/* Header */}
-                <div className="relative px-6 pt-6 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
-                  <button
-                    onClick={onClose}
-                    className="absolute right-4 top-4 p-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                  <div className="flex items-center gap-3">
-                    {showFillPreview && (
-                      <button
-                        onClick={() => {
-                          setShowFillPreview(false);
-                          setFillState('preview');
-                        }}
-                        className="p-2 -ml-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                      </button>
-                    )}
-                    <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center">
-                      {showFillPreview ? (
-                        <Wand2 className="w-5 h-5 text-brand-accent" />
-                      ) : (
-                        <Sparkles className="w-5 h-5 text-brand-accent" />
-                      )}
-                    </div>
-                    <div>
-                      <Dialog.Title className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                        {showFillPreview ? 'Fill Week from Summary' : `Fill ${getWeekDisplayName()} with AI`}
-                      </Dialog.Title>
-                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                        {showFillPreview
-                          ? 'Review and apply tasks from your coaching call'
-                          : 'Generate tasks, focus areas, and notes from a source'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          )}
+          <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center">
+            {showFillPreview ? (
+              <Wand2 className="w-5 h-5 text-brand-accent" />
+            ) : (
+              <Sparkles className="w-5 h-5 text-brand-accent" />
+            )}
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              {showFillPreview ? 'Fill Week from Summary' : `Fill ${getWeekDisplayName()} with AI`}
+            </h2>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              {showFillPreview
+                ? 'Review and apply tasks from your coaching call'
+                : 'Generate tasks, focus areas, and notes from a source'}
+            </p>
+          </div>
+        </div>
+      </div>
 
                 {/* Content */}
                 <div className="p-6 flex-1 min-h-0 overflow-y-auto">
@@ -1165,275 +1317,358 @@ export function WeekFillModal({
                         exit={{ opacity: 0, y: -10 }}
                         className="space-y-6"
                       >
-                        {/* Source Tabs */}
-                        <Tab.Group
-                          selectedIndex={
-                            sourceType === 'session'
-                              ? 0
-                              : sourceType === 'prompt'
-                              ? 1
-                              : 2
-                          }
-                          onChange={(index) =>
-                            setSourceType(
-                              index === 0
-                                ? 'session'
-                                : index === 1
-                                ? 'prompt'
-                                : 'pdf'
-                            )
-                          }
-                        >
-                          <Tab.List className="flex gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl">
-                            <Tab
-                              className={({ selected }) =>
-                                `flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg transition-all ${
-                                  selected
-                                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                                }`
-                              }
-                            >
-                              <Video className="w-4 h-4" />
-                              Sessions
-                            </Tab>
-                            <Tab
-                              className={({ selected }) =>
-                                `flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg transition-all ${
-                                  selected
-                                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                                }`
-                              }
-                            >
-                              <Sparkles className="w-4 h-4" />
-                              Prompt
-                            </Tab>
-                            <Tab
-                              className={({ selected }) =>
-                                `flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg transition-all ${
-                                  selected
-                                    ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                                    : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                                }`
-                              }
-                            >
-                              <FileText className="w-4 h-4" />
-                              PDF
-                            </Tab>
-                          </Tab.List>
-
-                          <Tab.Panels className="mt-4">
-                            {/* Sessions Panel */}
-                            <Tab.Panel className="space-y-4">
-                              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                Select a session with a summary to fill this week. Using existing summaries is free!
-                              </p>
-
-                              {loadingSessions ? (
-                                <div className="flex items-center justify-center py-8">
-                                  <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
-                                </div>
-                              ) : sessions.length === 0 ? (
-                                <div className="text-center py-8 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
-                                  <Video className="w-8 h-8 mx-auto text-[#a7a39e] dark:text-[#7d8190] mb-2" />
-                                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                    No sessions found
-                                  </p>
-                                  <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
-                                    Schedule a coaching call first
-                                  </p>
-                                </div>
-                              ) : (
-                                <div className="space-y-2 max-h-60 overflow-y-auto">
-                                  {sessions.map((session) => (
-                                    <div
-                                      key={session.id}
-                                      className={`w-full text-left p-3 rounded-xl border transition-all ${
-                                        selectedSessionId === session.id
-                                          ? 'border-brand-accent bg-brand-accent/5'
-                                          : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d4cfc9] dark:hover:border-[#3a4150]'
-                                      }`}
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                          <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                                            {session.title || 'Coaching Call'}
-                                          </p>
-                                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
-                                            {session.startDateTime
-                                              ? formatDate(session.startDateTime)
-                                              : 'No date'}
-                                            {session.durationMinutes && (
-                                              <span className="ml-2">
-                                                · {session.durationMinutes} min
-                                              </span>
-                                            )}
-                                          </p>
-                                        </div>
-                                        <div className="flex items-center gap-2 relative">
-                                          {session.hasSummary ? (
-                                            // Has summary - show Use Summary button
-                                            <button
-                                              onClick={() => {
-                                                setSelectedSessionId(session.id);
-                                                setSelectedSummaryId(session.summaryId || '');
-                                                // Set loading immediately to prevent race condition
-                                                if (session.summaryId) {
-                                                  setLoadingSummary(true);
-                                                }
-                                              }}
-                                              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                                                selectedSessionId === session.id
-                                                  ? 'bg-brand-accent text-white'
-                                                  : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e8e4df] dark:hover:bg-[#2d333e]'
-                                              }`}
-                                            >
-                                              {selectedSessionId === session.id ? (
-                                                <span className="flex items-center gap-1">
-                                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                                  Selected
-                                                </span>
-                                              ) : (
-                                                'Use Summary'
-                                              )}
-                                            </button>
-                                          ) : session.hasRecording ? (
-                                            // Has recording but no summary - show Get Summary button
-                                            <InlineGenerateSummaryButton
-                                              eventId={session.id}
-                                              onGenerated={(summaryId) =>
-                                                handleSummaryGenerated(session.id, summaryId)
-                                              }
-                                            />
-                                          ) : (
-                                            // No recording - show Upload Recording button
-                                            <InlineUploadRecordingButton
-                                              eventId={session.id}
-                                              onUploaded={() => fetchSessions()}
-                                            />
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
+                        {/* Source Tabs - Custom animated tabs */}
+                        <div className="flex gap-1 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl">
+                          {[
+                            { type: 'session' as const, icon: Video, label: 'Sessions' },
+                            { type: 'prompt' as const, icon: Sparkles, label: 'Prompt' },
+                            { type: 'pdf' as const, icon: FileText, label: 'PDF' },
+                          ].map(({ type, icon: Icon, label }) => (
+                            <button
+                              key={type}
+                              onClick={() => setSourceType(type)}
+                              className={cn(
+                                'flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg transition-all duration-200',
+                                sourceType === type
+                                  ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
                               )}
-                            </Tab.Panel>
+                            >
+                              <Icon className="w-4 h-4" />
+                              {label}
+                            </button>
+                          ))}
+                        </div>
 
-                            {/* Prompt Panel */}
-                            <Tab.Panel className="space-y-4">
-                              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                Describe what you want for this week. Include goals, themes, and specific areas to focus on.
-                              </p>
-                              <textarea
-                                value={promptText}
-                                onChange={(e) => setPromptText(e.target.value)}
-                                placeholder="E.g., This week the client should focus on setting up their morning routine. They mentioned wanting to wake up at 6am and exercise before work. Key challenges include managing energy levels and building consistency..."
-                                rows={6}
-                                className="w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm resize-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent"
-                              />
-                              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                                Minimum 50 characters required.{' '}
-                                {promptText.length}/50
-                              </p>
-                            </Tab.Panel>
-
-                            {/* PDF Panel */}
-                            <Tab.Panel className="space-y-4">
-                              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                Upload a PDF document (intake form, notes, etc.) to extract content for this week.
-                              </p>
-
-                              {!pdfFile ? (
-                                <div
-                                  onDrop={handleDrop}
-                                  onDragOver={handleDragOver}
-                                  onClick={() => fileInputRef.current?.click()}
-                                  className="border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-8 text-center cursor-pointer hover:border-brand-accent/50 hover:bg-brand-accent/5 transition-colors"
-                                >
-                                  <Upload className="w-8 h-8 mx-auto text-[#a7a39e] dark:text-[#7d8190] mb-3" />
-                                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-1">
-                                    Drop a PDF here or click to upload
-                                  </p>
-                                  <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                                    Maximum file size: 10MB
-                                  </p>
-                                  <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept=".pdf,application/pdf"
-                                    onChange={handleFileChange}
-                                    className="hidden"
-                                  />
-                                </div>
-                              ) : (
-                                <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                                        <FileText className="w-5 h-5 text-red-600 dark:text-red-400" />
-                                      </div>
-                                      <div>
-                                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                                          {pdfFile.name}
-                                        </p>
-                                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                                          {formatFileSize(pdfFile.size)}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <button
-                                      onClick={clearPdf}
-                                      className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] text-[#5f5a55] hover:text-red-500 transition-colors"
+                        {/* Animated Tab Panels */}
+                        <div className="mt-4 min-h-[280px]">
+                          <AnimatePresence mode="wait">
+                            {/* Sessions Panel */}
+                            {sourceType === 'session' && (
+                              <motion.div
+                                key="sessions-panel"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2 }}
+                                className="space-y-4"
+                              >
+                                <AnimatePresence mode="wait">
+                                  {addingRecordingForId ? (
+                                    /* Add Recording Inline Form */
+                                    <motion.div
+                                      key="add-recording-form"
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -10 }}
+                                      transition={{ duration: 0.25 }}
+                                      className="space-y-4"
                                     >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
+                                      {/* Header with back button */}
+                                      <div className="flex items-center gap-3">
+                                        <button
+                                          onClick={() => setAddingRecordingForId(null)}
+                                          className="p-2 -ml-2 rounded-xl text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                                        >
+                                          <ArrowLeft className="w-5 h-5" />
+                                        </button>
+                                        <div>
+                                          <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                                            Add Recording
+                                          </p>
+                                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                                            {sessions.find(s => s.id === addingRecordingForId)?.title || 'Session'}
+                                          </p>
+                                        </div>
+                                      </div>
 
-                                  {isExtracting ? (
-                                    <div className="mt-4 flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                      <Loader2 className="w-4 h-4 animate-spin" />
-                                      Extracting text...
-                                    </div>
-                                  ) : pdfExtraction ? (
-                                    <div className="mt-4">
-                                      {pdfExtraction.success ? (
-                                        <div className="space-y-2">
-                                          <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                                            <CheckCircle2 className="w-4 h-4" />
-                                            <span>
-                                              Extracted {pdfExtraction.charCount.toLocaleString()} characters
-                                              {pdfExtraction.pageCount > 0 && (
-                                                <span className="text-[#5f5a55] dark:text-[#b2b6c2]">
-                                                  {' '}from {pdfExtraction.pageCount} pages
-                                                </span>
-                                              )}
-                                            </span>
-                                          </div>
-                                          {pdfExtraction.truncated && (
-                                            <p className="text-xs text-amber-600 dark:text-amber-400">
-                                              Content was truncated to stay within limits
-                                            </p>
-                                          )}
-                                          <div className="p-3 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-lg text-xs text-[#5f5a55] dark:text-[#b2b6c2] max-h-24 overflow-y-auto">
-                                            {pdfExtraction.text.slice(0, 500)}
-                                            {pdfExtraction.text.length > 500 && '...'}
-                                          </div>
+                                      {/* Inline Upload/Link Form */}
+                                      <AddRecordingInlineForm
+                                        eventId={addingRecordingForId}
+                                        onComplete={() => {
+                                          setAddingRecordingForId(null);
+                                          fetchSessions();
+                                        }}
+                                        onCancel={() => setAddingRecordingForId(null)}
+                                      />
+                                    </motion.div>
+                                  ) : (
+                                    /* Sessions List */
+                                    <motion.div
+                                      key="sessions-list"
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -10 }}
+                                      transition={{ duration: 0.25 }}
+                                      className="space-y-4"
+                                    >
+                                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                                        Select a session with a summary to fill this week. Using existing summaries is free!
+                                      </p>
+
+                                      {loadingSessions ? (
+                                        <div className="flex items-center justify-center py-8">
+                                          <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
+                                        </div>
+                                      ) : sessions.length === 0 ? (
+                                        <div className="text-center py-8 backdrop-blur-2xl backdrop-saturate-150 bg-[#f5f3f0]/70 dark:bg-[#171b22]/60 rounded-xl border border-[#e5e1dc]/50 dark:border-white/10">
+                                          <Video className="w-8 h-8 mx-auto text-[#a7a39e] dark:text-[#7d8190] mb-2" />
+                                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                                            No sessions found
+                                          </p>
+                                          <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
+                                            Schedule a coaching call first
+                                          </p>
                                         </div>
                                       ) : (
-                                        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-                                          <AlertCircle className="w-4 h-4" />
-                                          <span>{pdfExtraction.error}</span>
+                                        <div className="space-y-2.5 max-h-60 overflow-y-auto">
+                                          {sessions.map((session) => {
+                                            const isSelected = selectedSessionId === session.id;
+                                            const canSelect = session.hasSummary;
+
+                                            return (
+                                              <div
+                                                key={session.id}
+                                                onClick={() => {
+                                                  if (canSelect) {
+                                                    setSelectedSessionId(session.id);
+                                                    setSelectedSummaryId(session.summaryId || '');
+                                                    if (session.summaryId) {
+                                                      setLoadingSummary(true);
+                                                    }
+                                                  }
+                                                }}
+                                                role="button"
+                                                tabIndex={canSelect ? 0 : -1}
+                                                className={cn(
+                                                  'w-full text-left p-4 rounded-2xl backdrop-blur-2xl backdrop-saturate-150 border transition-all duration-200 shadow-sm',
+                                                  isSelected
+                                                    ? 'border-brand-accent bg-brand-accent/10 dark:bg-brand-accent/15 cursor-pointer'
+                                                    : canSelect
+                                                      ? 'border-[#e5e1dc]/60 dark:border-white/10 bg-[#f8f6f3]/80 dark:bg-[#171b22]/70 hover:border-brand-accent/50 hover:bg-[#f5f3f0]/90 cursor-pointer'
+                                                      : 'border-[#e5e1dc]/40 dark:border-white/5 bg-[#f5f3f0]/50 dark:bg-[#171b22]/40'
+                                                )}
+                                              >
+                                                <div className="flex items-center justify-between gap-3">
+                                                  <div className="flex-1 min-w-0">
+                                                    <p className={cn(
+                                                      'text-sm font-medium truncate',
+                                                      isSelected
+                                                        ? 'text-brand-accent'
+                                                        : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                                                    )}>
+                                                      {session.title || 'Coaching Call'}
+                                                    </p>
+                                                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                                                      {session.startDateTime
+                                                        ? formatDate(session.startDateTime)
+                                                        : 'No date'}
+                                                      {session.durationMinutes && (
+                                                        <span className="ml-2">
+                                                          · {session.durationMinutes} min
+                                                        </span>
+                                                      )}
+                                                    </p>
+                                                  </div>
+                                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                                    {session.hasSummary ? (
+                                                      /* Has summary - always show simple checkmark */
+                                                      <div className={cn(
+                                                        'w-6 h-6 rounded-full flex items-center justify-center transition-colors border-2',
+                                                        isSelected
+                                                          ? 'border-brand-accent bg-brand-accent text-white'
+                                                          : 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                                      )}>
+                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                      </div>
+                                                    ) : session.hasRecording ? (
+                                                      /* Has recording but no summary - show Get Summary button */
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          e.preventDefault();
+                                                          const btn = document.querySelector(`[data-generate-summary="${session.id}"]`) as HTMLButtonElement;
+                                                          btn?.click();
+                                                        }}
+                                                        className="flex items-center justify-center gap-1.5 h-8 px-3 sm:px-3.5 text-xs font-medium rounded-full backdrop-blur-sm bg-[#f5f3f0]/80 dark:bg-[#262b35]/80 border border-[#e5e1dc]/60 dark:border-white/10 text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-brand-accent/10 hover:border-brand-accent/40 hover:text-brand-accent transition-all duration-200"
+                                                      >
+                                                        <Sparkles className="w-3.5 h-3.5" />
+                                                        <span className="hidden sm:inline">Get Summary</span>
+                                                      </button>
+                                                    ) : (
+                                                      /* No recording - show Add Recording button */
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          e.preventDefault();
+                                                          console.log('[WeekFillModal] Add Recording clicked for session:', session.id);
+                                                          setAddingRecordingForId(session.id);
+                                                        }}
+                                                        className="flex items-center justify-center gap-1.5 h-8 px-3 sm:px-3.5 text-xs font-medium rounded-full backdrop-blur-sm bg-[#f5f3f0]/80 dark:bg-[#262b35]/80 border border-[#e5e1dc]/60 dark:border-white/10 text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-brand-accent/10 hover:border-brand-accent/40 hover:text-brand-accent transition-all duration-200"
+                                                      >
+                                                        <Upload className="w-3.5 h-3.5" />
+                                                        <span className="hidden sm:inline">Add Recording</span>
+                                                      </button>
+                                                    )}
+                                                    {/* Hidden button for InlineGenerateSummaryButton to trigger */}
+                                                    {session.hasRecording && !session.hasSummary && (
+                                                      <div className="hidden">
+                                                        <InlineGenerateSummaryButton
+                                                          eventId={session.id}
+                                                          onGenerated={(summaryId) =>
+                                                            handleSummaryGenerated(session.id, summaryId)
+                                                          }
+                                                        />
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
                                         </div>
                                       )}
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </motion.div>
+                            )}
+
+                            {/* Prompt Panel */}
+                            {sourceType === 'prompt' && (
+                              <motion.div
+                                key="prompt-panel"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2 }}
+                                className="space-y-4"
+                              >
+                                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                                  Describe what you want for this week. Include goals, themes, and specific areas to focus on.
+                                </p>
+                                <textarea
+                                  value={promptText}
+                                  onChange={(e) => setPromptText(e.target.value)}
+                                  placeholder="E.g., This week the client should focus on setting up their morning routine. They mentioned wanting to wake up at 6am and exercise before work. Key challenges include managing energy levels and building consistency..."
+                                  rows={6}
+                                  className="w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm resize-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent"
+                                />
+                                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                                  Minimum 50 characters required.{' '}
+                                  {promptText.length}/50
+                                </p>
+                              </motion.div>
+                            )}
+
+                            {/* PDF Panel */}
+                            {sourceType === 'pdf' && (
+                              <motion.div
+                                key="pdf-panel"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2 }}
+                                className="space-y-4"
+                              >
+                                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                                  Upload a PDF document (intake form, notes, etc.) to extract content for this week.
+                                </p>
+
+                                {!pdfFile ? (
+                                  <div
+                                    onDrop={handleDrop}
+                                    onDragOver={handleDragOver}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-8 text-center cursor-pointer hover:border-brand-accent/50 hover:bg-brand-accent/5 transition-colors"
+                                  >
+                                    <Upload className="w-8 h-8 mx-auto text-[#a7a39e] dark:text-[#7d8190] mb-3" />
+                                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-1">
+                                      Drop a PDF here or click to upload
+                                    </p>
+                                    <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                                      Maximum file size: 10MB
+                                    </p>
+                                    <input
+                                      ref={fileInputRef}
+                                      type="file"
+                                      accept=".pdf,application/pdf"
+                                      onChange={handleFileChange}
+                                      className="hidden"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                                          <FileText className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                                            {pdfFile.name}
+                                          </p>
+                                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                                            {formatFileSize(pdfFile.size)}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <button
+                                        onClick={clearPdf}
+                                        className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] text-[#5f5a55] hover:text-red-500 transition-colors"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
                                     </div>
-                                  ) : null}
-                                </div>
-                              )}
-                            </Tab.Panel>
-                          </Tab.Panels>
-                        </Tab.Group>
+
+                                    {isExtracting ? (
+                                      <div className="mt-4 flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Extracting text...
+                                      </div>
+                                    ) : pdfExtraction ? (
+                                      <div className="mt-4">
+                                        {pdfExtraction.success ? (
+                                          <div className="space-y-2">
+                                            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                                              <CheckCircle2 className="w-4 h-4" />
+                                              <span>
+                                                Extracted {pdfExtraction.charCount.toLocaleString()} characters
+                                                {pdfExtraction.pageCount > 0 && (
+                                                  <span className="text-[#5f5a55] dark:text-[#b2b6c2]">
+                                                    {' '}from {pdfExtraction.pageCount} pages
+                                                  </span>
+                                                )}
+                                              </span>
+                                            </div>
+                                            {pdfExtraction.truncated && (
+                                              <p className="text-xs text-amber-600 dark:text-amber-400">
+                                                Content was truncated to stay within limits
+                                              </p>
+                                            )}
+                                            <div className="p-3 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-lg text-xs text-[#5f5a55] dark:text-[#b2b6c2] max-h-24 overflow-y-auto">
+                                              {pdfExtraction.text.slice(0, 500)}
+                                              {pdfExtraction.text.length > 500 && '...'}
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                                            <AlertCircle className="w-4 h-4" />
+                                            <span>{pdfExtraction.error}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
 
                         {/* Error */}
                         {generationError && (
@@ -1664,11 +1899,32 @@ export function WeekFillModal({
                     </>
                   )}
                 </div>
-              </Dialog.Panel>
-            </Transition.Child>
-          </div>
-        </div>
+    </div>
+  );
+
+  // Desktop: Use Dialog (centered modal)
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-2xl p-0 max-h-[85vh] overflow-hidden flex flex-col" hideCloseButton>
+          <DialogTitle className="sr-only">{modalTitle}</DialogTitle>
+          {content}
+        </DialogContent>
       </Dialog>
-    </Transition>
+    );
+  }
+
+  // Mobile: Use Drawer (slide-up)
+  return (
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="max-h-[90vh] flex flex-col">
+        <DrawerTitle className="sr-only">{modalTitle}</DrawerTitle>
+        {content}
+      </DrawerContent>
+    </Drawer>
   );
 }

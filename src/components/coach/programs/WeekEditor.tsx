@@ -3592,6 +3592,10 @@ export function WeekEditor({
                         hasRecording={hasRecording}
                         recordingStatus={recordingStatus}
                         isToday={isToday}
+                        hasFilledFromSummary={
+                          week.fillSource?.type === 'call_summary' &&
+                          week.fillSource?.sourceId === summaryForEvent?.id
+                        }
                         onRemove={() => removeEventLink(eventId)}
                         onViewSummary={() => {
                           if (summaryForEvent) {
