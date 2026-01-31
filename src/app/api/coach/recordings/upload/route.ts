@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
       estimatedMinutes = Math.max(1, Math.ceil(file.size / (1024 * 1024)));
 
       // Check credits availability
-      const { available, remainingMinutes } = await checkCreditsAvailable(
+      const { available, remainingCredits } = await checkCreditsAvailable(
         organizationId,
         estimatedMinutes
       );
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       if (!available) {
         return NextResponse.json(
           {
-            error: `Insufficient credits. Need ~${estimatedMinutes} minutes, have ${remainingMinutes} remaining.`,
+            error: `Insufficient credits. Need ~${estimatedMinutes} minutes, have ${remainingCredits} remaining.`,
           },
           { status: 402 }
         );

@@ -20,7 +20,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
@@ -231,6 +232,9 @@ function LinkFormDialog({
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-2xl p-0" hideCloseButton>
+          <VisuallyHidden.Root>
+            <DialogTitle>{link ? 'Edit Link' : 'Create Link'}</DialogTitle>
+          </VisuallyHidden.Root>
           {content}
         </DialogContent>
       </Dialog>

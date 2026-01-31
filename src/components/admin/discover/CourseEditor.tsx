@@ -368,9 +368,9 @@ export function CourseEditor({
     : null;
 
   return (
-    <div className="flex flex-col h-full min-h-screen">
+    <div className="flex flex-col h-full min-h-screen bg-[#faf8f6] dark:bg-[#0d0f14]">
       {/* Header */}
-      <div className="border-b border-[#e1ddd8] dark:border-[#262b35]">
+      <div className="sticky top-0 z-20 border-b border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6]/80 dark:bg-[#0d0f14]/80 backdrop-blur-xl">
         {/* Single row: back + title + tabs + stats + actions */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
@@ -781,7 +781,7 @@ export function CourseEditor({
           {selectedLesson && selectedModuleIndex !== null && selectedLessonIndex !== null ? (
             <>
               {/* Lesson Header Bar - aligned with Structure */}
-              <div className="sticky top-0 z-10 flex items-center gap-3 px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+              <div className="sticky top-0 z-10 flex items-center gap-3 px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl">
                 {/* Mobile Back Button */}
                 <button
                   type="button"

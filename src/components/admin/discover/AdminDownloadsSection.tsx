@@ -20,7 +20,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { MediaUpload } from '@/components/admin/MediaUpload';
@@ -265,6 +266,9 @@ function DownloadFormDialog({
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-2xl p-0" hideCloseButton>
+          <VisuallyHidden.Root>
+            <DialogTitle>{download ? 'Edit Download' : 'Create Download'}</DialogTitle>
+          </VisuallyHidden.Root>
           {content}
         </DialogContent>
       </Dialog>

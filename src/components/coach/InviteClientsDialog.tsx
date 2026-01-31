@@ -2834,48 +2834,97 @@ export function InviteClientsDialog({ isOpen, onClose, initialTargetType }: Invi
                     )}
                   </div>
 
-                  {/* Payment Status - Dropdown */}
+                  {/* Payment Status - Cards */}
                   <div>
                     <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                       Payment
                     </label>
-                    <Select
-                      value={createForm.paymentStatus}
-                      onValueChange={(value) => setCreateForm(prev => ({
-                        ...prev,
-                        paymentStatus: value as 'required' | 'pre_paid' | 'free'
-                      }))}
-                    >
-                      <SelectTrigger className="w-full h-11 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:border-brand-accent dark:focus:border-brand-accent">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="required" disabled={!canAcceptPayments} hideIndicator>
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                            <span>Payment Required</span>
-                            {!canAcceptPayments && <span className="text-xs text-[#8a857f]">(Connect Stripe)</span>}
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* Payment Required Card */}
+                      <button
+                        type="button"
+                        onClick={() => canAcceptPayments && setCreateForm(prev => ({ ...prev, paymentStatus: 'required' }))}
+                        disabled={!canAcceptPayments}
+                        className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                          createForm.paymentStatus === 'required'
+                            ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b]'
+                        } ${!canAcceptPayments ? 'opacity-50 cursor-not-allowed' : 'hover:border-brand-accent/50'}`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                          createForm.paymentStatus === 'required'
+                            ? 'bg-brand-accent/20'
+                            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                        }`}>
+                          <CreditCard className={`w-4 h-4 ${createForm.paymentStatus === 'required' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                        </div>
+                        <span className="text-[13px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Paid</span>
+                        <span className="text-[11px] text-[#8a857f] dark:text-[#6b7280] font-albert leading-tight">
+                          {canAcceptPayments ? 'Collect payment' : 'Connect Stripe'}
+                        </span>
+                        {createForm.paymentStatus === 'required' && (
+                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-white" />
                           </div>
-                        </SelectItem>
-                        <SelectItem value="pre_paid" hideIndicator>
-                          <div className="flex items-center gap-2">
-                            <Check className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                            <span>Pre-paid</span>
-                            <span className="text-xs text-[#8a857f]">Paid externally</span>
+                        )}
+                      </button>
+
+                      {/* Pre-paid Card */}
+                      <button
+                        type="button"
+                        onClick={() => setCreateForm(prev => ({ ...prev, paymentStatus: 'pre_paid' }))}
+                        className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                          createForm.paymentStatus === 'pre_paid'
+                            ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                          createForm.paymentStatus === 'pre_paid'
+                            ? 'bg-brand-accent/20'
+                            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                        }`}>
+                          <Check className={`w-4 h-4 ${createForm.paymentStatus === 'pre_paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                        </div>
+                        <span className="text-[13px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Pre-paid</span>
+                        <span className="text-[11px] text-[#8a857f] dark:text-[#6b7280] font-albert leading-tight">Paid externally</span>
+                        {createForm.paymentStatus === 'pre_paid' && (
+                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-white" />
                           </div>
-                        </SelectItem>
-                        <SelectItem value="free" hideIndicator>
-                          <div className="flex items-center gap-2">
-                            <Gift className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                            <span>Free Access</span>
+                        )}
+                      </button>
+
+                      {/* Free Access Card */}
+                      <button
+                        type="button"
+                        onClick={() => setCreateForm(prev => ({ ...prev, paymentStatus: 'free' }))}
+                        className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                          createForm.paymentStatus === 'free'
+                            ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                          createForm.paymentStatus === 'free'
+                            ? 'bg-brand-accent/20'
+                            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                        }`}>
+                          <Gift className={`w-4 h-4 ${createForm.paymentStatus === 'free' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                        </div>
+                        <span className="text-[13px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Free</span>
+                        <span className="text-[11px] text-[#8a857f] dark:text-[#6b7280] font-albert leading-tight">No payment</span>
+                        {createForm.paymentStatus === 'free' && (
+                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-white" />
                           </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Stripe Connect Prompt */}
-                  {createForm.paymentStatus === 'required' && !canAcceptPayments && (
+                  {!canAcceptPayments && (
                     <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
                   )}
 
@@ -3124,33 +3173,97 @@ export function InviteClientsDialog({ isOpen, onClose, initialTargetType }: Invi
                     </AnimatePresence>
                   </div>
 
-                  {/* Payment Selector */}
+                  {/* Payment Selector - Cards */}
                   <div>
                     <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                       Payment
                     </label>
-                    <Select
-                      value={createForm.paymentStatus}
-                      onValueChange={(value) => setCreateForm(prev => ({
-                        ...prev,
-                        paymentStatus: value as 'required' | 'pre_paid' | 'free'
-                      }))}
-                    >
-                      <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:border-brand-accent dark:focus:border-brand-accent">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="required" disabled={!canAcceptPayments}>
-                          Payment Required {!canAcceptPayments && '(Stripe required)'}
-                        </SelectItem>
-                        <SelectItem value="pre_paid">Pre-paid (paid externally)</SelectItem>
-                        <SelectItem value="free">Free Access</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* Payment Required Card */}
+                      <button
+                        type="button"
+                        onClick={() => canAcceptPayments && setCreateForm(prev => ({ ...prev, paymentStatus: 'required' }))}
+                        disabled={!canAcceptPayments}
+                        className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                          createForm.paymentStatus === 'required'
+                            ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b]'
+                        } ${!canAcceptPayments ? 'opacity-50 cursor-not-allowed' : 'hover:border-brand-accent/50'}`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                          createForm.paymentStatus === 'required'
+                            ? 'bg-brand-accent/20'
+                            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                        }`}>
+                          <CreditCard className={`w-4 h-4 ${createForm.paymentStatus === 'required' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                        </div>
+                        <span className="text-[13px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Paid</span>
+                        <span className="text-[11px] text-[#8a857f] dark:text-[#6b7280] font-albert leading-tight">
+                          {canAcceptPayments ? 'Collect payment' : 'Connect Stripe'}
+                        </span>
+                        {createForm.paymentStatus === 'required' && (
+                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                      </button>
 
-                    {/* Stripe Connect Prompt when Payment Required selected but Stripe not connected */}
-                    {createForm.paymentStatus === 'required' && !canAcceptPayments && (
-                      <div className="mt-2">
+                      {/* Pre-paid Card */}
+                      <button
+                        type="button"
+                        onClick={() => setCreateForm(prev => ({ ...prev, paymentStatus: 'pre_paid' }))}
+                        className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                          createForm.paymentStatus === 'pre_paid'
+                            ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                          createForm.paymentStatus === 'pre_paid'
+                            ? 'bg-brand-accent/20'
+                            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                        }`}>
+                          <Check className={`w-4 h-4 ${createForm.paymentStatus === 'pre_paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                        </div>
+                        <span className="text-[13px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Pre-paid</span>
+                        <span className="text-[11px] text-[#8a857f] dark:text-[#6b7280] font-albert leading-tight">Paid externally</span>
+                        {createForm.paymentStatus === 'pre_paid' && (
+                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Free Access Card */}
+                      <button
+                        type="button"
+                        onClick={() => setCreateForm(prev => ({ ...prev, paymentStatus: 'free' }))}
+                        className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                          createForm.paymentStatus === 'free'
+                            ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                          createForm.paymentStatus === 'free'
+                            ? 'bg-brand-accent/20'
+                            : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                        }`}>
+                          <Gift className={`w-4 h-4 ${createForm.paymentStatus === 'free' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                        </div>
+                        <span className="text-[13px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Free</span>
+                        <span className="text-[11px] text-[#8a857f] dark:text-[#6b7280] font-albert leading-tight">No payment</span>
+                        {createForm.paymentStatus === 'free' && (
+                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Stripe Connect Prompt when Stripe not connected */}
+                    {!canAcceptPayments && (
+                      <div className="mt-3">
                         <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
                       </div>
                     )}
@@ -3283,25 +3396,92 @@ export function InviteClientsDialog({ isOpen, onClose, initialTargetType }: Invi
                       <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                         Payment (for all)
                       </label>
-                      <Select
-                        value={bulkPaymentStatus}
-                        onValueChange={(value) => setBulkPaymentStatus(value as 'required' | 'pre_paid' | 'free')}
-                      >
-                        <SelectTrigger className="w-full h-12 px-4 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:border-brand-accent dark:focus:border-brand-accent">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="required" disabled={!canAcceptPayments}>
-                            Payment Required {!canAcceptPayments && '(Stripe required)'}
-                          </SelectItem>
-                          <SelectItem value="pre_paid">Pre-paid (paid externally)</SelectItem>
-                          <SelectItem value="free">Free Access</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* Payment Required Card */}
+                        <button
+                          type="button"
+                          onClick={() => canAcceptPayments && setBulkPaymentStatus('required')}
+                          disabled={!canAcceptPayments}
+                          className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                            bulkPaymentStatus === 'required'
+                              ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b]'
+                          } ${!canAcceptPayments ? 'opacity-50 cursor-not-allowed' : 'hover:border-brand-accent/50'}`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                            bulkPaymentStatus === 'required'
+                              ? 'bg-brand-accent/20'
+                              : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                          }`}>
+                            <CreditCard className={`w-4 h-4 ${bulkPaymentStatus === 'required' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                          </div>
+                          <span className="text-[13px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Paid</span>
+                          <span className="text-[11px] text-[#8a857f] dark:text-[#6b7280] font-albert leading-tight">
+                            {canAcceptPayments ? 'Collect payment' : 'Connect Stripe'}
+                          </span>
+                          {bulkPaymentStatus === 'required' && (
+                            <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                              <Check className="w-2.5 h-2.5 text-white" />
+                            </div>
+                          )}
+                        </button>
 
-                      {/* Stripe Connect Prompt when Payment Required selected but Stripe not connected */}
-                      {bulkPaymentStatus === 'required' && !canAcceptPayments && (
-                        <div className="mt-2">
+                        {/* Pre-paid Card */}
+                        <button
+                          type="button"
+                          onClick={() => setBulkPaymentStatus('pre_paid')}
+                          className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                            bulkPaymentStatus === 'pre_paid'
+                              ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                            bulkPaymentStatus === 'pre_paid'
+                              ? 'bg-brand-accent/20'
+                              : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                          }`}>
+                            <Check className={`w-4 h-4 ${bulkPaymentStatus === 'pre_paid' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                          </div>
+                          <span className="text-[13px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Pre-paid</span>
+                          <span className="text-[11px] text-[#8a857f] dark:text-[#6b7280] font-albert leading-tight">Paid externally</span>
+                          {bulkPaymentStatus === 'pre_paid' && (
+                            <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                              <Check className="w-2.5 h-2.5 text-white" />
+                            </div>
+                          )}
+                        </button>
+
+                        {/* Free Access Card */}
+                        <button
+                          type="button"
+                          onClick={() => setBulkPaymentStatus('free')}
+                          className={`group relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                            bulkPaymentStatus === 'free'
+                              ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                            bulkPaymentStatus === 'free'
+                              ? 'bg-brand-accent/20'
+                              : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                          }`}>
+                            <Gift className={`w-4 h-4 ${bulkPaymentStatus === 'free' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                          </div>
+                          <span className="text-[13px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Free</span>
+                          <span className="text-[11px] text-[#8a857f] dark:text-[#6b7280] font-albert leading-tight">No payment</span>
+                          {bulkPaymentStatus === 'free' && (
+                            <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                              <Check className="w-2.5 h-2.5 text-white" />
+                            </div>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Stripe Connect Prompt when Stripe not connected */}
+                      {!canAcceptPayments && (
+                        <div className="mt-3">
                           <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
                         </div>
                       )}

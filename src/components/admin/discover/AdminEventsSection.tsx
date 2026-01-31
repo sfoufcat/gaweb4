@@ -17,7 +17,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
@@ -868,6 +869,9 @@ function EventFormDialog({
       <>
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
           <DialogContent className="max-w-2xl p-0" hideCloseButton>
+            <VisuallyHidden.Root>
+              <DialogTitle>{event ? 'Edit Event' : 'Create Event'}</DialogTitle>
+            </VisuallyHidden.Root>
             {formContent}
           </DialogContent>
         </Dialog>
