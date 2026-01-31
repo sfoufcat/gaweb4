@@ -522,7 +522,7 @@ function CourseEditPanel({
                     )}
                   >
                     {lessonCount > 0 ? (
-                      <div className="bg-[#faf8f6] dark:bg-[#0d0f13] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                      <div className="border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                         {module.lessons!.map((lesson, lessonIndex) => {
                           const isLessonSelected = selectedLessons.has(lesson.id);
                           return (
@@ -532,7 +532,7 @@ function CourseEditPanel({
                                 "flex items-center gap-3 pl-14 pr-3 py-2 cursor-pointer transition-colors",
                                 isLessonSelected
                                   ? "bg-brand-accent/5"
-                                  : "hover:bg-white/60 dark:hover:bg-[#1d222b]/60"
+                                  : "bg-white dark:bg-[#11141b] hover:bg-[#faf8f6] dark:hover:bg-[#1d222b]"
                               )}
                               onClick={() => onToggleLessonSelection(lesson.id, module.id, module)}
                             >
@@ -1318,7 +1318,7 @@ export function UnifiedResourcesTabs({
                                 )}
                               >
                                 {lessonCount > 0 ? (
-                                  <div className="bg-[#faf8f6] dark:bg-[#0d0f13] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                                  <div className="border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                                     {module.lessons!.map((lesson) => {
                                       const isLessonSelected = selectedLessons.has(lesson.id);
                                       return (
@@ -1328,7 +1328,7 @@ export function UnifiedResourcesTabs({
                                             "flex items-center gap-3 pl-14 pr-3 py-2 cursor-pointer transition-colors",
                                             isLessonSelected
                                               ? "bg-brand-accent/5"
-                                              : "hover:bg-white/60 dark:hover:bg-[#1d222b]/60"
+                                              : "bg-white dark:bg-[#11141b] hover:bg-[#faf8f6] dark:hover:bg-[#1d222b]"
                                           )}
                                           onClick={() => toggleLessonSelection(lesson.id, module.id, module)}
                                         >

@@ -458,6 +458,7 @@ export type TaskSourceType =
   | 'coach_manual'   // Manually assigned by coach
   | 'call_suggestion'; // From AI call summary
 export type TaskVisibility = 'public' | 'private';
+export type TaskPriority = 'high' | 'medium' | 'low';
 
 export interface Task {
   id: string;
@@ -499,12 +500,15 @@ export interface Task {
   // New unified tracking fields (migration target)
   instanceId?: string | null;          // FK to program_instances (replaces enrollment-based tracking)
   instanceTaskId?: string | null;      // The task.id from program_instances (for sync tracking)
+  // Priority
+  priority?: TaskPriority;             // Optional priority level for task ordering
 }
 
 export interface TaskFormData {
   title: string;
   isPrivate: boolean;
   listType?: TaskListType;
+  priority?: TaskPriority;
 }
 
 export interface CreateTaskRequest extends TaskFormData {
@@ -529,6 +533,7 @@ export interface UpdateTaskRequest {
   order?: number;
   isPrivate?: boolean;
   visibility?: TaskVisibility;  // 'public' | 'private' - new field for 2-way sync
+  priority?: TaskPriority;
 }
 
 // ============================================================================
@@ -570,6 +575,8 @@ export interface ProgramTaskTemplate {
   editedByClient?: boolean; // Whether the client has edited this task's title
   // Resource-generated task marker
   sourceResourceId?: string; // If set, task was auto-generated from a resource
+  // Priority
+  priority?: TaskPriority; // Optional priority level (high/medium/low)
 }
 
 /**
@@ -6252,6 +6259,7 @@ export interface ProgramInstanceTask {
   source?: TaskSource;           // 'week' | 'day' | 'manual' | 'sync'
   dayTag?: 'auto' | 'spread' | 'daily' | number | number[]; // Per-task distribution override
   sourceResourceId?: string;     // If set, task was auto-generated from a resource
+  priority?: TaskPriority;       // Optional priority level (high/medium/low)
 }
 
 /**

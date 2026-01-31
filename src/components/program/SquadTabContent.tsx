@@ -269,7 +269,7 @@ export function SquadTabContent({ programId, squadId, programType, cohortId }: S
       )}
 
       {/* Squad Members */}
-      <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
+      <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.04)]">
         <SquadMemberList members={members} />
       </div>
 

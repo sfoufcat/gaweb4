@@ -99,7 +99,7 @@ export function ContentCompletionList({ items, className }: ContentCompletionLis
           return (
             <div
               key={item.contentId}
-              className="p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a]"
+              className="p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9]/60 dark:border-[#1e222a]/60 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)] hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.04)] hover:bg-[#f5f3f0] dark:hover:bg-[#161a22] hover:border-[#e8e4df] dark:hover:border-[#262b35] transition-all"
             >
               <div className="flex items-start gap-3">
                 <div className={cn('p-2 rounded-lg flex-shrink-0', config.bg)}>

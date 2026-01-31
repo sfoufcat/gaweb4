@@ -122,7 +122,7 @@ export function CallPricingSettings() {
       {/* Header with Save Status */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#faf8f6]">
-          Call Pricing
+          Call Requests
         </h2>
         <div className="flex items-center gap-2 h-7">
           <AnimatePresence mode="wait">

@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import { QuestionnaireForm } from '@/components/questionnaire/QuestionnaireForm';
-import { Loader2, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
+import { QuestionnaireSkeleton } from '@/components/questionnaire/QuestionnaireSkeleton';
+import { AlertCircle, CheckCircle2, Lock } from 'lucide-react';
 import type { Questionnaire, QuestionnaireAnswer } from '@/types/questionnaire';
 
 type PageState = 'loading' | 'form' | 'submitted' | 'error' | 'already_submitted' | 'auth_required';
@@ -95,24 +96,7 @@ export default function QuestionnairePage() {
 
   // Loading state
   if (pageState === 'loading') {
-    return (
-      <div className="min-h-[100dvh] bg-gradient-to-b from-[#faf9f7] to-[#f5f3f0] dark:from-[#0f1218] dark:to-[#0a0c10] flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <div className="relative">
-            <div className="w-12 h-12 rounded-2xl bg-brand-accent/10 flex items-center justify-center mx-auto">
-              <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
-            </div>
-          </div>
-          <p className="mt-4 text-[#8a857f] dark:text-[#6b7280] font-albert text-sm">
-            Loading questionnaire...
-          </p>
-        </motion.div>
-      </div>
-    );
+    return <QuestionnaireSkeleton />;
   }
 
   // Auth required state

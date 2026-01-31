@@ -95,6 +95,10 @@ export async function PATCH(
       updates.order = body.order;
     }
 
+    if (body.priority !== undefined) {
+      updates.priority = body.priority;
+    }
+
     if (body.listType !== undefined) {
       // If moving to focus, ensure focus doesn't exceed the limit
       if (body.listType === 'focus' && existingTask.listType !== 'focus') {

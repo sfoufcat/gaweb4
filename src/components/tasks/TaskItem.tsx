@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, AlertTriangle } from 'lucide-react';
 import { AITaskHelpButton } from '@/components/ai-support/AITaskHelpButton';
 import { getTaskArchiveStatus, getArchiveWarningText } from '@/lib/task-archive-status';
+import { PriorityIcon } from '@/components/ui/priority-badge';
 import type { Task } from '@/types';
 
 interface TaskItemProps {
@@ -89,6 +90,11 @@ export function TaskItem({ task, onClick, isDraggable = true, trackDisplayName, 
             {task.title}
           </p>
 
+          {/* Priority Indicator */}
+          {task.priority && (
+            <PriorityIcon priority={task.priority} size="sm" />
+          )}
+
           {/* Private Indicator */}
           {task.isPrivate && (
             <div className="flex items-center gap-1 text-text-muted dark:text-[#7d8190] flex-shrink-0">
@@ -166,6 +172,11 @@ export function TaskItemStatic({ task, onClick, trackDisplayName, onTaskUpdate }
           >
             {task.title}
           </p>
+
+          {/* Priority Indicator */}
+          {task.priority && (
+            <PriorityIcon priority={task.priority} size="sm" />
+          )}
 
           {/* Private Indicator */}
           {task.isPrivate && (

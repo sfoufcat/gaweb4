@@ -113,8 +113,8 @@ function SchedulingTab({ initialSubTab }: { initialSubTab?: string | null }) {
               : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
           }`}
         >
-          <span className="hidden sm:inline">Call Pricing</span>
-          <span className="sm:hidden">Pricing</span>
+          <span className="hidden sm:inline">Call Requests</span>
+          <span className="sm:hidden">Requests</span>
         </button>
       </div>
 

@@ -103,7 +103,7 @@ export function TopPerformerCard({
             <button
               key={performer.userId}
               onClick={() => onViewClient?.(performer.userId)}
-              className="w-full flex items-center gap-3 p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9] dark:border-[#1e222a] hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-all text-left group"
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9]/60 dark:border-[#1e222a]/60 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)] hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.04)] hover:bg-[#f5f3f0] dark:hover:bg-[#161a22] hover:border-emerald-200/60 dark:hover:border-emerald-800/40 transition-all text-left group"
             >
               {/* Rank badge */}
               <div

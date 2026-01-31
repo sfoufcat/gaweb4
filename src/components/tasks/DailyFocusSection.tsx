@@ -274,19 +274,20 @@ export function DailyFocusSection({
   };
 
   // Handle creating a new task
-  const handleCreateTask = async (title: string, isPrivate: boolean) => {
-    await createTask({ 
-      title, 
+  const handleCreateTask = async (title: string, isPrivate: boolean, priority?: 'high' | 'medium' | 'low') => {
+    await createTask({
+      title,
       isPrivate,
+      priority,
       listType: forceBacklog ? 'backlog' : undefined, // Force to backlog when day is closed
     });
     setForceBacklog(false); // Reset after creating
   };
 
   // Handle editing an existing task
-  const handleEditTask = async (title: string, isPrivate: boolean) => {
+  const handleEditTask = async (title: string, isPrivate: boolean, priority?: 'high' | 'medium' | 'low') => {
     if (!editingTask) return;
-    await updateTask(editingTask.id, { title, isPrivate });
+    await updateTask(editingTask.id, { title, isPrivate, priority });
   };
 
   // Handle deleting a task

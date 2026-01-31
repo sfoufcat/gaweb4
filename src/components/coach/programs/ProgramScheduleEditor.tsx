@@ -14,11 +14,28 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Program, ProgramDay, ProgramModule, ProgramWeek, UnifiedEvent } from '@/types';
+import type { Program, ProgramDay, ProgramModule, ProgramWeek, UnifiedEvent, TaskPriority } from '@/types';
 import type { DiscoverCourse, DiscoverArticle } from '@/types/discover';
 import { calculateCalendarWeeks, dayIndexToDate, type CalendarWeek } from '@/lib/calendar-weeks';
 import { getResourcesForDay } from '@/lib/program-utils-client';
 import { DayPreviewPopup } from './DayPreviewPopup';
+
+// Helper to get highest priority from tasks
+function getHighestPriority(tasks: { priority?: TaskPriority }[]): TaskPriority | undefined {
+  const priorities: TaskPriority[] = ['high', 'medium', 'low'];
+  for (const p of priorities) {
+    if (tasks.some(t => t.priority === p)) return p;
+  }
+  return undefined;
+}
+
+// Helper to get priority dot color
+function getPriorityDotColor(priority?: TaskPriority): string {
+  if (priority === 'high') return 'bg-red-500';
+  if (priority === 'medium') return 'bg-amber-500';
+  if (priority === 'low') return 'bg-gray-400';
+  return 'bg-brand-accent';
+}
 
 interface ProgramScheduleEditorProps {
   program: Program;
@@ -417,7 +434,7 @@ export function ProgramScheduleEditor({
                   key={task.id || idx}
                   className="text-[10px] text-[#5f5a55] dark:text-[#b2b6c2] truncate leading-tight"
                 >
-                  <span className="inline-block w-1 h-1 rounded-full bg-brand-accent mr-1 align-middle" />
+                  <span className={`inline-block w-1 h-1 rounded-full ${getPriorityDotColor(task.priority)} mr-1 align-middle`} />
                   {task.label}
                 </div>
               ))}
@@ -534,7 +551,10 @@ export function ProgramScheduleEditor({
           {/* Content indicators */}
           <div className="flex items-center justify-center gap-1 mt-2">
             {tasks.length > 0 && (
-              <div className="w-1.5 h-1.5 rounded-full bg-brand-accent" title={`${tasks.length} tasks`} />
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${getPriorityDotColor(getHighestPriority(tasks))}`}
+                title={`${tasks.length} tasks`}
+              />
             )}
             {hasResources && (
               <div className="w-1.5 h-1.5 rounded-full bg-purple-500" title="Resources" />

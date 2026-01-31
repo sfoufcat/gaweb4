@@ -462,7 +462,8 @@ export function ProgramDetailView({
       )}
 
       {/* Next Scheduled Call Card (for 1:1 programs) */}
-      {!isGroup && (
+      {/* Only show if: has a scheduled call OR (no call but requests are allowed) */}
+      {!isGroup && (nextCall?.datetime || callSettings?.allowClientRequests !== false) && (
         <div>
           <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4 space-y-4">
             {coachingLoading ? (

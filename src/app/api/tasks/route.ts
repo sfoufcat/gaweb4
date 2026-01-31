@@ -230,11 +230,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body: CreateTaskRequest = await request.json();
-    const { 
-      title, 
-      date, 
-      isPrivate, 
+    const {
+      title,
+      date,
+      isPrivate,
       listType,
+      priority,
       // Program-related fields (optional)
       sourceType,
       programEnrollmentId,
@@ -321,6 +322,8 @@ export async function POST(request: NextRequest) {
       sourceType: sourceType || 'user',
       programEnrollmentId: programEnrollmentId || null,
       programDayIndex: programDayIndex || null,
+      // Priority (optional)
+      ...(priority && { priority }),
     };
 
     const docRef = await adminDb.collection('tasks').add(taskData);

@@ -105,7 +105,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
     <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6', className)}>
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl backdrop-blur-sm bg-violet-100/80 dark:bg-violet-500/20">
+          <div className="p-2.5 rounded-xl bg-violet-100 dark:bg-violet-500/20">
             {showPast ? (
               <History className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             ) : (
@@ -162,8 +162,8 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
 
               // Card background based on recording status (matches SessionCard)
               const cardBgClass = item.hasRecording
-                ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200/30 dark:border-green-800/30'
-                : 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200/30 dark:border-amber-800/30';
+                ? 'bg-emerald-50/40 dark:bg-emerald-900/10 border-emerald-200/40 dark:border-emerald-800/30 hover:bg-emerald-50/60 dark:hover:bg-emerald-900/20'
+                : 'bg-amber-50/40 dark:bg-amber-900/10 border-amber-200/40 dark:border-amber-800/30 hover:bg-amber-50/60 dark:hover:bg-amber-900/20';
 
               return (
                 <div
@@ -173,7 +173,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
                   onClick={(e) => item.onClick?.(e)}
                   onKeyDown={(e) => e.key === 'Enter' && item.onClick?.(e as unknown as React.MouseEvent)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl backdrop-blur-2xl backdrop-saturate-150 border shadow-sm hover:shadow-md transition-all group text-left cursor-pointer",
+                    "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-[0_1px_2px_0_rgba(0,0,0,0.02)] hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.04)] transition-all group text-left cursor-pointer",
                     cardBgClass
                   )}
                 >
@@ -263,7 +263,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
             {hasMorePast && (
               <button
                 onClick={handleLoadMore}
-                className="w-full py-3 text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 backdrop-blur-xl backdrop-saturate-150 bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl hover:bg-white/80 dark:hover:bg-white/10 shadow-sm hover:shadow-md transition-all"
+                className="w-full py-3 text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9]/60 dark:border-[#1e222a]/60 rounded-xl hover:bg-[#f5f3f0] dark:hover:bg-[#161a22] shadow-[0_1px_2px_0_rgba(0,0,0,0.02)] hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.04)] transition-all"
               >
                 Load more ({remainingCount} remaining)
               </button>
@@ -272,7 +272,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
             {/* Empty state for past */}
             {pastItems.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="w-12 h-12 rounded-full backdrop-blur-sm bg-white/50 dark:bg-white/10 border border-white/30 dark:border-white/10 flex items-center justify-center mb-3">
+                <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center mb-3">
                   <History className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6470]" />
                 </div>
                 <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
@@ -308,10 +308,10 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
               return (
                 <div
                   key={`${item.type}-${index}`}
-                  className="flex items-center gap-3 p-3 rounded-xl backdrop-blur-xl backdrop-saturate-150 bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 shadow-sm hover:shadow-md hover:bg-white/80 dark:hover:bg-white/10 transition-all group"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#f0ede9]/60 dark:border-[#1e222a]/60 shadow-[0_1px_2px_0_rgba(0,0,0,0.02)] hover:shadow-[0_2px_4px_0_rgba(0,0,0,0.04)] hover:bg-[#f5f3f0] dark:hover:bg-[#161a22] hover:border-[#e8e4df] dark:hover:border-[#262b35] transition-all group"
                 >
                   {/* Icon */}
-                  <div className={cn('p-2.5 rounded-xl flex-shrink-0 backdrop-blur-sm', config.bg)}>
+                  <div className={cn('p-2.5 rounded-xl flex-shrink-0', config.bg)}>
                     <TypeIcon className={cn('w-4 h-4', config.color)} />
                   </div>
 
@@ -332,7 +332,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
 
                   {/* Relative time badge - glassy pill */}
                   {relativeTime && (
-                    <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] backdrop-blur-sm bg-white/50 dark:bg-white/10 border border-white/30 dark:border-white/10 px-2.5 py-1 rounded-full flex-shrink-0">
+                    <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f3f1ef] dark:bg-[#262b35] px-2.5 py-1 rounded-full flex-shrink-0">
                       {relativeTime}
                     </span>
                   )}
@@ -353,7 +353,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
             {/* Empty state for upcoming */}
             {items.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="w-12 h-12 rounded-full backdrop-blur-sm bg-white/50 dark:bg-white/10 border border-white/30 dark:border-white/10 flex items-center justify-center mb-3">
+                <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center mb-3">
                   <CalendarDays className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6470]" />
                 </div>
                 <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">

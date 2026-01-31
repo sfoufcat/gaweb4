@@ -470,13 +470,14 @@ export default function PlanDayPage() {
     await deleteTask(task.id);
   };
 
-  const handleSaveTask = async (title: string, isPrivate: boolean) => {
+  const handleSaveTask = async (title: string, isPrivate: boolean, priority?: 'high' | 'medium' | 'low') => {
     if (editingTask) {
-      await updateTask(editingTask.id, { title, isPrivate });
+      await updateTask(editingTask.id, { title, isPrivate, priority });
     } else {
-      await createTask({ 
-        title, 
+      await createTask({
+        title,
         isPrivate,
+        priority,
         listType: addingTo,
       });
     }

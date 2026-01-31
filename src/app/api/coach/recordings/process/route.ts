@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check credits availability
-      const { available, remainingMinutes } = await checkCreditsAvailable(
+      const { available, remainingCredits } = await checkCreditsAvailable(
         organizationId,
         estimatedMinutes
       );
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       if (!available) {
         return NextResponse.json(
           {
-            error: `Insufficient credits. Need ~${estimatedMinutes} minutes, have ${remainingMinutes} remaining.`,
+            error: `Insufficient credits. Need ~${estimatedMinutes} minutes, have ${remainingCredits} remaining.`,
           },
           { status: 402 }
         );

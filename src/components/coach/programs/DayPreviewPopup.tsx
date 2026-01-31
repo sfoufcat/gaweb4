@@ -45,6 +45,7 @@ import {
   getCallsForDay,
   getLessonsForDay,
 } from '@/lib/program-utils-client';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 
 // Accept either ProgramDay or ProgramInstanceDay
 type DayData = ProgramDay | ProgramInstanceDay;
@@ -333,6 +334,9 @@ export function DayPreviewPopup({
                       }`}>
                         {getSourceLabel(task)}
                       </p>
+                      {task.priority && (
+                        <PriorityBadge priority={task.priority} size="sm" />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -663,12 +667,17 @@ export function DayPreviewPopup({
                     }`}>
                       {task.label}
                     </p>
-                    {isResource && ResourceIcon && (
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <ResourceIcon className="w-3 h-3 text-purple-400 dark:text-purple-500" />
-                        <span className="text-xs text-purple-400 dark:text-purple-500">from resource</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {isResource && ResourceIcon && (
+                        <>
+                          <ResourceIcon className="w-3 h-3 text-purple-400 dark:text-purple-500" />
+                          <span className="text-xs text-purple-400 dark:text-purple-500">from resource</span>
+                        </>
+                      )}
+                      {task.priority && (
+                        <PriorityBadge priority={task.priority} size="sm" />
+                      )}
+                    </div>
                   </div>
                 </div>
               );

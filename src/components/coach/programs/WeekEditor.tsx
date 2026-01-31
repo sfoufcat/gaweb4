@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { ProgramWeek, ProgramDay, ProgramTaskTemplate, CallSummary, TaskDistribution, UnifiedEvent, ProgramEnrollment, ProgramCohort, DiscoverArticle, DiscoverDownload, DiscoverLink, Questionnaire, DayCourseAssignment, WeekResourceAssignment } from '@/types';
 import type { DiscoverCourse, DiscoverVideo } from '@/types/discover';
-import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, CalendarPlus, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle, Save, MoreVertical, RefreshCw } from 'lucide-react';
+import { Plus, X, Sparkles, GripVertical, Target, FileText, MessageSquare, StickyNote, Upload, Mic, Phone, Calendar, CalendarPlus, Check, Loader2, Users, EyeOff, Info, ListTodo, ClipboardList, ArrowLeftRight, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Download, Link2, FileQuestion, GraduationCap, Video, AlertCircle, Save, MoreVertical, RefreshCw, Flag } from 'lucide-react';
 import { useProgramEditorOptional } from '@/contexts/ProgramEditorContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { ResourceLinkDropdown } from './ResourceLinkDropdown';
+import { PriorityToggle } from '@/components/ui/priority-badge';
 import { CallSummaryViewModal } from './CallSummaryViewModal';
 import { DayCourseSelector } from './DayCourseSelector';
 import { UnifiedResourcesTabs, type ContentCompletionData } from './UnifiedResourcesTabs';
@@ -219,6 +220,7 @@ interface SortableWeeklyTaskProps {
   showCompletionStatus: boolean;
   onTogglePrimary: (index: number) => void;
   onRemove: (index: number) => void;
+  onPriorityChange: (index: number, priority: 'high' | 'medium' | 'low' | undefined) => void;
   // Day assignment
   dayTag: DayTagValue;
   onDayTagChange: (index: number, dayTag: DayTagValue) => void;
@@ -248,6 +250,7 @@ function SortableWeeklyTask({
   showCompletionStatus,
   onTogglePrimary,
   onRemove,
+  onPriorityChange,
   dayTag,
   onDayTagChange,
   includeWeekends,
@@ -430,6 +433,13 @@ function SortableWeeklyTask({
                 <span>{task.isPrimary ? 'Focus' : 'Backlog'}</span>
               </button>
 
+              {/* Priority Toggle */}
+              <PriorityToggle
+                value={task.priority}
+                onChange={(p) => onPriorityChange(index, p)}
+                size="sm"
+              />
+
               {/* Cadence Icon Button with Label */}
               <button
                 type="button"
@@ -517,6 +527,27 @@ function SortableWeeklyTask({
                       </span>
                     )}
                   </span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {/* Priority toggle - cycles through: none → high → medium → low → none */}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const nextPriority = !task.priority ? 'high'
+                      : task.priority === 'high' ? 'medium'
+                      : task.priority === 'medium' ? 'low'
+                      : undefined;
+                    onPriorityChange(index, nextPriority);
+                  }}
+                  className={cn(
+                    "gap-2",
+                    task.priority === 'high' && "text-red-500 dark:text-red-400",
+                    task.priority === 'medium' && "text-orange-500 dark:text-orange-400",
+                    task.priority === 'low' && "text-yellow-500 dark:text-yellow-400"
+                  )}
+                >
+                  <Flag className="w-4 h-4" fill={task.priority ? 'currentColor' : 'none'} />
+                  <span>{task.priority ? `${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority` : 'Set Priority'}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -2748,6 +2779,13 @@ export function WeekEditor({
     setFormData({ ...formData, weeklyTasks: updated });
   };
 
+  // Handle priority change for a task
+  const handlePriorityChange = (index: number, priority: 'high' | 'medium' | 'low' | undefined) => {
+    const updated = [...formData.weeklyTasks];
+    updated[index] = { ...updated[index], priority };
+    setFormData({ ...formData, weeklyTasks: updated });
+  };
+
   // Focus management (max 3)
   const addFocus = () => {
     if (!newFocus.trim() || formData.currentFocus.length >= 3) return;
@@ -3383,6 +3421,7 @@ export function WeekEditor({
                         showCompletionStatus={isClientView || !!cohortId}
                         onTogglePrimary={toggleTaskPrimary}
                         onRemove={removeTask}
+                        onPriorityChange={handlePriorityChange}
                         dayTag={(task.dayTag as DayTagValue) || 'auto'}
                         onDayTagChange={handleDayTagChange}
                         includeWeekends={includeWeekends}
@@ -3840,7 +3879,7 @@ export function WeekEditor({
                 onChange={(e) => setNewNote(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addNote()}
                 placeholder="Add note..."
-                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
+                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] placeholder:font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
               />
               <button
                 type="button"
@@ -3902,7 +3941,7 @@ export function WeekEditor({
             onChange={(e) => setFormData({ ...formData, manualNotes: e.target.value })}
             placeholder="Add your notes from calls, observations, or planning..."
             rows={4}
-            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
+            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] placeholder:font-albert resize-none focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent"
           />
         </div>
       </CollapsibleSection>
