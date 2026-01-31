@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { ClientDetailView } from './ClientDetailView';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface ClientDetailSlideOverProps {
   isOpen: boolean;
@@ -19,15 +21,39 @@ export function ClientDetailSlideOver({
   clientName,
 }: ClientDetailSlideOverProps) {
   const [mounted, setMounted] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 640px)');
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!isOpen || !mounted) return null;
+  if (!mounted) return null;
+
+  // Mobile: Use Drawer (draggable, with handle, no X button)
+  if (!isDesktop) {
+    return (
+      <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DrawerContent className="h-[95vh] max-h-[95vh]">
+          <DrawerHeader className="text-left border-b border-[#e1ddd8] dark:border-[#262b35] pb-4">
+            <DrawerTitle>Client Details</DrawerTitle>
+            <DrawerDescription>{clientName}</DrawerDescription>
+          </DrawerHeader>
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            <ClientDetailView
+              clientId={clientId}
+              onBack={onClose}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Desktop: Use modal with X button
+  if (!isOpen) return null;
 
   const content = (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-backdrop-fade-in"
@@ -35,7 +61,7 @@ export function ClientDetailSlideOver({
       />
 
       {/* Panel */}
-      <div className="relative w-full sm:max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden bg-white dark:bg-[#171b22] rounded-t-2xl sm:rounded-2xl shadow-2xl animate-modal-slide-up sm:animate-modal-zoom-in flex flex-col">
+      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl animate-modal-zoom-in flex flex-col">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
           <div>

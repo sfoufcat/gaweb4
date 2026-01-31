@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-  Plus,
   Video,
   BookOpen,
   ChevronRight,
@@ -430,16 +429,17 @@ export function ProgramScheduleEditor({
                 </div>
               )}
 
-              {/* Resource Icons */}
+              {/* Resource Icons with titles */}
               {(courseResources.length > 0 || articleResources.length > 0 || downloadResources.length > 0 ||
                 linkResources.length > 0 || questionnaireResources.length > 0 || videoResources.length > 0) && (
                 <div className="flex items-center gap-1.5 flex-wrap mt-auto pt-1">
                   {(courseResources.length > 0 || videoResources.length > 0) && (
                     <div className="flex items-center gap-0.5 text-purple-600 dark:text-purple-400" title={`${courseResources.length + videoResources.length} courses/videos`}>
-                      <GraduationCap className="w-3 h-3" />
-                      {(courseResources.length + videoResources.length) > 1 && (
-                        <span className="text-[9px]">{courseResources.length + videoResources.length}</span>
-                      )}
+                      <GraduationCap className="w-3 h-3 flex-shrink-0" />
+                      <span className="text-[9px] truncate max-w-[80px]">
+                        {courseResources[0] ? (coursesLookup[courseResources[0].resourceId]?.title || 'Course') : 'Video'}
+                        {(courseResources.length + videoResources.length) > 1 && ` +${courseResources.length + videoResources.length - 1}`}
+                      </span>
                     </div>
                   )}
                   {articleResources.length > 0 && (
@@ -477,13 +477,6 @@ export function ProgramScheduleEditor({
                 </div>
               )}
             </div>
-
-            {/* Empty State */}
-            {!day.hasContent && tasks.length === 0 && (
-              <div className="flex-1 flex items-center justify-center">
-                <Plus className="w-4 h-4 text-[#c4c0bb] dark:text-[#4a4f5a]" />
-              </div>
-            )}
           </div>
         );
       } else {
@@ -545,9 +538,6 @@ export function ProgramScheduleEditor({
             )}
             {hasResources && (
               <div className="w-1.5 h-1.5 rounded-full bg-purple-500" title="Resources" />
-            )}
-            {!hasContent && (
-              <Plus className="w-3 h-3 text-[#c4c0bb] dark:text-[#4a4f5a]" />
             )}
           </div>
         </div>

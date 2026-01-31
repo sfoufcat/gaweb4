@@ -1,22 +1,13 @@
 'use client';
 
-import { useState, useCallback, useEffect, Fragment } from 'react';
-import { Phone, DollarSign, CreditCard, Bell, Clock, Minus, Plus, Eye, X, Lock } from 'lucide-react';
-import { Dialog, Transition } from '@headlessui/react';
-import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { useState, useCallback, useEffect } from 'react';
+import { Phone, DollarSign, Bell, Check, Gift, PhoneOff, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useBrandingValues } from '@/contexts/BrandingContext';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
 import { StripeConnectPrompt } from '@/components/ui/StripeConnectPrompt';
 import { StripeConnectModal } from '@/components/ui/StripeConnectModal';
-import type { CallPricingModel, CoachCallSettings } from '@/types';
-
-const PRICING_MODEL_OPTIONS: { value: CallPricingModel; label: string; description: string }[] = [
-  { value: 'free', label: 'Free', description: 'All calls are free for clients' },
-  { value: 'per_call', label: 'Pay Per Call', description: 'Clients pay a fixed price per call' },
-  { value: 'credits', label: 'Monthly Credits', description: 'Clients get free calls each month' },
-  { value: 'both', label: 'Credits + Pay Per Call', description: 'Free monthly credits, then pay per call' },
-];
+import type { CoachCallSettings } from '@/types';
 
 const DEFAULT_SETTINGS: CoachCallSettings = {
   allowClientRequests: true,
@@ -31,38 +22,6 @@ const DEFAULT_SETTINGS: CoachCallSettings = {
 };
 
 /**
- * Preview of what clients see on their dashboard
- */
-function ClientCallPreview({ settings }: { settings: CoachCallSettings }) {
-  const isPaid = settings.pricingModel === 'per_call' || settings.pricingModel === 'both';
-  return (
-    <div className="p-4 bg-gradient-to-br from-brand-accent/5 to-brand-accent/10 border border-brand-accent/20 rounded-2xl">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-brand-accent/20 flex items-center justify-center flex-shrink-0">
-          <Phone className="w-5 h-5 text-brand-accent" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-[#1a1a1a] dark:text-white">
-            {settings.callRequestButtonLabel || 'Schedule a Call'}
-          </h4>
-          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-            {settings.callRequestDescription || 'Book a 1-on-1 call with your coach'}
-          </p>
-          {isPaid && (settings.pricePerCallCents || 0) > 0 && (
-            <p className="text-xs font-medium text-brand-accent mt-1">
-              ${((settings.pricePerCallCents || 0) / 100).toFixed(0)} per call
-            </p>
-          )}
-        </div>
-        <span className="flex-shrink-0 px-3 py-1.5 bg-brand-accent text-white text-sm rounded-xl font-medium">
-          Request
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/**
  * CallPricingSettings - Configure call pricing and request settings
  */
 export function CallPricingSettings() {
@@ -73,9 +32,7 @@ export function CallPricingSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
-  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [showSaved, setShowSaved] = useState(false);
 
   // Stripe Connect status for paid pricing models
   const { isConnected: stripeConnected, isLoading: stripeLoading, refetch: refetchStripe } = useStripeConnectStatus();
@@ -89,7 +46,8 @@ export function CallPricingSettings() {
         const response = await fetch('/api/coach/call-settings');
         if (response.ok) {
           const data = await response.json();
-          setSettings({ ...DEFAULT_SETTINGS, ...data.callSettings });
+          // API returns { settings: ... } not { callSettings: ... }
+          setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
         }
       } catch {
         console.error('Failed to fetch call settings');
@@ -110,7 +68,7 @@ export function CallPricingSettings() {
     setSettings(newSettings);
     setIsSaving(true);
     setError(null);
-    setSuccessMessage(null);
+    setShowSaved(false);
 
     try {
       const response = await fetch('/api/coach/call-settings', {
@@ -124,8 +82,8 @@ export function CallPricingSettings() {
         throw new Error(data.error || 'Failed to save');
       }
 
-      setSuccessMessage('Saved');
-      setTimeout(() => setSuccessMessage(null), 2000);
+      setShowSaved(true);
+      setTimeout(() => setShowSaved(false), 2000);
     } catch (err) {
       setSettings(previousSettings);
       setError(err instanceof Error ? err.message : 'Failed to save settings');
@@ -156,410 +114,337 @@ export function CallPricingSettings() {
     );
   }
 
-  const showPriceInput = settings.pricingModel === 'per_call' || settings.pricingModel === 'both';
-  const showCreditsInput = settings.pricingModel === 'credits' || settings.pricingModel === 'both';
+  // Simplify: Free = 'free', Paid = 'per_call'
+  const isPaid = settings.pricingModel === 'per_call' || settings.pricingModel === 'both';
 
   return (
     <div className="space-y-6">
-      {/* Success/Error Messages */}
-      {successMessage && (
-        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30 rounded-xl">
-          <p className="text-sm text-emerald-700 dark:text-emerald-300">{successMessage}</p>
+      {/* Header with Save Status */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#faf8f6]">
+          Call Pricing
+        </h2>
+        <div className="flex items-center gap-2 h-7">
+          <AnimatePresence mode="wait">
+            {isSaving && (
+              <motion.div
+                key="saving"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="flex items-center gap-1.5 text-[13px] text-[#8a857f]"
+              >
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Saving...</span>
+              </motion.div>
+            )}
+            {showSaved && !isSaving && (
+              <motion.div
+                key="saved"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="flex items-center gap-1.5 text-[13px] text-emerald-600 dark:text-emerald-400"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Saved</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      )}
+      </div>
+
+      {/* Error Message */}
       {error && (
         <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-xl">
           <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
         </div>
       )}
 
-      {/* Info Banner - Where clients see this */}
-      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-xl">
-        <p className="text-[13px] text-blue-700 dark:text-blue-300">
-          <span className="font-medium">Where clients see this:</span> On their dashboard homepage as a &quot;Request Call&quot; card, and in the booking flow when requesting a call.{' '}
-          <button
-            type="button"
-            onClick={() => setShowPreview(true)}
-            className="inline-flex items-center gap-1 underline hover:no-underline"
-          >
-            <Eye className="w-3 h-3" />
-            Preview card
-          </button>
-        </p>
-      </div>
-
-      {/* Allow Client Requests Toggle */}
-      <div className="p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
-        <div className="flex items-center justify-between">
-          <div className="flex-1 mr-4">
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4" style={{ color: accentColor }} />
-              <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
-                Allow Client Call Requests
-              </h3>
-            </div>
-            <p className="text-[13px] text-[#8a857f] mt-0.5">
-              Let clients request coaching calls from their dashboard
-            </p>
+      {/* Allow Client Requests - Card Selector */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Enabled Card */}
+        <button
+          onClick={() => saveSettings({ allowClientRequests: true })}
+          disabled={isSaving}
+          className={`group relative flex flex-col items-center justify-center text-center p-5 rounded-2xl border-2 transition-all ${
+            settings.allowClientRequests
+              ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10 shadow-[0_4px_24px_rgba(160,120,85,0.15)]'
+              : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50 hover:shadow-lg'
+          }`}
+        >
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-all ${
+            settings.allowClientRequests
+              ? 'bg-brand-accent/20 shadow-[0_0_20px_rgba(160,120,85,0.2)]'
+              : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+          }`}>
+            <Phone className={`w-6 h-6 ${settings.allowClientRequests ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
           </div>
-          <button
-            onClick={() => saveSettings({ allowClientRequests: !settings.allowClientRequests })}
-            disabled={isSaving}
-            className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
-              settings.allowClientRequests ? '' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
-            }`}
-            style={settings.allowClientRequests ? { backgroundColor: accentColor } : undefined}
-          >
-            <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
-              settings.allowClientRequests ? 'translate-x-5' : ''
-            }`} />
-          </button>
-        </div>
-      </div>
-
-      {/* Pricing Model */}
-      <div className="p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
-        <div className="flex items-center gap-2 mb-4">
-          <DollarSign className="w-4 h-4" style={{ color: accentColor }} />
-          <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
-            Pricing Model
-          </h3>
-        </div>
-
-        <div className="space-y-2">
-          {PRICING_MODEL_OPTIONS.map((option) => {
-            const isPaidModel = option.value !== 'free';
-            const isDisabled = isPaidModel && !canAcceptPayments;
-
-            return (
-              <label
-                key={option.value}
-                className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
-                  isDisabled
-                    ? 'opacity-50 cursor-not-allowed border-[#e8e4df] dark:border-[#262b35]'
-                    : settings.pricingModel === option.value
-                      ? 'border-brand-accent bg-brand-accent/5 cursor-pointer'
-                      : 'border-[#e8e4df] dark:border-[#262b35] hover:bg-[#f5f3f0] dark:hover:bg-[#1a1f2a] cursor-pointer'
-                }`}
-                style={settings.pricingModel === option.value && !isDisabled ? { borderColor: accentColor } : undefined}
-              >
-                <input
-                  type="radio"
-                  name="pricingModel"
-                  value={option.value}
-                  checked={settings.pricingModel === option.value}
-                  onChange={() => !isDisabled && saveSettings({ pricingModel: option.value })}
-                  disabled={isSaving || isDisabled}
-                  className="mt-0.5"
-                  style={{ accentColor }}
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-[14px] text-[#1a1a1a] dark:text-[#faf8f6]">
-                      {option.label}
-                    </p>
-                    {isDisabled && (
-                      <Lock className="w-3 h-3 text-[#8a857f]" />
-                    )}
-                  </div>
-                  <p className="text-[12px] text-[#8a857f]">
-                    {isDisabled ? 'Stripe required' : option.description}
-                  </p>
-                </div>
-              </label>
-            );
-          })}
-        </div>
-
-        {/* Stripe Connect Prompt when trying to use paid models without Stripe */}
-        {!canAcceptPayments && settings.pricingModel === 'free' && (
-          <div className="mt-4">
-            <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
-          </div>
-        )}
-
-        {/* Conditional Price Input */}
-        {showPriceInput && (
-          <div className="mt-4 pt-4 border-t border-[#e8e4df] dark:border-[#262b35]">
-            <label className="block">
-              <span className="text-[13px] font-medium text-[#5f5a55] dark:text-[#b5b0ab]">
-                Price Per Call
-              </span>
-              <div className="mt-1 relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8a857f]">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formatDollars(settings.pricePerCallCents || 0)}
-                  onChange={(e) => saveSettings({ pricePerCallCents: parseDollarsToCents(e.target.value) })}
-                  disabled={isSaving}
-                  className="w-full pl-7 pr-4 py-2 bg-white dark:bg-[#1a1f2a] border border-[#e8e4df] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#faf8f6] focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                  placeholder="0.00"
-                />
-              </div>
-              <p className="text-[12px] text-[#8a857f] mt-1">
-                Shown as &quot;$X per call&quot; badge on dashboard card
-              </p>
-            </label>
-          </div>
-        )}
-
-        {/* Conditional Credits Input */}
-        {showCreditsInput && (
-          <div className="mt-4 pt-4 border-t border-[#e8e4df] dark:border-[#262b35]">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[13px] font-medium text-[#5f5a55] dark:text-[#b5b0ab]">
-                  Monthly Free Credits
-                </span>
-                <p className="text-[12px] text-[#8a857f] mt-0.5">
-                  Number of free calls clients get each month
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => saveSettings({ creditsIncludedMonthly: Math.max(0, (settings.creditsIncludedMonthly || 0) - 1) })}
-                  disabled={isSaving || (settings.creditsIncludedMonthly || 0) <= 0}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#1a1f2a] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Minus className="w-4 h-4 text-[#5f5a55] dark:text-[#b5b0ab]" />
-                </button>
-                <div
-                  className="w-12 h-8 flex items-center justify-center rounded-lg font-semibold text-[15px]"
-                  style={{ backgroundColor: `${accentColor}15`, color: accentColor }}
-                >
-                  {settings.creditsIncludedMonthly || 0}
-                </div>
-                <button
-                  onClick={() => saveSettings({ creditsIncludedMonthly: (settings.creditsIncludedMonthly || 0) + 1 })}
-                  disabled={isSaving}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#1a1f2a] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Plus className="w-4 h-4 text-[#5f5a55] dark:text-[#b5b0ab]" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Customization */}
-      <div className="p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
-        <div className="flex items-center gap-2 mb-4">
-          <CreditCard className="w-4 h-4" style={{ color: accentColor }} />
-          <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
-            Customization
-          </h3>
-        </div>
-
-        <div className="space-y-4">
-          <label className="block">
-            <span className="text-[13px] font-medium text-[#5f5a55] dark:text-[#b5b0ab]">
-              Request Button Label
-            </span>
-            <input
-              type="text"
-              value={settings.callRequestButtonLabel || ''}
-              onChange={(e) => setSettings({ ...settings, callRequestButtonLabel: e.target.value })}
-              onBlur={() => saveSettings({ callRequestButtonLabel: settings.callRequestButtonLabel })}
-              disabled={isSaving}
-              className="mt-1 w-full px-4 py-2 bg-white dark:bg-[#1a1f2a] border border-[#e8e4df] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#faf8f6] focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-              placeholder="Request a Call"
-              maxLength={50}
-            />
-            <p className="text-[12px] text-[#8a857f] mt-1">
-              Card title on client dashboard (leave blank for &quot;Schedule a Call&quot;)
-            </p>
-          </label>
-
-          <label className="block">
-            <span className="text-[13px] font-medium text-[#5f5a55] dark:text-[#b5b0ab]">
-              Description for Clients
-            </span>
-            <textarea
-              value={settings.callRequestDescription || ''}
-              onChange={(e) => setSettings({ ...settings, callRequestDescription: e.target.value })}
-              onBlur={() => saveSettings({ callRequestDescription: settings.callRequestDescription })}
-              disabled={isSaving}
-              className="mt-1 w-full px-4 py-2 bg-white dark:bg-[#1a1f2a] border border-[#e8e4df] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#faf8f6] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 resize-none"
-              placeholder="Book a 1-on-1 coaching session with me"
-              rows={2}
-              maxLength={200}
-            />
-            <p className="text-[12px] text-[#8a857f] mt-1">
-              Subtitle below title on dashboard card
-            </p>
-          </label>
-        </div>
-      </div>
-
-      {/* Notification Settings */}
-      <div className="p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
-        <div className="flex items-center gap-2 mb-4">
-          <Bell className="w-4 h-4" style={{ color: accentColor }} />
-          <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
-            Notifications
-          </h3>
-        </div>
-
-        <div className="space-y-4">
-          {/* Notify on Request */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-[14px] text-[#1a1a1a] dark:text-[#faf8f6]">
-                Email me on new requests
-              </p>
-              <p className="text-[12px] text-[#8a857f]">
-                Get notified when clients request a call
-              </p>
-            </div>
-            <button
-              onClick={() => saveSettings({ notifyOnRequest: !settings.notifyOnRequest })}
-              disabled={isSaving}
-              className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
-                settings.notifyOnRequest ? '' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
-              }`}
-              style={settings.notifyOnRequest ? { backgroundColor: accentColor } : undefined}
-            >
-              <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
-                settings.notifyOnRequest ? 'translate-x-5' : ''
-              }`} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Auto-decline Settings */}
-      <div className="p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
-        <div className="flex items-center gap-2 mb-4">
-          <Clock className="w-4 h-4" style={{ color: accentColor }} />
-          <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
-            Auto-decline
-          </h3>
-        </div>
-
-        <div className="space-y-4">
-          {/* Auto-decline toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-[14px] text-[#1a1a1a] dark:text-[#faf8f6]">
-                Auto-decline if no response
-              </p>
-              <p className="text-[12px] text-[#8a857f]">
-                Automatically decline requests you don&apos;t respond to
-              </p>
-            </div>
-            <button
-              onClick={() => saveSettings({ autoDeclineIfNoResponse: !settings.autoDeclineIfNoResponse })}
-              disabled={isSaving}
-              className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
-                settings.autoDeclineIfNoResponse ? '' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
-              }`}
-              style={settings.autoDeclineIfNoResponse ? { backgroundColor: accentColor } : undefined}
-            >
-              <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
-                settings.autoDeclineIfNoResponse ? 'translate-x-5' : ''
-              }`} />
-            </button>
-          </div>
-
-          {/* Days input - only show if auto-decline is enabled */}
-          {settings.autoDeclineIfNoResponse && (
-            <div className="flex items-center justify-between pt-4 border-t border-[#e8e4df] dark:border-[#262b35]">
-              <div>
-                <span className="text-[13px] font-medium text-[#5f5a55] dark:text-[#b5b0ab]">
-                  Days before auto-decline
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => saveSettings({ autoDeclineDays: Math.max(1, (settings.autoDeclineDays || 7) - 1) })}
-                  disabled={isSaving || (settings.autoDeclineDays || 7) <= 1}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#1a1f2a] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Minus className="w-4 h-4 text-[#5f5a55] dark:text-[#b5b0ab]" />
-                </button>
-                <div
-                  className="w-12 h-8 flex items-center justify-center rounded-lg font-semibold text-[15px]"
-                  style={{ backgroundColor: `${accentColor}15`, color: accentColor }}
-                >
-                  {settings.autoDeclineDays || 7}
-                </div>
-                <button
-                  onClick={() => saveSettings({ autoDeclineDays: Math.min(30, (settings.autoDeclineDays || 7) + 1) })}
-                  disabled={isSaving || (settings.autoDeclineDays || 7) >= 30}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#1a1f2a] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Plus className="w-4 h-4 text-[#5f5a55] dark:text-[#b5b0ab]" />
-                </button>
-              </div>
+          <h4 className="text-[14px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+            Allow Requests
+          </h4>
+          <p className="text-[11px] text-[#5f5a55] dark:text-[#b2b6c2] font-albert leading-snug">
+            Clients can request calls
+          </p>
+          {settings.allowClientRequests && (
+            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center shadow-[0_2px_8px_rgba(160,120,85,0.3)]">
+              <Check className="w-3 h-3 text-white" />
             </div>
           )}
-        </div>
+        </button>
+
+        {/* Disabled Card */}
+        <button
+          onClick={() => saveSettings({ allowClientRequests: false })}
+          disabled={isSaving}
+          className={`group relative flex flex-col items-center justify-center text-center p-5 rounded-2xl border-2 transition-all ${
+            !settings.allowClientRequests
+              ? 'border-[#8a857f] bg-gradient-to-br from-[#f5f3f0] to-[#ebe8e4] dark:from-[#1a1f2a] dark:to-[#13171f] shadow-[0_4px_24px_rgba(0,0,0,0.08)]'
+              : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-[#8a857f]/50 hover:shadow-lg'
+          }`}
+        >
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-all ${
+            !settings.allowClientRequests
+              ? 'bg-[#8a857f]/20'
+              : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-[#8a857f]/10'
+          }`}>
+            <PhoneOff className={`w-6 h-6 ${!settings.allowClientRequests ? 'text-[#8a857f]' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+          </div>
+          <h4 className="text-[14px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+            Disabled
+          </h4>
+          <p className="text-[11px] text-[#5f5a55] dark:text-[#b2b6c2] font-albert leading-snug">
+            Only you can schedule
+          </p>
+          {!settings.allowClientRequests && (
+            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#8a857f] flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
+              <Check className="w-3 h-3 text-white" />
+            </div>
+          )}
+        </button>
       </div>
 
-      {/* Client Preview Modal */}
-      {isMobile ? (
-        <Drawer open={showPreview} onOpenChange={setShowPreview}>
-          <DrawerContent className="h-auto max-h-[80vh] px-6 pb-8">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-1">
-              Client Dashboard Preview
-            </h3>
-            <p className="text-sm text-[#8a857f] mb-4">
-              This card appears on your clients&apos; dashboard homepage
-            </p>
-            <ClientCallPreview settings={settings} />
-          </DrawerContent>
-        </Drawer>
-      ) : (
-        <Transition appear show={showPreview} as={Fragment}>
-          <Dialog as="div" className="relative z-[10000]" onClose={() => setShowPreview(false)}>
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0"
-              enterTo="opacity-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100"
-              leaveTo="opacity-0"
-            >
-              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-            </Transition.Child>
+      {/* Settings that appear when requests are enabled */}
+      <AnimatePresence>
+        {settings.allowClientRequests && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="space-y-6 overflow-hidden"
+          >
+            {/* Extra Call Pricing - Card Selector */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="w-4 h-4" style={{ color: accentColor }} />
+                <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
+                  Extra Call Pricing
+                </h3>
+              </div>
+              <p className="text-[12px] text-[#8a857f] mb-4">
+                When clients exceed their program&apos;s monthly call allowance, extra calls can be free or charged.
+              </p>
 
-            <div className="fixed inset-0 overflow-y-auto">
-              <div className="flex min-h-full items-center justify-center p-4">
-                <Transition.Child
-                  as={Fragment}
-                  enter="ease-out duration-300"
-                  enterFrom="opacity-0 scale-95"
-                  enterTo="opacity-100 scale-100"
-                  leave="ease-in duration-200"
-                  leaveFrom="opacity-100 scale-100"
-                  leaveTo="opacity-0 scale-95"
+              <div className="grid grid-cols-2 gap-3">
+                {/* Free Card */}
+                <button
+                  onClick={() => saveSettings({ pricingModel: 'free' })}
+                  disabled={isSaving}
+                  className={`group relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                    !isPaid
+                      ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                      : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                  }`}
                 >
-                  <Dialog.Panel className="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] p-6 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
-                    <button
-                      type="button"
-                      onClick={() => setShowPreview(false)}
-                      className="absolute top-4 right-4 p-1 rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
-                    >
-                      <X className="w-5 h-5 text-[#8a857f]" />
-                    </button>
-                    <Dialog.Title className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-1">
-                      Client Dashboard Preview
-                    </Dialog.Title>
-                    <p className="text-sm text-[#8a857f] mb-4">
-                      This card appears on your clients&apos; dashboard homepage
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                    !isPaid
+                      ? 'bg-brand-accent/20'
+                      : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                  }`}>
+                    <Gift className={`w-4 h-4 ${!isPaid ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                  </div>
+                  <div className="text-left min-w-0">
+                    <h4 className="text-[14px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      Free
+                    </h4>
+                    <p className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
+                      Extra calls are free
                     </p>
-                    <ClientCallPreview settings={settings} />
-                  </Dialog.Panel>
-                </Transition.Child>
+                  </div>
+                  {!isPaid && (
+                    <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                      <Check className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  )}
+                </button>
+
+                {/* Paid Card */}
+                <button
+                  onClick={() => {
+                    if (!canAcceptPayments) {
+                      setShowStripeModal(true);
+                      return;
+                    }
+                    saveSettings({ pricingModel: 'per_call' });
+                  }}
+                  disabled={isSaving}
+                  className={`group relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                    isPaid
+                      ? 'border-brand-accent bg-gradient-to-br from-brand-accent/5 to-brand-accent/10'
+                      : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1d222b] hover:border-brand-accent/50'
+                  } ${!canAcceptPayments ? 'opacity-70' : ''}`}
+                >
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                    isPaid
+                      ? 'bg-brand-accent/20'
+                      : 'bg-[#f3f1ef] dark:bg-[#262b35] group-hover:bg-brand-accent/10'
+                  }`}>
+                    <DollarSign className={`w-4 h-4 ${isPaid ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                  </div>
+                  <div className="text-left min-w-0">
+                    <h4 className="text-[14px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      Paid
+                    </h4>
+                    <p className="text-[12px] text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
+                      {canAcceptPayments ? 'Charge per call' : 'Stripe required'}
+                    </p>
+                  </div>
+                  {isPaid && (
+                    <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center">
+                      <Check className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  )}
+                </button>
+              </div>
+
+              {/* Stripe Connect Prompt when trying to use paid without Stripe */}
+              {!canAcceptPayments && !isPaid && (
+                <div className="mt-4">
+                  <StripeConnectPrompt onClick={() => setShowStripeModal(true)} />
+                </div>
+              )}
+
+              {/* Price Input - only show when Paid selected */}
+              <AnimatePresence>
+                {isPaid && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4 pt-4 border-t border-[#e8e4df] dark:border-[#262b35]">
+                      <label className="block">
+                        <span className="text-[13px] font-medium text-[#5f5a55] dark:text-[#b5b0ab]">
+                          Price Per Extra Call
+                        </span>
+                        <div className="mt-1 relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8a857f]">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={formatDollars(settings.pricePerCallCents || 0)}
+                            onChange={(e) => saveSettings({ pricePerCallCents: parseDollarsToCents(e.target.value) })}
+                            disabled={isSaving}
+                            className="w-full pl-7 pr-4 py-2 bg-white dark:bg-[#1a1f2a] border border-[#e8e4df] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#faf8f6] focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </label>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Customization */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
+              <div className="flex items-center gap-2 mb-4">
+                <Phone className="w-4 h-4" style={{ color: accentColor }} />
+                <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
+                  Customization
+                </h3>
+              </div>
+
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="text-[13px] font-medium text-[#5f5a55] dark:text-[#b5b0ab]">
+                    Request Button Label
+                  </span>
+                  <input
+                    type="text"
+                    value={settings.callRequestButtonLabel || ''}
+                    onChange={(e) => setSettings({ ...settings, callRequestButtonLabel: e.target.value })}
+                    onBlur={() => saveSettings({ callRequestButtonLabel: settings.callRequestButtonLabel })}
+                    disabled={isSaving}
+                    className="mt-1 w-full px-4 py-2 bg-white dark:bg-[#1a1f2a] border border-[#e8e4df] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#faf8f6] focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                    placeholder="Request a Call"
+                    maxLength={50}
+                  />
+                  <p className="text-[12px] text-[#8a857f] mt-1">
+                    Leave blank for &quot;Schedule a Call&quot;
+                  </p>
+                </label>
+
+                <label className="block">
+                  <span className="text-[13px] font-medium text-[#5f5a55] dark:text-[#b5b0ab]">
+                    Description for Clients
+                  </span>
+                  <textarea
+                    value={settings.callRequestDescription || ''}
+                    onChange={(e) => setSettings({ ...settings, callRequestDescription: e.target.value })}
+                    onBlur={() => saveSettings({ callRequestDescription: settings.callRequestDescription })}
+                    disabled={isSaving}
+                    className="mt-1 w-full px-4 py-2 bg-white dark:bg-[#1a1f2a] border border-[#e8e4df] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#faf8f6] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 resize-none"
+                    placeholder="Book a 1-on-1 coaching session with me"
+                    rows={2}
+                    maxLength={200}
+                  />
+                </label>
               </div>
             </div>
-          </Dialog>
-        </Transition>
-      )}
+
+            {/* Notification Settings */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
+              <div className="flex items-center gap-2 mb-4">
+                <Bell className="w-4 h-4" style={{ color: accentColor }} />
+                <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
+                  Notifications
+                </h3>
+              </div>
+
+              <div className="space-y-4">
+                {/* Notify on Request */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-[14px] text-[#1a1a1a] dark:text-[#faf8f6]">
+                      Email me on new requests
+                    </p>
+                    <p className="text-[12px] text-[#8a857f]">
+                      Get notified when clients request a call
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => saveSettings({ notifyOnRequest: !settings.notifyOnRequest })}
+                    disabled={isSaving}
+                    className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
+                      settings.notifyOnRequest ? '' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
+                    }`}
+                    style={settings.notifyOnRequest ? { backgroundColor: accentColor } : undefined}
+                  >
+                    <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                      settings.notifyOnRequest ? 'translate-x-5' : ''
+                    }`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Stripe Connect Modal */}
       <StripeConnectModal

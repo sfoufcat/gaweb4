@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { Users, MessageCircle, Edit2, Loader2, ChevronDown, Check } from 'lucide-react';
-import type { Squad, SquadMember } from '@/types';
+import Image from 'next/image';
+import { Users, MessageCircle, Loader2, ChevronDown, Check, Pencil } from 'lucide-react';
+import type { Squad, SquadMember, UserAlignment, UserAlignmentSummary } from '@/types';
 import { SquadMemberList } from '@/components/squad/SquadMemberList';
+import { AlignmentGauge } from '@/components/alignment';
+import { SquadStreakSheet } from '@/components/squad/SquadStreakSheet';
 import { Button } from '@/components/ui/button';
 import { CohortSessionCard } from '@/components/program/CohortSessionCard';
-import { NextSquadCallCard } from '@/components/squad/NextSquadCallCard';
+import { NextSquadCallCard, type CoachInfo } from '@/components/squad/NextSquadCallCard';
 import { useChatSheet } from '@/contexts/ChatSheetContext';
 import {
   Dialog,
@@ -64,6 +67,9 @@ export function ProgramCommunityTab({
   const [showEnableDialog, setShowEnableDialog] = useState(false);
   const [enabling, setEnabling] = useState(false);
 
+  // Streak sheet state
+  const [showStreakSheet, setShowStreakSheet] = useState(false);
+
   // Filter squads by selected cohort (for group programs)
   const filteredSquads = useMemo(() => {
     if (programType === 'individual') {
@@ -74,6 +80,57 @@ export function ProgramCommunityTab({
     }
     return allSquads.filter(s => s.cohortId === selectedCohortId);
   }, [allSquads, selectedCohortId, programType]);
+
+  // Derive squad for display (must be before any early returns for hook consistency)
+  const squad = selectedSquad || filteredSquads[0] || null;
+
+  // Create mock alignment data for the AlignmentGauge component
+  // Arc shows squad's average alignment, center shows streak
+  const squadStreak = squad?.streak ?? 0;
+  const avgAlignment = squad?.avgAlignment ?? 0;
+
+  const mockAlignment = useMemo<UserAlignment | null>(() => {
+    if (!squad) return null;
+    return {
+      id: 'squad-mock',
+      userId: squad.id,
+      organizationId: squad.organizationId || '',
+      date: new Date().toISOString().split('T')[0],
+      didMorningCheckin: avgAlignment >= 25,
+      didSetTasks: avgAlignment >= 50,
+      didInteractWithSquad: avgAlignment >= 75,
+      hasActiveGoal: avgAlignment === 100,
+      alignmentScore: avgAlignment,
+      fullyAligned: avgAlignment === 100,
+      streakOnThisDay: squadStreak,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }, [squad, squadStreak, avgAlignment]);
+
+  const mockSummary = useMemo<UserAlignmentSummary | null>(() => {
+    if (!squad) return null;
+    return {
+      id: `${squad.organizationId || ''}_${squad.id}`,
+      userId: squad.id,
+      organizationId: squad.organizationId || '',
+      currentStreak: squadStreak,
+      lastAlignedDate: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString(),
+    };
+  }, [squad, squadStreak]);
+
+  // Get coach info for "Guided by" display in call cards
+  const coachInfo: CoachInfo | undefined = useMemo(() => {
+    if (!squad?.coachId || !squad.members?.length) return undefined;
+    const coach = squad.members.find(m => m.roleInSquad === 'coach');
+    if (!coach) return undefined;
+    return {
+      firstName: coach.firstName,
+      lastName: coach.lastName,
+      imageUrl: coach.imageUrl,
+    };
+  }, [squad?.coachId, squad?.members]);
 
   // Auto-select first squad when filtered squads change
   useEffect(() => {
@@ -208,8 +265,48 @@ export function ProgramCommunityTab({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
+      <div className="space-y-5">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between w-full pt-3">
+          <div className="flex items-center gap-3">
+            <div className="w-[50px] h-[50px] sm:w-[62px] sm:h-[62px] rounded-full bg-[#f3f1ef] dark:bg-[#1e222a]" />
+            <div className="space-y-2">
+              <div className="h-5 w-36 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg" />
+              <div className="h-3 w-20 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-[50px] h-[50px] sm:w-[62px] sm:h-[62px] rounded-full bg-[#f3f1ef] dark:bg-[#1e222a]" />
+            <div className="w-[50px] h-[50px] sm:w-[62px] sm:h-[62px] rounded-full bg-[#f3f1ef] dark:bg-[#1e222a]" />
+          </div>
+        </div>
+
+        {/* Call card skeleton */}
+        <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-5">
+          <div className="space-y-3">
+            <div className="h-4 w-24 bg-[#f3f1ef] dark:bg-[#262b35] rounded-lg" />
+            <div className="h-4 w-44 bg-[#f3f1ef] dark:bg-[#262b35] rounded-lg" />
+          </div>
+          <div className="flex gap-3 mt-5">
+            <div className="h-11 w-32 bg-[#f3f1ef] dark:bg-[#262b35] rounded-full" />
+            <div className="h-11 w-24 bg-[#f3f1ef] dark:bg-[#262b35] rounded-full" />
+          </div>
+        </div>
+
+        {/* Members skeleton */}
+        <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#262b35]" />
+                <div className="space-y-2">
+                  <div className="h-4 w-28 bg-[#f3f1ef] dark:bg-[#262b35] rounded-lg" />
+                  <div className="h-3 w-16 bg-[#f3f1ef] dark:bg-[#262b35] rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -360,86 +457,79 @@ export function ProgramCommunityTab({
     );
   }
 
-  const squad = selectedSquad || filteredSquads[0];
-
   return (
     <div className="space-y-6">
-      {/* Header with squad info */}
-      <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-            {/* Squad Avatar */}
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
-              {squad?.avatarUrl ? (
-                <img
-                  src={squad.avatarUrl}
-                  alt={squad.name}
-                  className="w-full h-full rounded-2xl object-cover"
-                />
-              ) : (
-                <Users className="w-6 h-6 sm:w-7 sm:h-7 text-brand-accent" />
-              )}
-            </div>
+      {/* Header - matches client SquadHeader layout */}
+      <div className="flex items-center justify-between w-full pt-3">
+        {/* Left: Squad Avatar + Name */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          {/* Squad Avatar */}
+          <div className="w-[50px] h-[50px] sm:w-[62px] sm:h-[62px] rounded-full overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center shadow-sm flex-shrink-0">
+            {squad?.avatarUrl ? (
+              <Image src={squad.avatarUrl} alt={squad.name} width={62} height={62} className="w-full h-full object-cover" />
+            ) : (
+              <span className="font-albert font-bold text-lg sm:text-xl text-[#4A5D54]">
+                {squad?.name?.[0] || 'S'}
+              </span>
+            )}
+          </div>
 
-            {/* Squad Name / Selector */}
-            <div className="flex-1 min-w-0">
-              {editingName && squad ? (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <input
-                    type="text"
-                    value={squadName}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSquadName(e.target.value)}
-                    className="max-w-[200px] sm:max-w-xs px-3 py-2 text-sm bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
-                    autoFocus
-                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                      if (e.key === 'Enter') handleSaveName();
-                      if (e.key === 'Escape') {
-                        setEditingName(false);
-                        setSquadName(squad.name);
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={handleSaveName}
-                    disabled={savingName || !squadName.trim()}
-                  >
-                    {savingName ? 'Saving...' : 'Save'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
+          {/* Name + Subtitle + Edit */}
+          <div className="min-w-0">
+            {editingName && squad ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="text"
+                  value={squadName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSquadName(e.target.value)}
+                  className="max-w-[200px] sm:max-w-xs px-3 py-2 text-sm bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 font-albert"
+                  autoFocus
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                    if (e.key === 'Enter') handleSaveName();
+                    if (e.key === 'Escape') {
                       setEditingName(false);
                       setSquadName(squad.name);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSaveName}
+                  disabled={savingName || !squadName.trim()}
+                >
+                  {savingName ? 'Saving...' : 'Save'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditingName(false);
+                    setSquadName(squad.name);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5">
                   {/* Squad Selector (when multiple squads) */}
                   {filteredSquads.length > 1 ? (
                     <Popover open={squadSelectorOpen} onOpenChange={setSquadSelectorOpen}>
                       <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className="h-8 sm:h-9 justify-between border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] max-w-[180px] sm:max-w-none"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-sm font-medium truncate">{squad?.name || 'Select squad'}</span>
-                          </div>
-                          <ChevronDown className="w-3.5 h-3.5 opacity-50 ml-2 flex-shrink-0" />
-                        </Button>
+                        <button className="flex items-center gap-1 group min-w-0">
+                          <h1 className="font-albert text-[18px] sm:text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[1.3] tracking-[-1.5px] truncate">
+                            {squad?.name || 'Select squad'}
+                          </h1>
+                          <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-text-secondary dark:text-[#7d8190] transition-transform flex-shrink-0" />
+                        </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[280px] p-1" align="start">
                         {filteredSquads.map((s) => (
                           <button
                             key={s.id}
                             onClick={() => {
-                              setSelectedSquad({ ...s, members: undefined }); // Reset members to refetch
+                              setSelectedSquad({ ...s, members: undefined });
                               setSquadSelectorOpen(false);
                             }}
                             className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] text-left"
@@ -464,56 +554,70 @@ export function ProgramCommunityTab({
                       </PopoverContent>
                     </Popover>
                   ) : squad && (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                        {squad.name}
-                      </h3>
-                      <button
-                        onClick={() => {
-                          setSquadName(squad.name);
-                          setEditingName(true);
-                        }}
-                        className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] transition-colors flex-shrink-0"
-                        title="Edit squad name"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <h1 className="font-albert text-[18px] sm:text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[1.3] tracking-[-1.5px] truncate">
+                      {squad.name}
+                    </h1>
+                  )}
+                  {/* Edit Button */}
+                  {squad && (
+                    <button
+                      onClick={() => {
+                        setSquadName(squad.name);
+                        setEditingName(true);
+                      }}
+                      className="p-1 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors text-text-secondary/60 hover:text-text-primary"
+                      aria-label="Edit squad"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
                   )}
                 </div>
-              )}
-              <div className="flex items-center gap-3 mt-1">
-                {squad && (
-                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                    {squad.memberCount || 0} members
-                  </p>
-                )}
-                {/* Mobile: Chat icon below title */}
-                {squad?.chatChannelId && (
-                  <button
-                    onClick={() => handleOpenChat(squad)}
-                    className="sm:hidden inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[13px] font-medium text-white transition-colors"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    Chat
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop: Actions */}
-          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-            {squad?.chatChannelId && (
-              <button
-                onClick={() => handleOpenChat(squad)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Go to chat
-              </button>
+                {/* Coached squad subtitle */}
+                <p className="font-sans text-[12px] font-semibold leading-[1.2]">
+                  <span className="bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
+                    Coached squad
+                  </span>
+                </p>
+              </>
             )}
           </div>
+        </div>
+
+        {/* Right: Chat Button + Streak Gauge */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          {/* Chat Button - round icon style */}
+          {squad?.chatChannelId && (
+            <button
+              onClick={() => handleOpenChat(squad)}
+              className="w-[50px] h-[50px] sm:w-[62px] sm:h-[62px] rounded-full bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#262b35] transition-colors"
+              aria-label="Open squad chat"
+            >
+              <svg
+                className="w-6 h-6 sm:w-7 sm:h-7 text-text-primary dark:text-[#f5f5f8]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
+                />
+              </svg>
+            </button>
+          )}
+
+          {/* Streak Gauge */}
+          {mockAlignment && mockSummary && (
+            <AlignmentGauge
+              alignment={mockAlignment}
+              summary={mockSummary}
+              size="sm"
+              responsive
+              onPress={() => setShowStreakSheet(true)}
+            />
+          )}
         </div>
       </div>
 
@@ -526,43 +630,20 @@ export function ProgramCommunityTab({
           cohortName={cohortName || squad.name}
           chatChannelId={squad.chatChannelId || undefined}
           isCoach={true}
+          coachInfo={coachInfo}
         />
       )}
       {programType === 'individual' && squad && (
         <NextSquadCallCard
           squad={squad as Squad}
           isCoach={true}
+          coachInfo={coachInfo}
         />
       )}
 
-      {/* Squad Stats */}
+      {/* Members List - matches client styling with subtle shadow */}
       {squad && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 text-center">
-            <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              {squad.avgAlignment ?? 0}%
-            </p>
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-              Avg. Alignment
-            </p>
-          </div>
-          <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 text-center">
-            <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              🔥 {squad.streak ?? 0}
-            </p>
-            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-              Day Streak
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Members List */}
-      {squad && (
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
-          <h4 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
-            Members
-          </h4>
+        <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.04)]">
           {squad.members ? (
             squad.members.length > 0 ? (
               <SquadMemberList members={squad.members} />
@@ -572,12 +653,26 @@ export function ProgramCommunityTab({
               </p>
             )
           ) : (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
+            <div className="space-y-4 py-1">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#262b35]" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-28 bg-[#f3f1ef] dark:bg-[#262b35] rounded-lg" />
+                    <div className="h-3 w-16 bg-[#f3f1ef] dark:bg-[#262b35] rounded-lg" />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       )}
+
+      {/* Squad Streak Explanation Sheet */}
+      <SquadStreakSheet
+        isOpen={showStreakSheet}
+        onClose={() => setShowStreakSheet(false)}
+      />
     </div>
   );
 }

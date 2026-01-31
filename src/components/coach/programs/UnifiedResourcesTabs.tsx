@@ -529,7 +529,7 @@ function CourseEditPanel({
                             <div
                               key={lesson.id}
                               className={cn(
-                                "flex items-center gap-3 pl-12 pr-3 py-2 cursor-pointer transition-colors",
+                                "flex items-center gap-3 pl-14 pr-3 py-2 cursor-pointer transition-colors",
                                 isLessonSelected
                                   ? "bg-brand-accent/5"
                                   : "hover:bg-white/60 dark:hover:bg-[#1d222b]/60"
@@ -569,7 +569,7 @@ function CourseEditPanel({
                         })}
                       </div>
                     ) : (
-                      <div className="bg-[#faf8f6] dark:bg-[#0d0f13] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 px-12 py-3">
+                      <div className="bg-[#faf8f6] dark:bg-[#0d0f13] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 px-14 py-3">
                         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] italic">
                           No lessons in this module
                         </p>
@@ -1325,7 +1325,7 @@ export function UnifiedResourcesTabs({
                                         <div
                                           key={lesson.id}
                                           className={cn(
-                                            "flex items-center gap-3 pl-12 pr-3 py-2 cursor-pointer transition-colors",
+                                            "flex items-center gap-3 pl-14 pr-3 py-2 cursor-pointer transition-colors",
                                             isLessonSelected
                                               ? "bg-brand-accent/5"
                                               : "hover:bg-white/60 dark:hover:bg-[#1d222b]/60"
@@ -1365,7 +1365,7 @@ export function UnifiedResourcesTabs({
                                     })}
                                   </div>
                                 ) : (
-                                  <div className="bg-[#faf8f6] dark:bg-[#0d0f13] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 px-12 py-3">
+                                  <div className="bg-[#faf8f6] dark:bg-[#0d0f13] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 px-14 py-3">
                                     <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] italic">
                                       No lessons in this module
                                     </p>

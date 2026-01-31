@@ -5619,71 +5619,87 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
           (() => { handleViewModeChange('members'); return null; })()
         ) : viewMode === 'members' ? (
           // Combined Cohorts & Members View (Group programs only)
-          // Single white container with two sections like the program editor
-          <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
-            <div className="flex flex-col lg:flex-row lg:items-stretch min-h-[500px]">
-              {/* Left Panel: Cohorts Sidebar */}
-              <div className="lg:w-80 xl:w-96 lg:flex-shrink-0 lg:border-r border-[#e1ddd8] dark:border-[#262b35] flex flex-col">
-                {/* Sidebar Header */}
-                <div className="p-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                      Cohorts
-                    </h3>
-                    <div className="flex items-center gap-1 h-8">
-                      {/* Expandable search - same on mobile and desktop */}
-                      <div className="relative flex items-center h-8">
-                        {isMembersSearchExpanded ? (
-                          <motion.div
-                            initial={{ width: 32, opacity: 0 }}
-                            animate={{ width: 140, opacity: 1 }}
-                            transition={{ duration: 0.12, ease: "easeOut" }}
-                            className="relative flex items-center h-8"
-                          >
-                            <Search className="absolute left-2 w-3.5 h-3.5 text-[#a7a39e] pointer-events-none" />
-                            <input
-                              ref={membersSearchInputRef}
-                              type="text"
-                              placeholder="Search..."
-                              value={membersSearch}
-                              onChange={(e) => setMembersSearch(e.target.value)}
-                              onBlur={() => { if (!membersSearch) setIsMembersSearchExpanded(false); }}
-                              className="w-full h-8 pl-7 pr-7 text-sm bg-[#f5f3f0] dark:bg-[#0d1017] rounded-lg focus:outline-none placeholder:text-[#a7a39e]"
-                            />
-                            <button
-                              onClick={() => { setMembersSearch(''); setIsMembersSearchExpanded(false); }}
-                              className="absolute right-1.5 p-0.5 text-[#a7a39e] hover:text-[#5f5a55]"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </motion.div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setIsMembersSearchExpanded(true);
-                              setTimeout(() => membersSearchInputRef.current?.focus(), 50);
-                            }}
-                            className="flex items-center justify-center w-8 h-8 text-[#8a8580] hover:text-[#5f5a55] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                          >
-                            <Search className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleOpenCohortModal()}
-                        className="p-2 text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
-                        title="Add Cohort"
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Left Panel: Cohorts List */}
+            <div className="lg:w-80 xl:w-96 flex-shrink-0 lg:border-r lg:border-[#e1ddd8]/30 dark:lg:border-[#262b35]/30 lg:pr-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  Cohorts
+                </h3>
+                <div className="flex items-center gap-1">
+                  {/* Search */}
+                  <div className="relative flex items-center">
+                    {isMembersSearchExpanded ? (
+                      <motion.div
+                        initial={{ width: 32, opacity: 0 }}
+                        animate={{ width: 160, opacity: 1 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="relative flex items-center"
                       >
-                        <Plus className="w-4 h-4" />
+                        <Search className="absolute left-2.5 w-4 h-4 text-[#a7a39e] pointer-events-none" />
+                        <input
+                          ref={membersSearchInputRef}
+                          type="text"
+                          placeholder="Search cohorts..."
+                          value={membersSearch}
+                          onChange={(e) => setMembersSearch(e.target.value)}
+                          onBlur={() => { if (!membersSearch) setIsMembersSearchExpanded(false); }}
+                          className="w-full h-9 pl-8 pr-8 text-sm bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent/20 placeholder:text-[#a7a39e]"
+                        />
+                        <button
+                          onClick={() => { setMembersSearch(''); setIsMembersSearchExpanded(false); }}
+                          className="absolute right-2 p-0.5 text-[#a7a39e] hover:text-[#5f5a55]"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </motion.div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setIsMembersSearchExpanded(true);
+                          setTimeout(() => membersSearchInputRef.current?.focus(), 50);
+                        }}
+                        className="p-2 text-[#8a8580] hover:text-[#5f5a55] dark:hover:text-white hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                      >
+                        <Search className="w-4 h-4" />
                       </button>
-                    </div>
+                    )}
                   </div>
+                  <button
+                    onClick={() => handleOpenCohortModal()}
+                    className="p-2 text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
+                    title="Add Cohort"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
                 </div>
+              </div>
 
-                {/* Cohort List */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                  <AnimatePresence mode="popLayout">
-                    {filteredMembersCohorts.map((cohort, index) => {
+              {/* Cohort Cards */}
+              <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+                <AnimatePresence mode="popLayout">
+                  {filteredMembersCohorts.length === 0 ? (
+                    <div className="text-center py-12 px-4">
+                      {membersSearch ? (
+                        <>
+                          <Search className="w-10 h-10 text-[#d1ccc6] dark:text-[#3a4150] mx-auto mb-3" />
+                          <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 text-sm">No results</h3>
+                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Try a different search</p>
+                        </>
+                      ) : (
+                        <>
+                          <CalendarIcon className="w-10 h-10 text-[#d1ccc6] dark:text-[#3a4150] mx-auto mb-3" />
+                          <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 text-sm">No cohorts yet</h3>
+                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mb-4">Create a cohort to start enrolling members</p>
+                          <Button onClick={() => handleOpenCohortModal()} size="sm" className="bg-brand-accent hover:bg-brand-accent/90 text-white">
+                            <Plus className="w-4 h-4 mr-1.5" />Add Cohort
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    filteredMembersCohorts.map((cohort, index) => {
                       const isSelected = selectedMembersCohortId === cohort.id;
                       const memberCount = enrollmentsByCohort[cohort.id]?.length || 0;
                       return (
@@ -5692,185 +5708,171 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -8 }}
-                          transition={{ duration: 0.15, delay: index * 0.02 }}
+                          transition={{ duration: 0.15, delay: index * 0.03 }}
                           onClick={() => {
                             setSelectedMembersCohortId(cohort.id);
                             if (!isDesktop) setMobileMembersDrawerOpen(true);
                           }}
                           className={cn(
-                            "group cursor-pointer rounded-xl p-3.5 transition-all duration-200",
-                            "bg-white dark:bg-[#1a1f28] border",
-                            isSelected
-                              ? "border-brand-accent/40 bg-brand-accent/[0.03]"
-                              : "border-[#eae7e3] dark:border-[#262c38] hover:border-brand-accent/25"
+                            "w-full flex items-center gap-4 p-4 text-left transition-colors group cursor-pointer",
+                            isSelected ? "bg-brand-accent/5" : "hover:bg-[#faf8f6] dark:hover:bg-[#11141b]",
+                            index !== filteredMembersCohorts.length - 1 && "border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50"
                           )}
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className={cn(
-                                  "font-medium text-[15px] truncate",
-                                  isSelected ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]"
-                                )}>
-                                  {cohort.name}
-                                </h4>
-                                <span className={cn(
-                                  "px-1.5 py-0.5 rounded-md text-[10px] font-medium tracking-wide flex-shrink-0",
-                                  cohort.status === 'active' && "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
-                                  cohort.status === 'upcoming' && "bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400",
-                                  cohort.status === 'completed' && "bg-[#f5f4f2] text-[#7a7570] dark:bg-[#2a303c] dark:text-[#7a8290]",
-                                  cohort.status === 'archived' && "bg-[#f5f4f2] text-[#9a9590] dark:bg-[#2a303c] dark:text-[#6b7280]"
-                                )}>
-                                  {cohort.status === 'active' ? 'Active' : cohort.status === 'upcoming' ? 'Upcoming' : cohort.status === 'completed' ? 'Completed' : 'Archived'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-[13px] text-[#8a8580] dark:text-[#7a8290]">
-                                <span>{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
-                                <span className="text-[#d1ccc6] dark:text-[#3a4150]">·</span>
-                                <span>{new Date(cohort.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                              </div>
+                          {/* Cohort Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className={cn(
+                                "font-albert font-semibold truncate",
+                                isSelected ? "text-brand-accent" : "text-[#1a1a1a] dark:text-[#f5f5f8]"
+                              )}>
+                                {cohort.name}
+                              </p>
+                              {/* Status Icon */}
+                              <span
+                                className={cn(
+                                  "inline-flex items-center justify-center w-4 h-4 flex-shrink-0",
+                                  cohort.status === 'active' && "text-green-600 dark:text-green-400",
+                                  cohort.status === 'upcoming' && "text-blue-600 dark:text-blue-400",
+                                  cohort.status === 'completed' && "text-gray-500 dark:text-gray-400",
+                                  cohort.status === 'archived' && "text-gray-400 dark:text-gray-500"
+                                )}
+                                title={cohort.status}
+                              >
+                                {cohort.status === 'active' ? (
+                                  <CheckCircle2 className="w-4 h-4" />
+                                ) : cohort.status === 'upcoming' ? (
+                                  <CircleDashed className="w-4 h-4" />
+                                ) : cohort.status === 'completed' ? (
+                                  <Check className="w-4 h-4" />
+                                ) : (
+                                  <Archive className="w-4 h-4" />
+                                )}
+                              </span>
                             </div>
-
-                            {/* 3-dot menu */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={cn(
-                                    "p-1.5 rounded-lg transition-all",
-                                    "text-[#a7a39e] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2]",
-                                    "hover:bg-black/5 dark:hover:bg-white/5",
-                                    "opacity-0 group-hover:opacity-100",
-                                    isSelected && "opacity-100"
-                                  )}
-                                >
-                                  <MoreVertical className="w-4 h-4" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem onClick={() => handleOpenCohortModal(cohort)}>
-                                  <Edit2 className="w-4 h-4 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDuplicateCohort(cohort)}
-                                  disabled={duplicatingCohort === cohort.id}
-                                >
-                                  <Copy className="w-4 h-4 mr-2" />
-                                  Duplicate
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => setDeleteConfirmCohort(cohort)}
-                                  className="text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-
-                            {/* Chevron (mobile only) */}
-                            <ChevronRight className={cn(
-                              "w-5 h-5 lg:hidden flex-shrink-0 transition-colors",
-                              isSelected ? "text-brand-accent" : "text-[#c4c0bb] dark:text-[#4a5568]"
-                            )} />
+                            <p className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                              {memberCount} member{memberCount !== 1 ? 's' : ''} · {new Date(cohort.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </p>
                           </div>
+
+                          {/* 3-dot menu */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-1.5 rounded-lg text-[#a7a39e] hover:text-[#5f5a55] dark:hover:text-[#b2b6c2] hover:bg-black/5 dark:hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-all"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem onClick={() => handleOpenCohortModal(cohort)}>
+                                <Edit2 className="w-4 h-4 mr-2" />Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDuplicateCohort(cohort)} disabled={duplicatingCohort === cohort.id}>
+                                <Copy className="w-4 h-4 mr-2" />Duplicate
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setDeleteConfirmCohort(cohort)} className="text-red-600 focus:text-red-600">
+                                <Trash2 className="w-4 h-4 mr-2" />Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          <ChevronRight className={cn(
+                            "w-5 h-5 flex-shrink-0 transition-colors",
+                            isSelected ? "text-brand-accent" : "text-[#c4bfb9] dark:text-[#7d8190]"
+                          )} />
                         </motion.div>
                       );
-                    })}
-                  </AnimatePresence>
-
-                  {/* Empty state for cohorts */}
-                  {!loadingDetails && filteredMembersCohorts.length === 0 && (
-                    <div className="text-center py-12 px-4">
-                      {membersSearch ? (
-                        <>
-                          <Search className="w-10 h-10 text-[#d1ccc6] dark:text-[#3a4150] mx-auto mb-3" />
-                          <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 text-sm">
-                            No results
-                          </h3>
-                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                            Try a different search
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <CalendarIcon className="w-10 h-10 text-[#d1ccc6] dark:text-[#3a4150] mx-auto mb-3" />
-                          <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 text-sm">
-                            No cohorts yet
-                          </h3>
-                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mb-4">
-                            Create a cohort to start enrolling members
-                          </p>
-                          <Button
-                            onClick={() => handleOpenCohortModal()}
-                            size="sm"
-                            className="bg-brand-accent hover:bg-brand-accent/90 text-white"
-                          >
-                            <Plus className="w-4 h-4 mr-1.5" />
-                            Add Cohort
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                    })
                   )}
-                </div>
+                </AnimatePresence>
               </div>
+            </div>
 
               {/* Right Panel: Members List (Desktop only) */}
-              {isDesktop && (
+            {isDesktop && (
+              <div className="flex-1 min-w-0">
                 <AnimatePresence mode="wait">
                   {selectedMembersCohort ? (
                     <motion.div
                       key={selectedMembersCohortId}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2, ease: "easeOut" }}
-                      className="flex-1 flex flex-col min-w-0"
                     >
                       {/* Members header */}
-                      <div className="p-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                              {selectedMembersCohort.name}
-                            </h3>
-                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                              {displayedMembersEnrollments.length} member{displayedMembersEnrollments.length !== 1 ? 's' : ''}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setEnrollToCohortId(selectedMembersCohortId);
-                              setShowEnrollClientsModal(true);
-                            }}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-brand-accent/10 hover:bg-brand-accent/20 text-brand-accent rounded-lg font-albert font-medium text-sm transition-colors"
-                          >
-                            <UserPlus className="w-4 h-4" />
-                            Enroll
-                          </button>
-                        </div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                          {selectedMembersCohort.name} <span className="font-normal text-[#5f5a55] dark:text-[#b2b6c2]">({displayedMembersEnrollments.length})</span>
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setEnrollToCohortId(selectedMembersCohortId);
+                            setShowEnrollClientsModal(true);
+                          }}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-brand-accent/10 hover:bg-brand-accent/20 text-brand-accent rounded-lg font-albert font-medium text-sm transition-colors"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                          Enroll
+                        </button>
                       </div>
 
+                      {/* Coach row - separate from member list */}
+                      {currentUser && (
+                        <div className="flex items-center gap-3 mb-4 px-1">
+                          <div className="relative flex-shrink-0">
+                            {currentUser.imageUrl ? (
+                              <Image
+                                src={currentUser.imageUrl}
+                                alt={`${currentUser.firstName} ${currentUser.lastName}`}
+                                width={36}
+                                height={36}
+                                className="w-9 h-9 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-9 h-9 rounded-full bg-brand-accent/10 flex items-center justify-center text-brand-accent font-albert font-semibold text-sm">
+                                {currentUser.firstName?.charAt(0) || 'C'}
+                              </div>
+                            )}
+                            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center shadow-sm border border-white dark:border-[#171b22]">
+                              <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-albert font-medium text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                                {`${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'You'}
+                              </p>
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide bg-brand-accent/10 text-brand-accent">
+                                Coach
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Members list */}
-                      <div className="flex-1 overflow-y-auto p-2">
+                      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
                         {loadingEnrollments ? (
-                          <div className="space-y-2 p-2">
+                          <div className="p-4 space-y-3">
                             {[1, 2, 3].map((i) => (
-                              <div key={i} className="flex items-center gap-3 p-3 animate-pulse">
-                                <div className="w-10 h-10 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                              <div key={i} className="flex items-center gap-4 animate-pulse">
+                                <div className="w-12 h-12 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
                                 <div className="flex-1 space-y-2">
                                   <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                                  <div className="h-3 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                                  <div className="h-3 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
                                 </div>
                               </div>
                             ))}
                           </div>
                         ) : displayedMembersEnrollments.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-12 text-center">
-                            <Users className="w-10 h-10 text-[#d1ccc6] dark:text-[#3a4150] mb-3" />
-                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+                          <div className="flex flex-col items-center justify-center py-16 text-center">
+                            <Users className="w-12 h-12 text-[#d1ccc6] dark:text-[#3a4150] mb-4" />
+                            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
                               No members in this cohort yet
                             </p>
                             <button
@@ -5878,102 +5880,44 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 setEnrollToCohortId(selectedMembersCohortId);
                                 setShowEnrollClientsModal(true);
                               }}
-                              className="flex items-center gap-2 px-3 py-1.5 bg-brand-accent text-white rounded-lg font-albert font-medium text-sm hover:bg-brand-accent/90 transition-colors"
+                              className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg font-albert font-medium hover:bg-brand-accent/90 transition-colors"
                             >
                               <UserPlus className="w-4 h-4" />
                               Enroll Members
                             </button>
                           </div>
                         ) : (
-                          <motion.div
-                            initial="hidden"
-                            animate="show"
-                            variants={{
-                              hidden: { opacity: 0 },
-                              show: { opacity: 1, transition: { staggerChildren: 0.05 } }
-                            }}
-                            className="space-y-1"
-                          >
-                            {/* Coach row - show current user as coach */}
-                            {currentUser && (
-                              <motion.div
-                                variants={{
-                                  hidden: { opacity: 0, y: 5 },
-                                  show: { opacity: 1, y: 0 }
-                                }}
-                                className="flex items-center gap-3 p-2.5 rounded-lg"
-                              >
-                                <div className="relative flex-shrink-0">
-                                  {currentUser.imageUrl ? (
-                                    <Image
-                                      src={currentUser.imageUrl}
-                                      alt={`${currentUser.firstName} ${currentUser.lastName}`}
-                                      width={36}
-                                      height={36}
-                                      className="w-9 h-9 rounded-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-9 h-9 rounded-full bg-brand-accent/10 flex items-center justify-center">
-                                      <User className="w-4 h-4 text-brand-accent" />
-                                    </div>
-                                  )}
-                                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center shadow-sm">
-                                    <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
-                                    </svg>
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                                      {`${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'You'}
-                                    </p>
-                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-brand-accent text-white">
-                                      Coach
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
-                                    {currentUser.primaryEmailAddress?.emailAddress}
-                                  </p>
-                                </div>
-                              </motion.div>
-                            )}
-
-                            {/* Members divider */}
-                            {displayedMembersEnrollments.length > 0 && currentUser && (
-                              <div className="flex items-center gap-2 py-1.5 px-1">
-                                <div className="flex-1 h-px bg-[#e1ddd8]/30 dark:bg-[#262b35]/30" />
-                              </div>
-                            )}
-
-                            {displayedMembersEnrollments.map((enrollment) => (
+                          <div>
+                            {displayedMembersEnrollments.map((enrollment, index) => (
                               <motion.div
                                 key={enrollment.id}
-                                variants={{
-                                  hidden: { opacity: 0, y: 5 },
-                                  show: { opacity: 1, y: 0 }
-                                }}
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.15, delay: index * 0.03 }}
                                 onClick={() => setSelectedClient(enrollment)}
-                                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors group"
+                                className={cn(
+                                  "flex items-center gap-3 p-4 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1e222a] transition-colors group",
+                                  index !== displayedMembersEnrollments.length - 1 && "border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50"
+                                )}
                               >
                                 {/* Avatar */}
                                 {enrollment.user?.imageUrl ? (
                                   <Image
                                     src={enrollment.user.imageUrl}
                                     alt={`${enrollment.user.firstName} ${enrollment.user.lastName}`}
-                                    width={40}
-                                    height={40}
-                                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                    width={44}
+                                    height={44}
+                                    className="w-11 h-11 rounded-full object-cover flex-shrink-0"
                                   />
                                 ) : (
-                                  <div className="w-10 h-10 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0 text-brand-accent-foreground font-albert font-semibold">
+                                  <div className="w-11 h-11 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0 text-brand-accent-foreground font-albert font-semibold">
                                     {enrollment.user?.firstName?.charAt(0) || 'M'}
                                   </div>
                                 )}
                                 {/* Name & Email with Status Icon */}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <p className="font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                                    <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
                                       {enrollment.user ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown' : 'Unknown'}
                                     </p>
                                     {/* Status Icon */}
@@ -5998,7 +5942,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                       )}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
                                     {enrollment.user?.email}
                                   </p>
                                 </div>
@@ -6013,7 +5957,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                                 <ChevronRight className="w-5 h-5 text-[#c4bfb9] dark:text-[#7d8190] flex-shrink-0" />
                               </motion.div>
                             ))}
-                          </motion.div>
+                          </div>
                         )}
                       </div>
                     </motion.div>
@@ -6021,17 +5965,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="flex-1 flex flex-col items-center justify-center min-w-0 bg-[#faf8f6]/50 dark:bg-[#0d1017]/50"
+                      className="flex-1 flex flex-col items-center justify-center min-w-0 min-h-[400px] rounded-2xl bg-gradient-to-b from-white/80 to-white/40 dark:from-[#0d1017] dark:to-[#11141b] border border-[#e1ddd8]/20 dark:border-[#262b35]/30"
                     >
-                      <Users className="w-12 h-12 text-[#d1ccc6] dark:text-[#3a4150] mb-3" />
-                      <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                        Select a cohort to view members
-                      </p>
+                      <div className="flex flex-col items-center text-center px-8">
+                        <div className="w-16 h-16 rounded-2xl bg-brand-accent/5 dark:bg-[#1e222a] flex items-center justify-center mb-4">
+                          <Users className="w-8 h-8 text-[#c4bfb9] dark:text-[#5a6070]" />
+                        </div>
+                        <p className="text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium">
+                          Select a cohort to view members
+                        </p>
+                        <p className="text-sm text-[#8a8580] dark:text-[#7d8190] font-albert mt-1">
+                          Choose from the list on the left
+                        </p>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Mobile Members Drawer */}
             {!isDesktop && (
@@ -6048,18 +5999,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                           >
                             <ArrowLeft className="w-5 h-5" />
                           </button>
-                          <div className="flex-1">
-                            <DrawerTitle>{selectedMembersCohort.name}</DrawerTitle>
-                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                              {displayedMembersEnrollments.length} member{displayedMembersEnrollments.length !== 1 ? 's' : ''}
-                            </p>
+                          <div className="flex-1 text-center">
+                            <DrawerTitle>{selectedMembersCohort.name} <span className="font-normal text-[#5f5a55] dark:text-[#b2b6c2]">({displayedMembersEnrollments.length})</span></DrawerTitle>
                           </div>
                           <button
                             onClick={() => {
                               setEnrollToCohortId(selectedMembersCohortId);
                               setShowEnrollClientsModal(true);
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-accent text-white rounded-lg font-albert font-medium text-sm"
+                            className="flex items-center gap-1.5 px-3 py-2 bg-white/70 dark:bg-white/10 backdrop-blur-md border border-white/30 dark:border-white/10 shadow-lg text-brand-accent dark:text-white rounded-xl font-albert font-medium text-sm"
                           >
                             <UserPlus className="w-4 h-4" />
                             Enroll
@@ -6070,26 +6018,27 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                         <div className="flex items-center gap-2 mt-3">
                           <button
                             onClick={() => { setMobileMembersDrawerOpen(false); handleOpenCohortModal(selectedMembersCohort); }}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] active:scale-[0.98] transition-all"
+                            className="p-2.5 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl text-[#5f5a55] dark:text-[#b2b6c2] active:scale-[0.98] transition-all"
+                            title="Edit"
                           >
                             <Edit2 className="w-4 h-4" />
-                            Edit
                           </button>
                           <button
                             onClick={() => handleDuplicateCohort(selectedMembersCohort)}
                             disabled={duplicatingCohort === selectedMembersCohort.id}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] active:scale-[0.98] transition-all disabled:opacity-50"
+                            className="p-2.5 bg-[#f3f1ef] dark:bg-[#262b35] rounded-xl text-[#5f5a55] dark:text-[#b2b6c2] active:scale-[0.98] transition-all disabled:opacity-50"
+                            title="Duplicate"
                           >
                             {duplicatingCohort === selectedMembersCohort.id ? (
                               <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
                             ) : (
                               <Copy className="w-4 h-4" />
                             )}
-                            Duplicate
                           </button>
                           <button
                             onClick={() => { setMobileMembersDrawerOpen(false); setDeleteConfirmCohort(selectedMembersCohort); }}
-                            className="px-3 py-2.5 bg-red-50 dark:bg-red-900/20 rounded-xl text-sm text-red-500 active:scale-[0.98] transition-all"
+                            className="p-2.5 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-500 active:scale-[0.98] transition-all"
+                            title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -6128,104 +6077,103 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                             </button>
                           </div>
                         ) : (
-                          <div className="bg-[#f3f1ef] dark:bg-[#1e222a] rounded-2xl overflow-hidden">
-                            {/* Coach row - show current user as coach */}
+                          <>
+                            {/* Coach row - separate from member list */}
                             {currentUser && (
-                              <div className="flex items-center gap-3 p-3.5 bg-white dark:bg-[#171b22]">
+                              <div className="flex items-center gap-3 mb-4 px-1">
                                 <div className="relative flex-shrink-0">
                                   {currentUser.imageUrl ? (
                                     <Image
                                       src={currentUser.imageUrl}
                                       alt={`${currentUser.firstName} ${currentUser.lastName}`}
-                                      width={44}
-                                      height={44}
-                                      className="w-11 h-11 rounded-full object-cover"
+                                      width={36}
+                                      height={36}
+                                      className="w-9 h-9 rounded-full object-cover"
                                     />
                                   ) : (
-                                    <div className="w-11 h-11 rounded-full bg-brand-accent/10 flex items-center justify-center">
-                                      <User className="w-5 h-5 text-brand-accent" />
+                                    <div className="w-9 h-9 rounded-full bg-brand-accent/10 flex items-center justify-center">
+                                      <User className="w-4 h-4 text-brand-accent" />
                                     </div>
                                   )}
-                                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center shadow-sm">
-                                    <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-brand-accent flex items-center justify-center shadow-sm border border-white dark:border-[#171b22]">
+                                    <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                     </svg>
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                                    <p className="font-albert font-medium text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
                                       {`${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'You'}
                                     </p>
-                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-brand-accent text-white">
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide bg-brand-accent/10 text-brand-accent">
                                       Coach
                                     </span>
                                   </div>
-                                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
-                                    {currentUser.primaryEmailAddress?.emailAddress}
-                                  </p>
                                 </div>
                               </div>
                             )}
 
-                            {/* Members */}
-                            {displayedMembersEnrollments.map((enrollment, index) => (
-                              <div
-                                key={enrollment.id}
-                                onClick={() => { setMobileMembersDrawerOpen(false); setSelectedClient(enrollment); }}
-                                className={cn(
-                                  "flex items-center gap-3 p-3.5 bg-white dark:bg-[#171b22] active:bg-[#f8f6f4] dark:active:bg-[#1e222a] transition-colors",
-                                  index > 0 || currentUser ? "border-t border-[#f0ede9] dark:border-[#262b35]" : ""
-                                )}
-                              >
-                                {enrollment.user?.imageUrl ? (
-                                  <Image
-                                    src={enrollment.user.imageUrl}
-                                    alt={`${enrollment.user.firstName} ${enrollment.user.lastName}`}
-                                    width={44}
-                                    height={44}
-                                    className="w-11 h-11 rounded-full object-cover flex-shrink-0"
-                                  />
-                                ) : (
-                                  <div className="w-11 h-11 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0 text-brand-accent-foreground font-albert font-semibold">
-                                    {enrollment.user?.firstName?.charAt(0) || 'M'}
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                                      {enrollment.user ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown' : 'Unknown'}
+                            {/* Members list - glass effect */}
+                            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-white/30 dark:border-white/5 shadow-lg rounded-2xl overflow-hidden">
+                              {displayedMembersEnrollments.map((enrollment, index) => (
+                                <div
+                                  key={enrollment.id}
+                                  onClick={() => { setMobileMembersDrawerOpen(false); setSelectedClient(enrollment); }}
+                                  className={cn(
+                                    "flex items-center gap-3 p-4 active:bg-black/5 dark:active:bg-white/5 transition-colors",
+                                    index !== 0 && "border-t border-[#e1ddd8]/30 dark:border-[#262b35]/30"
+                                  )}
+                                >
+                                  {enrollment.user?.imageUrl ? (
+                                    <Image
+                                      src={enrollment.user.imageUrl}
+                                      alt={`${enrollment.user.firstName} ${enrollment.user.lastName}`}
+                                      width={44}
+                                      height={44}
+                                      className="w-11 h-11 rounded-full object-cover flex-shrink-0 shadow-sm"
+                                    />
+                                  ) : (
+                                    <div className="w-11 h-11 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0 text-brand-accent-foreground font-albert font-semibold shadow-sm">
+                                      {enrollment.user?.firstName?.charAt(0) || 'M'}
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                                        {enrollment.user ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown' : 'Unknown'}
+                                      </p>
+                                      {/* Status Icon */}
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center justify-center w-4 h-4 flex-shrink-0",
+                                          enrollment.status === 'active' && "text-green-600 dark:text-green-400",
+                                          enrollment.status === 'upcoming' && "text-blue-600 dark:text-blue-400",
+                                          enrollment.status === 'completed' && "text-gray-500 dark:text-gray-400",
+                                          enrollment.status === 'stopped' && "text-red-600 dark:text-red-400"
+                                        )}
+                                        title={enrollment.status}
+                                      >
+                                        {enrollment.status === 'active' ? (
+                                          <CheckCircle2 className="w-4 h-4" />
+                                        ) : enrollment.status === 'upcoming' ? (
+                                          <CircleDashed className="w-4 h-4" />
+                                        ) : enrollment.status === 'completed' ? (
+                                          <Check className="w-4 h-4" />
+                                        ) : (
+                                          <CircleOff className="w-4 h-4" />
+                                        )}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                                      {enrollment.user?.email}
                                     </p>
-                                    {/* Status Icon */}
-                                    <span
-                                      className={cn(
-                                        "inline-flex items-center justify-center w-4 h-4 flex-shrink-0",
-                                        enrollment.status === 'active' && "text-green-600 dark:text-green-400",
-                                        enrollment.status === 'upcoming' && "text-blue-600 dark:text-blue-400",
-                                        enrollment.status === 'completed' && "text-gray-500 dark:text-gray-400",
-                                        enrollment.status === 'stopped' && "text-red-600 dark:text-red-400"
-                                      )}
-                                      title={enrollment.status}
-                                    >
-                                      {enrollment.status === 'active' ? (
-                                        <CheckCircle2 className="w-4 h-4" />
-                                      ) : enrollment.status === 'upcoming' ? (
-                                        <CircleDashed className="w-4 h-4" />
-                                      ) : enrollment.status === 'completed' ? (
-                                        <Check className="w-4 h-4" />
-                                      ) : (
-                                        <CircleOff className="w-4 h-4" />
-                                      )}
-                                    </span>
                                   </div>
-                                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
-                                    {enrollment.user?.email}
-                                  </p>
+                                  <ChevronRight className="w-5 h-5 text-[#c4bfb9] dark:text-[#7d8190] flex-shrink-0" />
                                 </div>
-                                <ChevronRight className="w-5 h-5 text-[#c4bfb9] dark:text-[#7d8190] flex-shrink-0" />
-                              </div>
-                            ))}
-                          </div>
+                              ))}
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
@@ -6282,6 +6230,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
               </div>
             ) : (
               <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+                <AnimatePresence mode="popLayout">
                 {programEnrollments.map((enrollment, index) => {
                   // Format next call datetime
                   const formatNextCall = (nextCall: NextCallInfo | null | undefined) => {
@@ -6297,10 +6246,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                   const nextCallFormatted = formatNextCall(enrollment.nextCall);
 
                   return (
-                  <button
+                  <motion.div
                     key={enrollment.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.15, delay: index * 0.03 }}
                     onClick={() => setSelectedClient(enrollment)}
-                    className={`w-full flex items-center gap-4 p-4 hover:bg-[#faf8f6] dark:hover:bg-[#11141b] transition-colors text-left ${
+                    className={`w-full flex items-center gap-4 p-4 hover:bg-[#faf8f6] dark:hover:bg-[#11141b] transition-colors text-left cursor-pointer ${
                       index !== programEnrollments.length - 1 ? 'border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50' : ''
                     }`}
                   >
@@ -6434,9 +6387,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs', init
                       {/* Chevron */}
                       <ChevronRight className="w-5 h-5 text-[#c4bfb9] dark:text-[#7d8190]" />
                     </div>
-                  </button>
+                  </motion.div>
                   );
                 })}
+                </AnimatePresence>
               </div>
             )}
           </div>

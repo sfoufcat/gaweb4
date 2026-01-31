@@ -16,7 +16,8 @@ import {
   Link2,
 } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import {
   Drawer,
   DrawerContent,
@@ -197,16 +198,28 @@ export function DayPreviewPopup({
     return 'sourceResourceId' in task && !!task.sourceResourceId;
   };
 
+  // Get resource type from task label prefix
+  const getResourceTypeFromLabel = (task: TaskData): string => {
+    const label = task.label?.toLowerCase() || '';
+    if (label.startsWith('watch lesson')) return 'Course';
+    if (label.startsWith('watch')) return 'Video';
+    if (label.startsWith('read')) return 'Article';
+    if (label.startsWith('fill in')) return 'Form';
+    if (label.startsWith('download')) return 'Download';
+    if (label.startsWith('visit')) return 'Link';
+    return 'Resource';
+  };
+
   // Get the source label for a task
   const getSourceLabel = (task: TaskData) => {
     if (isResourceTask(task)) {
-      return 'from resource';
+      return getResourceTypeFromLabel(task);
     }
     const dayTag = 'dayTag' in task ? task.dayTag : undefined;
-    if (dayTag === 'daily') return 'daily';
-    if (dayTag === 'spread') return 'spread';
-    if (typeof dayTag === 'number') return `day ${dayTag}`;
-    return 'auto';
+    if (dayTag === 'daily') return 'Daily Task';
+    if (dayTag === 'spread') return 'Spread Task';
+    if (typeof dayTag === 'number') return `Day ${dayTag} Task`;
+    return 'Task';
   };
 
   // Get icon for resource-generated task based on label
@@ -690,6 +703,9 @@ export function DayPreviewPopup({
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+          <VisuallyHidden>
+            <DialogTitle>Day {dayNumber} Preview</DialogTitle>
+          </VisuallyHidden>
           {/* Header */}
           <div className="flex items-center px-5 py-4 border-b border-[#e1ddd8]/60 dark:border-[#262b35]/60">
             {headerContent}
@@ -707,7 +723,7 @@ export function DayPreviewPopup({
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DrawerContent className="max-h-[85vh]">
-        <DrawerHeader className="px-5 py-4 border-b border-[#e1ddd8]/60 dark:border-[#262b35]/60">
+        <DrawerHeader className="px-5 py-4 text-left border-b border-[#e1ddd8]/60 dark:border-[#262b35]/60">
           <DrawerTitle asChild>
             {headerContent}
           </DrawerTitle>

@@ -14,7 +14,8 @@
 
 import { useState, useEffect } from 'react';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface SquadStreakSheetProps {
   isOpen: boolean;
@@ -77,6 +78,9 @@ export function SquadStreakSheet({ isOpen, onClose }: SquadStreakSheetProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-[420px] p-0 gap-0">
+        <VisuallyHidden>
+          <DialogTitle>Squad Alignment</DialogTitle>
+        </VisuallyHidden>
         <SheetContent />
       </DialogContent>
     </Dialog>

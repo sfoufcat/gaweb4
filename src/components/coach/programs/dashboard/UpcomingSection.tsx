@@ -102,7 +102,7 @@ export function UpcomingSection({ items, pastItems = [], onAction, className }: 
   };
 
   return (
-    <div className={cn('backdrop-blur-2xl backdrop-saturate-150 bg-white/80 dark:bg-[#171b22]/80 rounded-2xl border border-white/40 dark:border-white/10 shadow-lg p-6', className)}>
+    <div className={cn('bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] p-6', className)}>
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl backdrop-blur-sm bg-violet-100/80 dark:bg-violet-500/20">
