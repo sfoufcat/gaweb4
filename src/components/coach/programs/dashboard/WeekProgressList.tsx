@@ -255,7 +255,7 @@ export function WeekProgressList({
                 )}>
                   {task.label}
                 </span>
-                {index === 2 && thisWeekTasks.tasks.length > 3 && (
+                {index === 2 && thisWeekTasks.tasks && thisWeekTasks.tasks.length > 3 && (
                   <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] whitespace-nowrap">
                     +{thisWeekTasks.tasks.length - 3} more
                   </span>
